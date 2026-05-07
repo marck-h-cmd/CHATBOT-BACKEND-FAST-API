@@ -1,0 +1,129 @@
+# ============================================
+# DEPENDENCIAS
+# ============================================
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib64/
+lib/
+
+# ============================================
+# BASE DE DATOS
+# ============================================
+*.db
+*.sqlite
+*.sqlite3
+*.pgsql
+postgres_data/
+pg-data/
+*.dump
+
+# ============================================
+# LOGS
+# ============================================
+logs/
+*.log
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ============================================
+# ENTORNO Y CONFIGURACIÓN
+# ============================================
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+!.env.example
+.venv
+
+# ============================================
+# EDITORES E IDE
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.~*
+.project
+.classpath
+.settings/
+*.sublime-*
+.history/
+.DS_Store
+
+# ============================================
+# ARCHIVOS DE PYTHON
+# ============================================
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# ============================================
+# ARCHIVOS SUBIDOS
+# ============================================
+uploads/
+downloads/
+*.pdf
+!README.pdf
+!docs/**/*.pdf
+temp_uploads/
+
+# ============================================
+# ARCHIVOS DE RESPALDO
+# ============================================
+*.bak
+*.backup
+*.old
+*.orig
+*.tmp
+*.temp
+*.cache
+
+# ============================================
+# DOCKER
+# ============================================
+docker-compose.override.yml
+docker-compose.*.yml
+!.docker-compose.yml
+.dockerignore
+
+# ============================================
+# OTROS
+# ============================================
+*.pid
+*.seed
+*.pid.lock
+*.tgz
+*.tar.gz
+*.rar
+*.zip
+.terraform/
