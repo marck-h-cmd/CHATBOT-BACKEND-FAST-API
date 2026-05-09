@@ -8,10 +8,18 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.database.connection import engine, SessionLocal
 from app.database.models import Base, Curso, Silabo, ReglaEvaluacion
 from app.services.rule_engine import RuleEngine
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 def init_database():
     """Inicializa la base de datos con el sílabo precargado"""
     
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+    except SQLAlchemyError:
+        pass
+
     # Crear tablas
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)

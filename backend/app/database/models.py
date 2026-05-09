@@ -1,7 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text, ForeignKey, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from pgvector.sqlalchemy import Vector
 from app.database.connection import Base
 
 
@@ -118,7 +117,7 @@ class SilaboChunk(Base):
     chunk_texto = Column(Text, nullable=False)
     tipo_seccion = Column(String(50))
     unidad = Column(String(10))
-    embedding = Column(Vector(384))
+    embedding = Column(JSON)
     metadata_json = Column(JSON)
     
     # Relationships
