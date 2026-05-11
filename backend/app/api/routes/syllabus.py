@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from sqlalchemy.orm import Session
 from typing import Optional
 import uuid
+import datetime
 from app.database.connection import get_db
-from app.database.models import Silabo, Curso, SilaboChunk
+from app.database.models import Silabo, Curso, SilaboChunk, SilaboUsuario
 from app.services.pdf_parser import PDFParserService
 from app.services.chunker import ChunkerService
 from app.services.embeddings import embedding_service
@@ -117,6 +118,15 @@ async def subir_silabo(
     db.add(silabo)
     db.commit()
     db.refresh(silabo)
+    
+    # Crear relación usuario-sílabo para dar acceso
+    silabo_usuario = SilaboUsuario(
+        id_silabo=silabo.id,
+        id_usuario=int(id_usuario),
+        fecha_agregado=datetime.datetime.now()
+    )
+    db.add(silabo_usuario)
+    db.commit()
     
     # Crear chunks y embeddings
     chunks = ChunkerService.crear_chunks(texto, {"nombre_curso": curso.nombre})

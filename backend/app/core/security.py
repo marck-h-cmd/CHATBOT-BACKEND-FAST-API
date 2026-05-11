@@ -82,34 +82,46 @@ class SecurityService:
     ) -> Usuario:
         """Obtiene el usuario actual a partir del token"""
         token = credentials.credentials
+        print(f"DEBUG: Token recibido: {token[:50]}..." if len(token) > 50 else f"DEBUG: Token recibido: {token}")
         
         # Verificar si token está en blacklist
         blacklisted = db.query(TokenBlacklist).filter(TokenBlacklist.token == token).first()
         if blacklisted:
+            print("DEBUG: Token está en blacklist")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token revocado",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        print("DEBUG: Token no está en blacklist")
         
         # Decodificar token
-        payload = SecurityService.decode_token(token)
+        try:
+            payload = SecurityService.decode_token(token)
+            print(f"DEBUG: Payload decodificado: {payload}")
+        except HTTPException as e:
+            print(f"DEBUG: Error decodificando token: {e.detail}")
+            raise
         
         # Verificar tipo de token
         if payload.get("type") != "access":
+            print(f"DEBUG: Tipo de token incorrecto: {payload.get('type')}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token inválido para este endpoint",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        print("DEBUG: Tipo de token correcto")
         
         user_id: int = payload.get("sub")
         if user_id is None:
+            print("DEBUG: No hay user_id en payload")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token inválido: usuario no identificado",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        print(f"DEBUG: User ID: {user_id}")
         
         # Verificar sesión activa
         sesion = db.query(SesionUsuario).filter(
@@ -119,20 +131,24 @@ class SecurityService:
         ).first()
         
         if not sesion:
+            print("DEBUG: Sesión no encontrada o expirada")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Sesión expirada o inválida",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        print("DEBUG: Sesión encontrada y activa")
         
         # Obtener usuario
         user = db.query(Usuario).filter(Usuario.id == user_id, Usuario.es_activo == True).first()
         if not user:
+            print(f"DEBUG: Usuario no encontrado o inactivo para ID: {user_id}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Usuario no encontrado o inactivo",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        print(f"DEBUG: Usuario encontrado: {user.email}")
         
         return user
 
@@ -213,7 +229,7 @@ class AuthService:
             )
         
         # Crear tokens
-        token_data = {"sub": usuario.id, "email": usuario.email, "rol": usuario.rol}
+        token_data = {"sub": str(usuario.id), "email": usuario.email, "rol": usuario.rol}
         access_token = SecurityService.create_access_token(token_data)
         refresh_token = SecurityService.create_refresh_token(token_data)
         
@@ -293,7 +309,7 @@ class AuthService:
         sesion.fecha_cierre = datetime.utcnow()
         
         # Crear nuevos tokens
-        token_data = {"sub": usuario.id, "email": usuario.email, "rol": usuario.rol}
+        token_data = {"sub": str(usuario.id), "email": usuario.email, "rol": usuario.rol}
         new_access_token = SecurityService.create_access_token(token_data)
         new_refresh_token = SecurityService.create_refresh_token(token_data)
         

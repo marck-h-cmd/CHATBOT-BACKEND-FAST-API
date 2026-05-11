@@ -10,9 +10,15 @@ try:
 except Exception:
     SentenceTransformer = None  # type: ignore
 
+try:
+    import google.generativeai as genai
+except Exception:
+    genai = None
+
 class EmbeddingService:
     _instance = None
     _model = None
+    _gemini_model = None
     
     def __new__(cls):
         if cls._instance is None:
@@ -23,6 +29,17 @@ class EmbeddingService:
     def _inicializar(self):
         """Inicializa el modelo de embeddings"""
         self.dimension = Config.PG_VECTOR_DIM
+        
+        # Inicializar Gemini si está configurado
+        if Config.USE_GEMINI and Config.GEMINI_API_KEY and genai:
+            try:
+                genai.configure(api_key=Config.GEMINI_API_KEY)
+                self._gemini_model = genai.GenerativeModel('embedding-001')
+                return
+            except Exception:
+                self._gemini_model = None
+        
+        # Fallback a sentence-transformers
         if SentenceTransformer is None:
             self._model = None
             return
@@ -48,6 +65,25 @@ class EmbeddingService:
         """Genera embedding para un texto"""
         if not texto:
             return [0.0] * self.dimension
+        
+        # Usar Gemini si está configurado
+        if self._gemini_model:
+            try:
+                result = self._gemini_model.embed_content(
+                    content=texto,
+                    task_type="retrieval_document"
+                )
+                embedding = result.embedding
+                # Ajustar a la dimensión esperada
+                if len(embedding) > self.dimension:
+                    embedding = embedding[:self.dimension]
+                elif len(embedding) < self.dimension:
+                    embedding = embedding + [0.0] * (self.dimension - len(embedding))
+                return embedding
+            except Exception:
+                pass  # Fallback a sentence-transformers
+        
+        # Fallback a sentence-transformers
         if self._model is None:
             return self._fallback_embedding(texto)
         embedding = self._model.encode(texto)

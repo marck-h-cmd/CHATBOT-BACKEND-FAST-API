@@ -17,7 +17,9 @@ def init_database():
     try:
         with engine.begin() as conn:
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-    except SQLAlchemyError:
+    except SQLAlchemyError as e:
+        print(f"⚠️  No se pudo crear extensión vector (pgvector no instalado): {e}")
+        print("   El sistema funcionará con búsqueda por palabras clave (fallback)")
         pass
 
     # Crear tablas

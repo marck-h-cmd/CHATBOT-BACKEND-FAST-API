@@ -25,7 +25,9 @@ class Config:
     DATABASE_URL = _normalize_database_url(os.getenv("DATABASE_URL"))
     SECRET_KEY = os.getenv("SECRET_KEY")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+    USE_GEMINI = os.getenv("USE_GEMINI", "false").lower() == "true"
     
     NOTA_APROBACION = float(os.getenv("NOTA_APROBACION", 14))
     UMBRAL_RIESGO_ALTO = float(os.getenv("UMBRAL_RIESGO_ALTO", 11))
