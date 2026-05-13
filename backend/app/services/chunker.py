@@ -7,7 +7,7 @@ class ChunkerService:
     CHUNK_OVERLAP = 50
     
     @staticmethod
-    def crear_chunks(texto: str, metadata_base: Dict = None) -> List[Dict]:
+    def crear_chunks(texto: str, metadata_base: Dict = None ) -> List[Dict]:
         """Divide el texto en chunks con metadata"""
         chunks = []
         palabras = texto.split()

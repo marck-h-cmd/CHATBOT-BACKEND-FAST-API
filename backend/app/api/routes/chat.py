@@ -43,7 +43,7 @@ async def consultar_chat(
         raise HTTPException(404, "Sílabo no encontrado")
     
     # Verificar acceso
-    if silabo.es_oficial:
+    if silabo.es_oficial is True:
         # Sílabo oficial, todos pueden acceder
         pass
     else:

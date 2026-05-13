@@ -37,8 +37,8 @@ class Usuario(Base):
             "rol": self.rol,
             "es_activo": self.es_activo,
             "email_verificado": self.email_verificado,
-            "ultimo_login": self.ultimo_login.isoformat() if self.ultimo_login else None,
-            "fecha_registro": self.fecha_registro.isoformat() if self.fecha_registro else None
+            "ultimo_login": self.ultimo_login.isoformat() if self.ultimo_login is not None else None,
+            "fecha_registro": self.fecha_registro.isoformat() if self.fecha_registro is not None else None
         }
 
 

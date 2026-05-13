@@ -1,8 +1,14 @@
 import fitz  # PyMuPDF
-import re
-from typing import Dict, List, Optional
+from typing import Dict
+
+from app.services.ai_parser import gemini_parser, GEMINI_DISPONIBLE
+from app.config import Config
+
 
 class PDFParserService:
+    """
+    Servicio de parsing de PDF usando Gemini API (una sola llamada)
+    """
     
     @staticmethod
     def extraer_texto(pdf_bytes: bytes) -> str:
@@ -16,109 +22,60 @@ class PDFParserService:
     
     @staticmethod
     def extraer_secciones(texto: str) -> Dict:
-        """Extrae secciones clave del sílabo"""
-        secciones = {
+        """
+        Extrae secciones del sílabo en UNA SOLA llamada a Gemini
+        Mantiene la misma interfaz para compatibilidad con frontend
+        """
+        # Una sola llamada a Gemini (optimizado)
+        resultado_ia = gemini_parser.extraer_estructura_completa(texto)
+        
+        # Determinar confiabilidad
+        confiabilidad = "ALTA"
+        advertencias = []
+        
+        if not Config.USE_GEMINI or not GEMINI_DISPONIBLE:
+            confiabilidad = "MEDIA"
+            advertencias.append("Usando modo estándar (sin IA)")
+        
+        if resultado_ia.get("codigo_curso") == "0000":
+            confiabilidad = "BAJA"
+            advertencias.append("No se detectó código de curso")
+        
+        # Formato esperado por el frontend (compatible)
+        return {
             "competencias": "",
             "contenidos": "",
             "evaluacion": "",
-            "evidencias": {},
-            "unidades": [],
-            "tutoria": "",
-            "fechas": ""
+            "evidencias": resultado_ia.get("evidencias", {}),
+            "unidades": resultado_ia.get("unidades", []),
+            "tutoria": resultado_ia.get("tutoria", {}),
+            "fechas": resultado_ia.get("periodo", ""),
+            "formulas": resultado_ia.get("formulas", {}),
+            "nota_aprobatoria": resultado_ia.get("nota_aprobatoria", 14),
+            "codigo_curso": resultado_ia.get("codigo_curso", "0000"),
+            "nombre_curso": resultado_ia.get("nombre_curso", "Curso sin nombre"),
+            "docente": resultado_ia.get("docente", "No especificado"),
+            "email_docente": resultado_ia.get("email_docente", ""),
+            "reglas": resultado_ia.get("reglas", {}),
+            "confiabilidad": confiabilidad,
+            "advertencias": advertencias,
+            "usando_gemini": Config.USE_GEMINI and GEMINI_DISPONIBLE
         }
-        
-        # Buscar tabla de evaluación (PFD, TAD, ELD)
-        # Formato típico: PFD | Examen de unidad | 1
-        patron_evidencia = r"(PFD|TAD|ELD)\s*\|\s*([^|]+)\|\s*(\d+)"
-        matches = re.findall(patron_evidencia, texto, re.IGNORECASE)
-        
-        for match in matches:
-            tipo = match[0].upper()
-            nombre = match[1].strip()
-            peso = int(match[2])
-            secciones["evidencias"][tipo] = {"nombre": nombre, "peso": peso}
-        
-        # Buscar fórmulas de unidad
-        patron_formula = r"(PU1|PU2|PU3|PP)\s*=\s*([^\n]+)"
-        formulas = re.findall(patron_formula, texto, re.IGNORECASE)
-        secciones["formulas"] = {f[0].upper(): f[1].strip() for f in formulas}
-        
-        # Buscar nota aprobatoria
-        patron_nota = r"nota aprobatoria es (\d+)" 
-        nota_match = re.search(patron_nota, texto, re.IGNORECASE)
-        if nota_match:
-            secciones["nota_aprobatoria"] = int(nota_match.group(1))
-        
-        # Buscar tutoría
-        if "consejería" in texto.lower() or "tutoría" in texto.lower():
-            secciones["tutoria"] = PDFParserService._extraer_tutoria(texto)
-        
-        # Segmentar unidades
-        secciones["unidades"] = PDFParserService._extraer_unidades(texto)
-        
-        return secciones
-    
-    @staticmethod
-    def _extraer_tutoria(texto: str) -> Dict:
-        """Extrae información de consejería/tutoría"""
-        tutoria = {}
-        
-        patron_dia = r"(?:Día|DIAS?)[:\s]*([A-Za-zéúíóáñ]+)"
-        patron_horario = r"(?:Horario|HORA)[:\s]*([\d\s:,-]+)"
-        patron_correo = r"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})"
-        
-        dia_match = re.search(patron_dia, texto, re.IGNORECASE)
-        horario_match = re.search(patron_horario, texto, re.IGNORECASE)
-        correo_match = re.search(patron_correo, texto)
-        
-        if dia_match:
-            tutoria["dia"] = dia_match.group(1)
-        if horario_match:
-            tutoria["horario"] = horario_match.group(1)
-        if correo_match:
-            tutoria["email"] = correo_match.group(1)
-        
-        return tutoria
-    
-    @staticmethod
-    def _extraer_unidades(texto: str) -> List[Dict]:
-        """Extrae las unidades temáticas"""
-        unidades = []
-        patron_unidad = r"Unidad\s+([IVX]+|U?\d+)[:\s]*([^\n]+)"
-        matches = re.findall(patron_unidad, texto, re.IGNORECASE)
-        
-        for i, match in enumerate(matches, 1):
-            unidades.append({
-                "id": f"U{i}",
-                "nombre": match[1].strip(),
-                "semanas": f"Semana {i*5-4}-{i*5}" if i <= 3 else "",
-                "competencias": []
-            })
-        
-        return unidades if unidades else [
-            {"id": "U1", "nombre": "Introducción", "semanas": "1-5"},
-            {"id": "U2", "nombre": "Desarrollo", "semanas": "6-11"},
-            {"id": "U3", "nombre": "Aplicación", "semanas": "12-16"}
-        ]
     
     @staticmethod
     def validar_estructura(secciones: Dict) -> Dict:
-        """Valida si la estructura extraída es confiable"""
-        advertencias = []
+        """Valida la estructura extraída"""
+        advertencias = secciones.get("advertencias", [])
         
         if not secciones.get("evidencias"):
-            advertencias.append("No se detectaron evidencias PFD/TAD/ELD")
+            advertencias.append("No se detectaron evidencias")
         
         if not secciones.get("formulas"):
-            advertencias.append("No se detectaron fórmulas de evaluación")
-        
-        if not secciones.get("nota_aprobatoria"):
-            advertencias.append("No se detectó la nota aprobatoria, se usará 14 por defecto")
-        
-        confiabilidad = "ALTA" if len(advertencias) == 0 else "MEDIA" if len(advertencias) <= 2 else "BAJA"
+            advertencias.append("No se detectaron fórmulas")
         
         return {
-            "confiabilidad": confiabilidad,
+            "confiabilidad": secciones.get("confiabilidad", "MEDIA"),
             "advertencias": advertencias,
-            "es_oficial": False  # Solo es oficial si viene del sílabo precargado
+            "es_oficial": False,
+            "usando_gemini": secciones.get("usando_gemini", False)
         }

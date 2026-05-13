@@ -37,10 +37,9 @@ const SyllabusUploader = () => {
     setUploading(false);
     if (result.success) {
       setFile(null);
-      // El status se actualiza en el contexto, mostramos modal automáticamente
       setIsModalOpen(true);
     } else {
-      alert('Error al subir: ' + result.error?.message);
+      alert('Error al subir: ' + (result.error?.message || 'Error desconocido'));
     }
   };
 
@@ -50,10 +49,45 @@ const SyllabusUploader = () => {
   };
 
   const getFiabilidadColor = (fiabilidad) => {
-    switch (fiabilidad) {
-      case 'ALTA': return 'text-green-600 bg-green-50';
-      case 'MEDIA': return 'text-yellow-600 bg-yellow-50';
-      default: return 'text-red-600 bg-red-50';
+    if (!fiabilidad) return 'text-gray-600 bg-gray-50';
+    const nivel = fiabilidad.toString().toUpperCase();
+    switch (nivel) {
+      case 'ALTA':
+        return 'text-green-700 bg-green-50 border border-green-200';
+      case 'MEDIA':
+        return 'text-yellow-700 bg-yellow-50 border border-yellow-200';
+      case 'BAJA':
+        return 'text-red-700 bg-red-50 border border-red-200';
+      default:
+        return 'text-gray-600 bg-gray-50 border border-gray-200';
+    }
+  };
+
+  const getFiabilidadIcono = (fiabilidad) => {
+    if (!fiabilidad) return '📄';
+    const nivel = fiabilidad.toString().toUpperCase();
+    switch (nivel) {
+      case 'ALTA': return '✅';
+      case 'MEDIA': return '⚠️';
+      case 'BAJA': return '❌';
+      default: return '📄';
+    }
+  };
+
+  const getFiabilidadDescripcion = (fiabilidad, advertencias) => {
+    if (!fiabilidad) return 'No se pudo determinar la fiabilidad del procesamiento.';
+    
+    const nivel = fiabilidad.toString().toUpperCase();
+    
+    switch (nivel) {
+      case 'ALTA':
+        return 'El sílabo se procesó correctamente. Puedes realizar consultas con total confianza.';
+      case 'MEDIA':
+        return 'Algunas secciones se extrajeron con ambigüedad. Verifica los cálculos manualmente si es necesario.';
+      case 'BAJA':
+        return 'No se pudieron extraer todas las reglas automáticamente. Las consultas numéricas pueden ser limitadas. Revisa el sílabo original.';
+      default:
+        return 'Procesamiento completado. Revisa los detalles abajo.';
     }
   };
 
@@ -101,28 +135,129 @@ const SyllabusUploader = () => {
       </Button>
 
       {/* Modal de resultado */}
-      <Modal isOpen={isModalOpen} onClose={closeModal} title="Resultado de subida">
+      <Modal isOpen={isModalOpen} onClose={closeModal} title="📋 Resultado de subida" size="lg">
         {uploadStatus?.success ? (
-          <div>
-            <p className="mb-2">{uploadStatus.message}</p>
-            <div className={`p-3 rounded ${getFiabilidadColor(uploadStatus.fiabilidad)}`}>
-              <span className="font-medium">Fiabilidad del parsing:</span> {uploadStatus.fiabilidad}
-              <p className="text-xs mt-1">
-                {uploadStatus.fiabilidad === 'ALTA' 
-                  ? 'El sílabo se procesó correctamente. Puedes consultar con total confianza.'
-                  : uploadStatus.fiabilidad === 'MEDIA'
-                  ? 'Algunas secciones pudieron extraerse con ambigüedad. Verifica los cálculos.'
-                  : 'No se pudieron extraer todas las reglas. Las consultas numéricas pueden ser limitadas.'}
+          <div className="space-y-4">
+            {/* Mensaje principal */}
+            <p className="text-gray-700">{uploadStatus.message || uploadStatus.aviso || 'Sílabo procesado correctamente'}</p>
+            
+            {/* Información del curso */}
+            {(uploadStatus.nombre_curso || uploadStatus.curso?.nombre) && (
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                <h4 className="font-semibold text-gray-700 mb-2">📚 Información del curso</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-gray-500">Curso:</span>
+                    <p className="font-medium">{uploadStatus.nombre_curso || uploadStatus.curso?.nombre}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Código:</span>
+                    <p className="font-medium">{uploadStatus.codigo_curso || uploadStatus.curso?.codigo || 'No especificado'}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Ciclo:</span>
+                    <p className="font-medium">{uploadStatus.ciclo || uploadStatus.curso?.ciclo || 'No especificado'}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Periodo:</span>
+                    <p className="font-medium">{uploadStatus.periodo || uploadStatus.curso?.periodo || 'No especificado'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-500">Docente:</span>
+                    <p className="font-medium">{uploadStatus.docente || uploadStatus.curso?.docente || 'No especificado'}</p>
+                  </div>
+                  {uploadStatus.email_docente && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500">Email:</span>
+                      <p className="font-medium text-sm">{uploadStatus.email_docente}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Fiabilidad */}
+            <div className={`p-3 rounded-lg ${getFiabilidadColor(uploadStatus.fiabilidad)}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xl">{getFiabilidadIcono(uploadStatus.fiabilidad)}</span>
+                <span className="font-semibold">
+                  Fiabilidad del parsing: {uploadStatus.fiabilidad || 'No determinada'}
+                </span>
+              </div>
+              <p className="text-sm">
+                {getFiabilidadDescripcion(uploadStatus.fiabilidad, uploadStatus.advertencias)}
               </p>
+              
+              {/* Advertencias específicas */}
+              {uploadStatus.advertencias && uploadStatus.advertencias.length > 0 && (
+                <div className="mt-2 text-xs border-t pt-2 border-current/30">
+                  <span className="font-medium">⚠️ Observaciones:</span>
+                  <ul className="list-disc list-inside mt-1">
+                    {uploadStatus.advertencias.map((adv, idx) => (
+                      <li key={idx}>{adv}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+            
+            {/* Evidencias detectadas */}
+            {uploadStatus.evidencias && Object.keys(uploadStatus.evidencias).length > 0 && (
+              <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                <h4 className="font-semibold text-blue-800 mb-2">📊 Sistema de evaluación detectado</h4>
+                <div className="grid grid-cols-3 gap-2">
+                  {Object.entries(uploadStatus.evidencias).map(([key, value]) => (
+                    <div key={key} className="bg-white rounded p-2 text-center shadow-sm">
+                      <div className="font-bold text-blue-600">{key}</div>
+                      <div className="text-xs text-gray-500 truncate">{value.nombre || key}</div>
+                      <div className="text-sm font-semibold mt-1">Peso: {value.peso}%</div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-blue-600 mt-2">
+                  Nota aprobatoria: {uploadStatus.nota_aprobatoria || 14}
+                </p>
+              </div>
+            )}
+            
+            {/* Unidades detectadas */}
+            {uploadStatus.unidades && uploadStatus.unidades.length > 0 && (
+              <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                <h4 className="font-semibold text-green-800 mb-2">📖 Unidades curriculares</h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {uploadStatus.unidades.map((unidad, idx) => (
+                    <div key={idx} className="bg-white rounded p-2 text-sm">
+                      <span className="font-medium">{unidad.id}:</span> {unidad.nombre}
+                      <span className="text-xs text-gray-500 ml-2">({unidad.semanas})</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Modo de procesamiento */}
+            <div className="text-xs text-gray-400 text-center pt-2 border-t">
+              {uploadStatus.usando_gemini 
+                ? '🤖 Procesado con IA (Gemini)'
+                : '📝 Procesado con motor estándar'}
             </div>
           </div>
         ) : (
-          <div className="text-red-600">
-            {uploadStatus?.message || 'Error desconocido al subir el sílabo.'}
+          <div className="text-red-600 p-4 bg-red-50 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xl">❌</span>
+              <span className="font-semibold">Error al procesar el sílabo</span>
+            </div>
+            <p>{uploadStatus?.message || 'Error desconocido al subir el sílabo.'}</p>
+            {uploadStatus?.error && (
+              <p className="text-xs mt-2 text-red-500">{uploadStatus.error}</p>
+            )}
           </div>
         )}
         <div className="mt-4 flex justify-end">
-          <Button onClick={closeModal}>Cerrar</Button>
+          <Button onClick={closeModal} variant="primary">
+            Entendido
+          </Button>
         </div>
       </Modal>
     </div>
