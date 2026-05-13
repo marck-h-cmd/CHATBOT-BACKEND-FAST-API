@@ -6,53 +6,71 @@ Optimizado para minimizar consumo de tokens
 
 import json
 import re
-from typing import Dict
+from typing import Dict, Optional, List
 
 from app.config import Config
 
-# Configurar Gemini solo si está habilitado
-GEMINI_DISPONIBLE = False
+# Configurar Gemini en modo lazy (no falla el arranque del servidor si no está disponible)
+GEMINI_DISPONIBLE: bool = False
 MODEL = None
+_GEMINI_INIT_ATTEMPTED: bool = False
 
-if Config.USE_GEMINI and Config.GEMINI_API_KEY:
+
+def _unique_model_names(names: List[Optional[str]]) -> List[str]:
+    unique: List[str] = []
+    for name in names:
+        if not name:
+            continue
+        if name not in unique:
+            unique.append(name)
+    return unique
+
+
+def _init_gemini() -> None:
+    global GEMINI_DISPONIBLE, MODEL, _GEMINI_INIT_ATTEMPTED
+
+    if _GEMINI_INIT_ATTEMPTED:
+        return
+    _GEMINI_INIT_ATTEMPTED = True
+
+    if not Config.USE_GEMINI:
+        return
+    if not Config.GEMINI_API_KEY:
+        return
+
     try:
-        import google.generativeai as genai
-        configure_fn = getattr(genai, "configure", None)
-        if callable(configure_fn):
-            configure_fn(api_key=Config.GEMINI_API_KEY)
-        
-        # Probar diferentes modelos
-        modelos_a_probar = [
-            Config.GEMINI_MODEL,
-            "gemini-2.5-pro",
-            "gemini-2.0-pro",
-            "gemini-pro"
-        ]
-        
+        import google.generativeai as genai  # type: ignore
+    except Exception:
+        return
+
+    try:
+        genai.configure(api_key=Config.GEMINI_API_KEY)
+
+        modelos_a_probar = _unique_model_names(
+            [
+                Config.GEMINI_MODEL,
+                "gemini-2.5-flash",
+                "gemini-2.5-pro",
+                "gemini-2.0-flash",
+                "gemini-2.0-pro",
+                "gemini-1.5-flash",
+                "gemini-1.5-pro",
+                "gemini-1.5-flash-latest",
+                "gemini-1.5-pro-latest",
+            ]
+        )
+
         for modelo in modelos_a_probar:
             try:
-                MODEL = getattr(genai, modelo, None)
-                if MODEL is None:
-                    print(f"⚠️ Modelo {modelo} no encontrado en genai. Probando siguiente modelo.")
-                    continue
-                
-                # Test rápido
-                MODEL.generate_content("test")
+                MODEL = genai.GenerativeModel(modelo)
                 GEMINI_DISPONIBLE = True
                 print(f"✅ Gemini API configurada (modelo: {modelo})")
-                break
-            except:
+                return
+            except Exception:
                 continue
-                
-        if not GEMINI_DISPONIBLE:
-            print("⚠️ No se pudo inicializar Gemini. Usando fallback.")
-    except ImportError:
-        print("⚠️ google-generativeai no instalado. Usando fallback.")
-    except Exception as e:
-        print(f"⚠️ Error configurando Gemini: {e}")
-else:
-    if Config.USE_GEMINI and not Config.GEMINI_API_KEY:
-        print("⚠️ USE_GEMINI=true pero falta GEMINI_API_KEY")
+    except Exception:
+        GEMINI_DISPONIBLE = False
+        MODEL = None
 
 
 class GeminiParserService:
@@ -112,6 +130,7 @@ class GeminiParserService:
         """
         Extrae toda la estructura del sílabo en UNA SOLA llamada a Gemini
         """
+        _init_gemini()
         if not GEMINI_DISPONIBLE or not MODEL:
             return cls._extraer_fallback(texto)
         
@@ -124,7 +143,13 @@ class GeminiParserService:
             response = MODEL.generate_content(prompt)
             
             # Limpiar respuesta
-            respuesta_texto = response.text.strip()
+            respuesta_texto = getattr(response, "text", None)
+            if not isinstance(respuesta_texto, str) or not respuesta_texto.strip():
+                try:
+                    respuesta_texto = response.candidates[0].content.parts[0].text  # type: ignore[attr-defined]
+                except Exception as e:
+                    raise ValueError("Respuesta de Gemini sin texto utilizable") from e
+            respuesta_texto = respuesta_texto.strip()
             # Eliminar marcadores de código
             respuesta_texto = re.sub(r'^```json\s*', '', respuesta_texto)
             respuesta_texto = re.sub(r'^```\s*', '', respuesta_texto)
@@ -135,9 +160,6 @@ class GeminiParserService:
             
             # Validar y completar estructura
             resultado = cls._validar_estructura(resultado)
-            
-            print("resultado", resultado)
-            
             return resultado
             
         except json.JSONDecodeError as e:
@@ -217,7 +239,6 @@ class GeminiParserService:
                             {"tipo": "ELD", "peso": 2 if i != 2 else 1}
                         ]
                     })
-        print("resultado validado", resultado)
         return resultado
     
     @classmethod

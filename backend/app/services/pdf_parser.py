@@ -1,8 +1,18 @@
-import fitz  # PyMuPDF
+import io
 from typing import Dict
 
-from app.services.ai_parser import gemini_parser, GEMINI_DISPONIBLE
+from app.services import ai_parser
 from app.config import Config
+
+try:
+    import fitz  # type: ignore
+except Exception:
+    fitz = None  # type: ignore
+
+try:
+    from PyPDF2 import PdfReader  # type: ignore
+except Exception:
+    PdfReader = None  # type: ignore
 
 
 class PDFParserService:
@@ -13,12 +23,22 @@ class PDFParserService:
     @staticmethod
     def extraer_texto(pdf_bytes: bytes) -> str:
         """Extrae texto completo del PDF"""
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-        texto = ""
-        for page in doc:
-            texto += page.get_text()
-        doc.close()
-        return texto
+        if fitz is not None:
+            doc = fitz.Document(stream=pdf_bytes, filetype="pdf")
+            texto = ""
+            for page in doc:
+                texto += page.get_textpage().extractText()
+            doc.close()
+            return texto
+
+        if PdfReader is None:
+            raise RuntimeError("No hay backend de lectura PDF disponible (PyMuPDF/fitz o PyPDF2)")
+
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        partes = []
+        for page in reader.pages:
+            partes.append(page.extract_text() or "")
+        return "\n".join(partes)
     
     @staticmethod
     def extraer_secciones(texto: str) -> Dict:
@@ -27,13 +47,13 @@ class PDFParserService:
         Mantiene la misma interfaz para compatibilidad con frontend
         """
         # Una sola llamada a Gemini (optimizado)
-        resultado_ia = gemini_parser.extraer_estructura_completa(texto)
+        resultado_ia = ai_parser.gemini_parser.extraer_estructura_completa(texto)
         
         # Determinar confiabilidad
         confiabilidad = "ALTA"
         advertencias = []
         
-        if not Config.USE_GEMINI or not GEMINI_DISPONIBLE:
+        if not Config.USE_GEMINI or not ai_parser.GEMINI_DISPONIBLE:
             confiabilidad = "MEDIA"
             advertencias.append("Usando modo estándar (sin IA)")
         
@@ -59,7 +79,7 @@ class PDFParserService:
             "reglas": resultado_ia.get("reglas", {}),
             "confiabilidad": confiabilidad,
             "advertencias": advertencias,
-            "usando_gemini": Config.USE_GEMINI and GEMINI_DISPONIBLE
+            "usando_gemini": Config.USE_GEMINI and ai_parser.GEMINI_DISPONIBLE
         }
     
     @staticmethod

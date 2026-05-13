@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, Any, cast, List
 import datetime
+from pydantic import BaseModel
 from app.database.connection import get_db
 from app.core.security import AuthService, SecurityService
 from app.api.dependencies import get_current_user, get_current_active_user
@@ -200,7 +201,7 @@ async def cerrar_todas_sesiones(
     cerradas = 0
     for sesion in sesiones:
         sesion.es_activa = False
-        sesion.fecha_cierre = datetime.utcnow()
+        sesion.fecha_cierre = datetime.datetime.utcnow()
         
         # Agregar token a blacklist
         blacklist = TokenBlacklist(
@@ -316,7 +317,7 @@ async def actualizar_sesion_usuario(
     if not _can_access_sesion_usuario(db, sesion, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para actualizar esta sesión")
 
-    update_data = sesion_data.dict(exclude_unset=True)
+    update_data = sesion_data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(sesion, key, value)
     db.commit()
