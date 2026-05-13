@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 
-from app.api.routes import syllabus, chat, metrics
+from app.api.routes import syllabus, chat, metrics, courses, chunks, services, logs
 from app.api.routes.auth import router as auth_router
 from app.database.connection import engine, Base
 from app.config import Config
@@ -30,6 +30,10 @@ app.include_router(auth_router)
 app.include_router(syllabus.router)
 app.include_router(chat.router)
 app.include_router(metrics.router)
+app.include_router(courses.router)
+app.include_router(chunks.router)
+app.include_router(services.router)
+app.include_router(logs.router)
 
 
 @app.get("/")

@@ -10,7 +10,7 @@ from app.schemas.auth import (
     RefreshTokenRequest, ChangePasswordRequest, ApiResponse,
     UsuarioResponse
 )
-from app.database.models import Usuario
+from app.database.models import Usuario, SesionUsuario, TokenBlacklist
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
@@ -217,3 +217,166 @@ async def cerrar_todas_sesiones(
         message=f"Se cerraron {cerradas} sesiones",
         data={"sesiones_cerradas": cerradas}
     )
+
+
+# CRUD para SesionUsuario
+
+def _to_bool(value: Any) -> bool:
+    return bool(cast(bool, value))
+
+
+def _iso_or_none(value: Any) -> Optional[str]:
+    datetime_value = cast(Optional[datetime.datetime], value)
+    return datetime_value.isoformat() if datetime_value else None
+
+
+def _format_sesion_usuario(sesion: SesionUsuario) -> dict:
+    return {
+        "id": cast(int, sesion.id),
+        "id_usuario": cast(int, sesion.id_usuario),
+        "token": cast(str, sesion.token),
+        "fecha_inicio": _iso_or_none(sesion.fecha_inicio),
+        "fecha_expiracion": _iso_or_none(sesion.fecha_expiracion),
+        "fecha_cierre": _iso_or_none(sesion.fecha_cierre),
+        "ip_address": cast(Optional[str], sesion.ip_address),
+        "user_agent": cast(Optional[str], sesion.user_agent),
+        "es_activa": _to_bool(sesion.es_activa)
+    }
+
+
+def _format_token_blacklist(token: TokenBlacklist) -> dict:
+    return {
+        "id": cast(int, token.id),
+        "token": cast(str, token.token),
+        "fecha_expiracion": _iso_or_none(token.fecha_expiracion)
+    }
+
+
+class SesionUsuarioUpdate(BaseModel):
+    es_activa: Optional[bool] = None
+
+
+def _get_sesion_usuario(db: Session, id_sesion: int) -> SesionUsuario:
+    sesion = db.query(SesionUsuario).filter(SesionUsuario.id == id_sesion).first()
+    if not sesion:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sesión no encontrada")
+    return sesion
+
+
+def _get_token_blacklist(db: Session, id_token: int) -> TokenBlacklist:
+    token = db.query(TokenBlacklist).filter(TokenBlacklist.id == id_token).first()
+    if not token:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token en blacklist no encontrado")
+    return token
+
+
+def _is_admin(current_user: Usuario) -> bool:
+    return cast(str, current_user.rol) == "admin"
+
+
+def _can_access_sesion_usuario(db: Session, sesion: SesionUsuario, current_user: Usuario) -> bool:
+    if _is_admin(current_user):
+        return True
+    return cast(int, sesion.id_usuario) == cast(int, current_user.id)
+
+
+@router.get("/sessions", response_model=List[dict])
+async def listar_sesiones_usuario(
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Lista sesiones de usuario (solo admin ve todas, usuarios ven las suyas)"""
+    if _is_admin(current_user):
+        sesiones = db.query(SesionUsuario).all()
+    else:
+        sesiones = db.query(SesionUsuario).filter(SesionUsuario.id_usuario == cast(int, current_user.id)).all()
+    return [_format_sesion_usuario(s) for s in sesiones]
+
+
+@router.get("/sessions/{id_sesion}")
+async def obtener_sesion_usuario(
+    id_sesion: int,
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    sesion = _get_sesion_usuario(db, id_sesion)
+    if not _can_access_sesion_usuario(db, sesion, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes acceso a esta sesión")
+    return _format_sesion_usuario(sesion)
+
+
+@router.put("/sessions/{id_sesion}")
+async def actualizar_sesion_usuario(
+    id_sesion: int,
+    sesion_data: SesionUsuarioUpdate,
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    sesion = _get_sesion_usuario(db, id_sesion)
+    if not _can_access_sesion_usuario(db, sesion, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para actualizar esta sesión")
+
+    update_data = sesion_data.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(sesion, key, value)
+    db.commit()
+    db.refresh(sesion)
+    return _format_sesion_usuario(sesion)
+
+
+@router.delete("/sessions/{id_sesion}")
+async def eliminar_sesion_usuario(
+    id_sesion: int,
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    if not _is_admin(current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo administradores pueden eliminar sesiones")
+
+    sesion = _get_sesion_usuario(db, id_sesion)
+    db.delete(sesion)
+    db.commit()
+    return {"message": "Sesión eliminada correctamente"}
+
+
+# CRUD para TokenBlacklist
+
+@router.get("/blacklist", response_model=List[dict])
+async def listar_tokens_blacklist(
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Lista tokens en blacklist (solo admin)"""
+    if not _is_admin(current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo administradores pueden ver la blacklist")
+
+    tokens = db.query(TokenBlacklist).all()
+    return [_format_token_blacklist(t) for t in tokens]
+
+
+@router.get("/blacklist/{id_token}")
+async def obtener_token_blacklist(
+    id_token: int,
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    if not _is_admin(current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo administradores pueden ver tokens en blacklist")
+
+    token = _get_token_blacklist(db, id_token)
+    return _format_token_blacklist(token)
+
+
+@router.delete("/blacklist/{id_token}")
+async def eliminar_token_blacklist(
+    id_token: int,
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    if not _is_admin(current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo administradores pueden eliminar tokens de blacklist")
+
+    token = _get_token_blacklist(db, id_token)
+    db.delete(token)
+    db.commit()
+    return {"message": "Token eliminado de blacklist correctamente"}
