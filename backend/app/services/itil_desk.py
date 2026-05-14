@@ -1,7 +1,11 @@
 from sqlalchemy.orm import Session
 from datetime import datetime
-from typing import Dict, List
-from app.database.models import SolicitudServicio, IncidenteAcademico, LogIngestion
+from typing import Dict, List, Optional
+from app.database.models import (
+    SolicitudServicio, IncidenteAcademico, IncidenteServicio, 
+    LogIngestion, Silabo, TipoSilabo, AmbitoUso,
+    EstadoSolicitud, EstadoIncidente, TipoIncidenteServicio
+)
 from app.config import Config
 
 class ITILServiceDesk:
@@ -9,27 +13,28 @@ class ITILServiceDesk:
     @staticmethod
     def registrar_solicitud(
         db: Session,
-        id_usuario: str,
-        id_silabo: int,
-        tipo: str,
-        pregunta: str,
+        id_usuario: int,
+        id_contexto: int,
+        id_silabo: Optional[int],
+        categoria: str,
+        descripcion: str,
         respuesta: str,
-        fragmentos_usados: List[Dict],
-        reglas_aplicadas: Dict,
-        tiempo_ms: int,
+        reglas_aplicadas: Optional[Dict] = None,
+        tiempo_ms: Optional[int] = None,
         escalar: bool = False
     ) -> SolicitudServicio:
         """Registra una solicitud de servicio (ITIL Service Request)"""
         solicitud = SolicitudServicio(
             id_usuario=id_usuario,
+            id_contexto=id_contexto,
             id_silabo=id_silabo,
-            tipo=tipo,
-            pregunta=pregunta,
-            respuesta=respuesta[:500],
-            fragmentos_usados=fragmentos_usados,
+            categoria=categoria,
+            descripcion=descripcion,
+            respuesta_generada=respuesta[:500],
             reglas_aplicadas=reglas_aplicadas,
             tiempo_respuesta_ms=tiempo_ms,
-            escalada=escalar
+            estado=EstadoSolicitud.RESUELTA if not escalar else EstadoSolicitud.ESCALADA,
+            escalada_a_docente=escalar
         )
         db.add(solicitud)
         db.commit()
@@ -37,64 +42,88 @@ class ITILServiceDesk:
         return solicitud
     
     @staticmethod
-    def registrar_incidente(
+    def registrar_incidente_academico(
         db: Session,
-        id_usuario: str,
-        id_silabo: int,
+        id_usuario: int,
+        id_contexto: int,
+        id_silabo: Optional[int],
         severidad: str,
-        promedio_actual: float,
-        nota_necesaria: float,
-        recomendacion: str
+        descripcion: str,
+        pp_proyectado: Optional[float] = None,
+        recomendacion: Optional[str] = None
     ) -> IncidenteAcademico:
-        """Registra un incidente académico (ITIL Incident Management)"""
+        """Registra un incidente académico (Riesgo de desaprobación)"""
         incidente = IncidenteAcademico(
             id_usuario=id_usuario,
+            id_contexto=id_contexto,
             id_silabo=id_silabo,
             severidad=severidad,
-            promedio_actual=promedio_actual,
-            nota_necesaria=nota_necesaria,
-            recomendacion=recomendacion
+            descripcion=descripcion,
+            pp_proyectado=pp_proyectado,
+            recomendacion=recomendacion,
+            estado=EstadoIncidente.ACTIVO,
+            escalado_a_tutoria=(severidad == "ALTA")
         )
         db.add(incidente)
         db.commit()
         db.refresh(incidente)
         
-        # Si es severidad ALTA, escalar automáticamente
-        if severidad in ["ALTO", "MUY ALTO"]:
+        if severidad == "ALTA":
             ITILServiceDesk._notificar_escalamiento(incidente)
         
         return incidente
-    
+
     @staticmethod
-    def registrar_fallo_ingestion(
+    def registrar_incidente_servicio(
         db: Session,
         id_silabo: int,
-        error: str,
-        parsing_detected: Dict
-    ) -> LogIngestion:
-        """Registra fallos en la ingestión de sílabos (para mejora continua)"""
-        log = LogIngestion(
+        tipo: TipoIncidenteServicio,
+        descripcion: str,
+        id_usuario: Optional[int] = None,
+        metadata: Optional[Dict] = None
+    ) -> IncidenteServicio:
+        """Registra fallos documentales (Parsing, Ilegible, Mismatch)"""
+        incidente = IncidenteServicio(
+            id_usuario=id_usuario,
             id_silabo=id_silabo,
-            exito=False,
-            error_mensaje=error,
-            parsing_detected=parsing_detected
+            tipo_incidente=tipo,
+            descripcion=descripcion,
+            metadata_incidente=metadata,
+            estado=EstadoIncidente.ACTIVO
         )
-        db.add(log)
+        db.add(incidente)
         db.commit()
-        return log
+        db.refresh(incidente)
+        return incidente
     
     @staticmethod
+    def procesar_agrupamiento_conocimiento(db: Session, id_curso: int, id_periodo: int):
+        """
+        Si varios usuarios suben el mismo sílabo (mismo curso+periodo), 
+        el sistema los agrupa para revisión administrativa.
+        """
+        count = db.query(Silabo).filter(
+            Silabo.id_curso == id_curso,
+            Silabo.id_periodo == id_periodo,
+            Silabo.tipo_silabo == TipoSilabo.SUBIDO_USUARIO
+        ).count()
+        
+        if count >= 3:
+            # Marcar como candidato a revisión oficial (si no hay uno ya)
+            silabos = db.query(Silabo).filter(
+                Silabo.id_curso == id_curso,
+                Silabo.id_periodo == id_periodo,
+                Silabo.ambito_uso == AmbitoUso.PRIVADO
+            ).all()
+            for s in silabos:
+                if s.puntaje_confianza > 60:
+                    s.ambito_uso = AmbitoUso.COMPARTIBLE
+            db.commit()
+
+    @staticmethod
     def _notificar_escalamiento(incidente: IncidenteAcademico):
-        """Simula notificación al docente (email/WhatsApp)"""
-        # En producción: enviar email al docente
-        print(f"""
-        🔔 ESCALAMIENTO ITIL
-        Incidente: {incidente.id}
-        Usuario: {incidente.id_usuario}
-        Severidad: {incidente.severidad}
-        Recomendación: {incidente.recomendacion}
-        Contactar tutoría: {Config.TUTORIA_EMAIL} | {Config.TUTORIA_DIA} {Config.TUTORIA_HORARIO}
-        """)
+        """Simula notificación al docente"""
+        print(f"🔔 ALERTA ITIL: Riesgo detectado para Usuario {incidente.id_usuario}. Escala a tutoría.")
     
     @staticmethod
     def obtener_metricas(db: Session) -> Dict:

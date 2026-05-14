@@ -126,48 +126,100 @@ class GeminiParserService:
     """
     
     @classmethod
-    def extraer_estructura_completa(cls, texto: str) -> Dict:
+    def extraer_estructura_completa(cls, texto: str, curso_esperado: str = "", periodo_esperado: str = "") -> Dict:
         """
         Extrae toda la estructura del sílabo en UNA SOLA llamada a Gemini
+        Incluye cálculo de puntaje de confianza
         """
         _init_gemini()
         if not GEMINI_DISPONIBLE or not MODEL:
-            return cls._extraer_fallback(texto)
+            resultado = cls._extraer_fallback(texto)
+        else:
+            try:
+                # Limitar texto para optimizar tokens (primeros 25000 caracteres)
+                texto_limitado = texto[:20000] if len(texto) > 20000 else texto
+                
+                # Una sola llamada
+                prompt = cls.PROMPT_UNICO + "\n\n" + texto_limitado
+                response = MODEL.generate_content(prompt)
+                
+                # Limpiar respuesta
+                respuesta_texto = getattr(response, "text", None)
+                if not isinstance(respuesta_texto, str) or not respuesta_texto.strip():
+                    try:
+                        respuesta_texto = response.candidates[0].content.parts[0].text  # type: ignore[attr-defined]
+                    except Exception as e:
+                        raise ValueError("Respuesta de Gemini sin texto utilizable") from e
+                
+                respuesta_texto = respuesta_texto.strip()
+                respuesta_texto = re.sub(r'^```json\s*', '', respuesta_texto)
+                respuesta_texto = re.sub(r'^```\s*', '', respuesta_texto)
+                respuesta_texto = re.sub(r'\s*```$', '', respuesta_texto)
+                
+                resultado = json.loads(respuesta_texto)
+                resultado = cls._validar_estructura(resultado)
+                
+            except Exception as e:
+                print(f"⚠️ Error en Gemini, usando fallback: {e}")
+                resultado = cls._extraer_fallback(texto)
+
+        # Calcular puntaje de confianza (Lógica de negocio)
+        puntaje, coincidencias = cls.calcular_puntaje_confianza(
+            resultado, texto, curso_esperado, periodo_esperado
+        )
         
-        try:
-            # Limitar texto para optimizar tokens (primeros 25000 caracteres)
-            texto_limitado = texto[:20000] if len(texto) > 20000 else texto
+        resultado["puntaje_confianza"] = puntaje
+        resultado["coincidencias"] = coincidencias
+        return resultado
+
+    @classmethod
+    def calcular_puntaje_confianza(cls, data: Dict, texto_completo: str, curso_ref: str, periodo_ref: str) -> tuple:
+        """
+        Calcula score 0-100 basado en reglas ITIL 4
+        """
+        score = 0
+        coincidencias = {
+            "curso": False,
+            "codigo": False,
+            "periodo": "DESCONOCIDO",
+            "estructura": False,
+            "legibilidad": True
+        }
+
+        # 1. Coincidencia de nombre de curso (25 pts)
+        nombre_extraido = data.get("nombre_curso", "").upper()
+        if curso_ref and curso_ref.upper() in nombre_extraido:
+            score += 25
+            coincidencias["curso"] = True
+        elif curso_ref and any(word in nombre_extraido for word in curso_ref.upper().split() if len(word) > 3):
+            score += 15
+            coincidencias["curso"] = True
+
+        # 2. Coincidencia de código (20 pts)
+        codigo_extraido = data.get("codigo_curso", "")
+        if codigo_extraido and len(codigo_extraido) > 2:
+            score += 20
+            coincidencias["codigo"] = True
+
+        # 3. Coincidencia de periodo (20 pts)
+        periodo_extraido = data.get("periodo", "")
+        if periodo_ref and periodo_ref in periodo_extraido:
+            score += 20
+            coincidencias["periodo"] = "ACTUAL"
+        elif periodo_extraido:
+            coincidencias["periodo"] = "OTRO"
+
+        # 4. Estructura mínima - Evaluación (25 pts)
+        formulas = data.get("formulas", {})
+        if formulas.get("PU1") and formulas.get("PP"):
+            score += 25
+            coincidencias["estructura"] = True
+
+        # 5. Legibilidad / Extracción (10 pts)
+        if len(texto_completo) > 500:
+            score += 10
             
-            # Una sola llamada
-            prompt = cls.PROMPT_UNICO + "\n\n" + texto_limitado
-            response = MODEL.generate_content(prompt)
-            
-            # Limpiar respuesta
-            respuesta_texto = getattr(response, "text", None)
-            if not isinstance(respuesta_texto, str) or not respuesta_texto.strip():
-                try:
-                    respuesta_texto = response.candidates[0].content.parts[0].text  # type: ignore[attr-defined]
-                except Exception as e:
-                    raise ValueError("Respuesta de Gemini sin texto utilizable") from e
-            respuesta_texto = respuesta_texto.strip()
-            # Eliminar marcadores de código
-            respuesta_texto = re.sub(r'^```json\s*', '', respuesta_texto)
-            respuesta_texto = re.sub(r'^```\s*', '', respuesta_texto)
-            respuesta_texto = re.sub(r'\s*```$', '', respuesta_texto)
-            
-            # Parsear JSON
-            resultado = json.loads(respuesta_texto)
-            
-            # Validar y completar estructura
-            resultado = cls._validar_estructura(resultado)
-            return resultado
-            
-        except json.JSONDecodeError as e:
-            print(f"⚠️ Error parseando JSON de Gemini: {e}")
-            return cls._extraer_fallback(texto)
-        except Exception as e:
-            print(f"⚠️ Error en llamada a Gemini: {e}")
-            return cls._extraer_fallback(texto)
+        return min(score, 100), coincidencias
     
     @classmethod
     def _extraer_fallback(cls, texto: str) -> Dict:

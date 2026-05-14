@@ -1,5 +1,6 @@
 from typing import Dict, Optional, Tuple
 from app.config import Config
+from app.database.models import Silabo, EstadoVerificacion
 
 class RuleEngine:
     
@@ -23,11 +24,36 @@ class RuleEngine:
             "redondeo": 0.5  # Medio punto favorece al estudiante
         }
     }
-    
+
     @staticmethod
-    def calcular_promedio_unidad(unidad: str, pfd: float, tad: float, eld: float) -> float:
+    def validar_acceso_calculos(silabo: Silabo) -> bool:
+        """
+        Regla 5 y 6: 
+        - PENDIENTE_CONFIRMACION -> NO habilita cálculos
+        - APROBADO o PUBLICADO -> SÍ habilita cálculos
+        """
+        if not silabo:
+            return False
+        
+        # Solo si las reglas están validadas o el sílabo está aprobado/publicado
+        if silabo.estado_validacion in [EstadoVerificacion.APROBADO, EstadoVerificacion.OFICIAL]:
+            return True
+        
+        # Si es privado pero está validado por el sistema con score alto (APROBADO)
+        return False
+
+    @staticmethod
+    def calcular_promedio_unidad(unidad: str, pfd: float, tad: float, eld: float, silabo: Optional[Silabo] = None) -> float:
         """Calcula PU1, PU2 o PU3 usando las reglas"""
+        if silabo and not RuleEngine.validar_acceso_calculos(silabo):
+            raise PermissionError("Cálculos deshabilitados: El sílabo aún no ha sido validado administrativamente.")
+
         reglas = RuleEngine.REGLAS_OFICIALES.get(unidad.upper())
+        # En producción se cargarían de silabo.reglas_json si existe
+        if silabo and silabo.reglas_json:
+            # Lógica para usar reglas personalizadas del sílabo
+            pass
+
         if not reglas:
             raise ValueError(f"Unidad desconocida: {unidad}")
         
@@ -81,8 +107,16 @@ class RuleEngine:
         }
     
     @staticmethod
-    def evaluar_riesgo(pu1: Optional[float], pu2: Optional[float], pu3: Optional[float]) -> Dict:
+    def evaluar_riesgo(pu1: Optional[float], pu2: Optional[float], pu3: Optional[float], silabo: Optional[Silabo] = None) -> Dict:
         """Evalúa el riesgo académico con reglas deterministas"""
+        if silabo and not RuleEngine.validar_acceso_calculos(silabo):
+            return {
+                "nivel": "BLOQUEADO",
+                "color": "🔒",
+                "mensaje": "La evaluación de riesgo está deshabilitada hasta que el sílabo sea validado.",
+                "recomendacion": "Espera la validación administrativa o usa un sílabo oficial."
+            }
+
         # Caso 1: Solo PU1
         if pu1 is not None and pu2 is None and pu3 is None:
             if pu1 < Config.UMBRAL_RIESGO_ALTO:
@@ -108,7 +142,7 @@ class RuleEngine:
                 }
         
         # Caso 2: PU1 y PU2 conocidos
-        if pu1 is not None and pu2 is not None and pu3 is None:
+        if pu1 is not None and pu2 is None and pu3 is None:
             necesidad = RuleEngine.calcular_nota_necesaria(pu1, pu2)
             necesita = necesidad["necesita_en_pu3"]
             
