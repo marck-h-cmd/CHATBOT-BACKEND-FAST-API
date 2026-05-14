@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Button from '../ui/Button';
 
-const ChatInput = ({ onSend, isLoading, placeholder = "Escribe tu pregunta aquí..." }) => {
+const ChatInput = ({ onSend, isLoading, disabled = false, placeholder = "Escribe tu pregunta aquí..." }) => {
   const [input, setInput] = useState('');
   const textareaRef = useRef(null);
 
@@ -39,7 +39,7 @@ const ChatInput = ({ onSend, isLoading, placeholder = "Escribe tu pregunta aquí
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          disabled={isLoading}
+          disabled={isLoading || disabled}
           rows={1}
           className="flex-1 resize-none border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
         />

@@ -30,7 +30,7 @@ async def inscribir_curso(
     
     # 2. Verificar si ya está inscrito
     existente = db.query(ContextoCursoUsuario).filter(
-        ContextoCursoUsuario.id_usuario == current_user.id_usuario,
+        ContextoCursoUsuario.id_usuario == current_user.id,
         ContextoCursoUsuario.id_curso == data.id_curso,
         ContextoCursoUsuario.id_periodo == data.id_periodo
     ).first()
@@ -48,7 +48,7 @@ async def inscribir_curso(
     
     # 4. Crear contexto
     nuevo_contexto = ContextoCursoUsuario(
-        id_usuario=current_user.id_usuario,
+        id_usuario=current_user.id,
         id_curso=data.id_curso,
         id_periodo=data.id_periodo,
         id_silabo_asignado=silabo_oficial.id_silabo if silabo_oficial else None,
@@ -73,7 +73,7 @@ async def listar_mis_cursos(
     db: Session = Depends(get_db)
 ):
     contextos = db.query(ContextoCursoUsuario).filter(
-        ContextoCursoUsuario.id_usuario == current_user.id_usuario
+        ContextoCursoUsuario.id_usuario == current_user.id
     ).all()
     
     result = []

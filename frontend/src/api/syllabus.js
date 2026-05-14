@@ -6,11 +6,12 @@ export const getPreloadedSyllabus = async () => {
   return response.data;
 };
 
-export const uploadSyllabus = async (file, userId) => {
+export const uploadSyllabus = async (file, id_curso, id_periodo) => {
   const formData = new FormData();
-  formData.append('id_usuario', userId);
+  formData.append('id_curso', id_curso);
+  formData.append('id_periodo', id_periodo);
   formData.append('archivo', file);
-  const response = await apiClient.post('/syllabus/upload', formData, {
+  const response = await apiClient.post('/silabo/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   return response.data;
@@ -72,5 +73,27 @@ export const removeSyllabusAssociation = async (idSilabo, idUsuario) => {
 // Nueva: Obtener sílabos de un usuario específico
 export const getUserSyllabus = async (idUsuario) => {
   const response = await apiClient.get(`/syllabus/user/${idUsuario}`);
+  return response.data;
+};
+
+// ITIL: Listar sílabos pendientes de revisión (admin)
+export const getPendingSyllabi = async () => {
+  const response = await apiClient.get('/silabo/revisar');
+  return response.data;
+};
+
+// ITIL: Aprobar sílabo (admin)
+export const approveSyllabus = async (id_silabo, comentario = null) => {
+  const response = await apiClient.post(`/silabo/aprobar/${id_silabo}`, {
+    comentario
+  });
+  return response.data;
+};
+
+// ITIL: Rechazar sílabo (admin)
+export const rejectSyllabus = async (id_silabo, comentario = null) => {
+  const response = await apiClient.post(`/silabo/rechazar/${id_silabo}`, {
+    comentario
+  });
   return response.data;
 };

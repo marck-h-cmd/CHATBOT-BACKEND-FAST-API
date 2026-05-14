@@ -30,13 +30,15 @@ class RAGRetriever:
         scored: List[Dict] = []
         for ch in chunks:
             emb = ch.embedding if isinstance(ch.embedding, list) else None
+            metadata = ch.metadata_json if isinstance(ch.metadata_json, dict) else {}
+            unidad = metadata.get("unidad") if metadata else None
             similitud = embedding_service.calcular_similitud_coseno(query_embedding, emb or [])
             scored.append(
                 {
-                    "id": ch.id,
-                    "texto": ch.chunk_texto,
+                    "id": ch.id_seccion,
+                    "texto": ch.contenido,
                     "tipo": ch.tipo_seccion,
-                    "unidad": ch.unidad,
+                    "unidad": unidad,
                     "metadata": ch.metadata_json,
                     "similitud": round(similitud, 4),
                 }
@@ -53,11 +55,11 @@ class RAGRetriever:
         top_k: int = 5
     ) -> List[Dict]:
         """Recupera fragmentos por palabras clave (fallback)"""
-        condiciones = " OR ".join([f"chunk_texto ILIKE '%{palabra}%'" for palabra in palabras_clave])
+        condiciones = " OR ".join([f"contenido ILIKE '%{palabra}%'" for palabra in palabras_clave])
         
         sql = f"""
-            SELECT id, chunk_texto, tipo_seccion, unidad, metadata_json
-            FROM silabo_chunks
+            SELECT id_seccion, contenido, tipo_seccion, metadata_json
+            FROM silabo_chunk
             WHERE id_silabo = %s AND ({condiciones})
             LIMIT %s
         """
@@ -66,12 +68,13 @@ class RAGRetriever:
         
         fragmentos = []
         for row in result:
+            metadata = row[3] if isinstance(row[3], dict) else {}
             fragmentos.append({
                 "id": row[0],
                 "texto": row[1],
                 "tipo": row[2],
-                "unidad": row[3],
-                "metadata": row[4],
+                "unidad": metadata.get("unidad") if metadata else None,
+                "metadata": row[3],
                 "similitud": 0.5  # Score por defecto
             })
         

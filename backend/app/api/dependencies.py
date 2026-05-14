@@ -34,7 +34,11 @@ async def get_current_estudiante(
     current_user: Usuario = Depends(get_current_active_user)
 ) -> Usuario:
     """Dependencia para verificar que sea estudiante"""
-    if current_user.rol != "estudiante":
+    try:
+        rol_value = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
+    except Exception:
+        rol_value = str(current_user.rol)
+    if rol_value.upper() != "ESTUDIANTE":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acceso denegado. Se requiere rol de estudiante"
@@ -46,7 +50,11 @@ async def get_current_docente(
     current_user: Usuario = Depends(get_current_active_user)
 ) -> Usuario:
     """Dependencia para verificar que sea docente o admin"""
-    if current_user.rol not in ["docente", "admin"]:
+    try:
+        rol_value = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
+    except Exception:
+        rol_value = str(current_user.rol)
+    if rol_value.upper() not in ["DOCENTE", "ADMIN"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acceso denegado. Se requiere rol de docente o administrador"

@@ -11,18 +11,18 @@ export const ChatProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [currentResponse, setCurrentResponse] = useState(null);
 
-  const sendMessage = async (pregunta, idSilabo, onChunk = null) => {
+  const sendMessage = async (pregunta, idContexto, onChunk = null) => {
     // Añadir mensaje del usuario
     const userMessage = { role: 'user', content: pregunta, timestamp: new Date().toISOString() };
     setMessages(prev => [...prev, userMessage]);
     setLoading(true);
 
     try {
-      const response = await chatAPI.sendQuestion(pregunta, idSilabo);
+      const response = await chatAPI.sendQuestion(pregunta, idContexto);
       const botMessage = {
         role: 'assistant',
         content: response.respuesta,
-        intent: response.intencion,
+        intent: response.intent,
         riesgo: response.riesgo,
         fragmentos: response.fragmentos_usados,
         timestamp: new Date().toISOString(),

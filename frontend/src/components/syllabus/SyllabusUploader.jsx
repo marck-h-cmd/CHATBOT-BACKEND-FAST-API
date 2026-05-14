@@ -1,13 +1,25 @@
 import React, { useState, useCallback } from 'react';
 import { useSyllabus } from '../../contexts/SyllabusContext';
+import { useCourse } from '../../contexts/CourseContext';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 
 const SyllabusUploader = () => {
   const { uploadSyllabus, uploadStatus, clearUploadStatus } = useSyllabus();
+  const { courses, periods, getCurrentPeriod } = useCourse();
   const [file, setFile] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [selectedPeriod, setSelectedPeriod] = useState(null);
+
+  // Seleccionar periodo actual por defecto
+  React.useEffect(() => {
+    const currentPeriod = getCurrentPeriod();
+    if (currentPeriod) {
+      setSelectedPeriod(currentPeriod.id_periodo);
+    }
+  }, [getCurrentPeriod]);
 
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
@@ -32,8 +44,16 @@ const SyllabusUploader = () => {
 
   const handleUpload = async () => {
     if (!file) return;
+    if (!selectedCourse) {
+      alert('Por favor selecciona un curso.');
+      return;
+    }
+    if (!selectedPeriod) {
+      alert('Por favor selecciona un periodo.');
+      return;
+    }
     setUploading(true);
-    const result = await uploadSyllabus(file);
+    const result = await uploadSyllabus(file, selectedCourse, selectedPeriod);
     setUploading(false);
     if (result.success) {
       setFile(null);
@@ -93,6 +113,40 @@ const SyllabusUploader = () => {
 
   return (
     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+      {/* Selectores de curso y periodo */}
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Curso</label>
+          <select
+            value={selectedCourse || ''}
+            onChange={(e) => setSelectedCourse(parseInt(e.target.value))}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Seleccionar curso...</option>
+            {courses.map((course) => (
+              <option key={course.id_curso} value={course.id_curso}>
+                {course.codigo_curso} - {course.nombre_curso}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Periodo</label>
+          <select
+            value={selectedPeriod || ''}
+            onChange={(e) => setSelectedPeriod(parseInt(e.target.value))}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Seleccionar periodo...</option>
+            {periods.map((period) => (
+              <option key={period.id_periodo} value={period.id_periodo}>
+                {period.nombre} {period.es_actual && '(Actual)'}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <input
         type="file"
         accept="application/pdf"
@@ -127,7 +181,7 @@ const SyllabusUploader = () => {
 
       <Button
         onClick={handleUpload}
-        disabled={!file || uploading}
+        disabled={!file || uploading || !selectedCourse || !selectedPeriod}
         loading={uploading}
         className="mt-4 w-full"
       >

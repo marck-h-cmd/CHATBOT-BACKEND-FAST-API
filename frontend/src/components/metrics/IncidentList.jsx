@@ -77,7 +77,7 @@ const IncidentList = ({ incidents, onRefresh, loading = false }) => {
           >
             <div className="flex justify-between items-start">
               <div>
-                <span className="font-medium">Estudiante:</span> {inc.usuario?.nombres || `ID ${inc.id_usuario}`}
+                <span className="font-medium">Estudiante:</span> {inc.usuario?.nombres || `ID ${inc.usuario?.id}`}
               </div>
               <span className="text-xs opacity-70">
                 {formatDateTime(inc.fecha_creacion)}

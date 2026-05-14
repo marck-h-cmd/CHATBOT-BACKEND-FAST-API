@@ -9,38 +9,19 @@ const SyllabusContext = createContext();
 export const useSyllabus = () => useContext(SyllabusContext);
 
 export const SyllabusProvider = ({ children }) => {
-  const [preloadedSyllabus, setPreloadedSyllabus] = useState(null);
   const [userSyllabi, setUserSyllabi] = useState([]);
   const [selectedSyllabusId, setSelectedSyllabusId] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState(null);
   const { user } = useAuth();
 
-  useEffect(() => {
-    const loadPreloaded = async () => {
-      try {
-        const data = await syllabusAPI.getPreloadedSyllabus();
-        setPreloadedSyllabus(data);
-        const savedId = storage.getSelectedSyllabusId();
-        if (savedId && (savedId === data.id || userSyllabi.some(s => s.id == savedId))) {
-          setSelectedSyllabusId(parseInt(savedId));
-        } else if (data?.id) {
-          setSelectedSyllabusId(data.id);
-          storage.saveSelectedSyllabusId(data.id);
-        }
-      } catch (error) {
-        console.error('Error al cargar sílabo oficial:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadPreloaded();
-  }, []);
+  // No cargamos sílabo preloaded porque el endpoint no existe en el backend
+  // Los sílabos se cargan por contexto de curso usuario en CourseContext
 
-  const uploadSyllabus = async (file) => {
+  const uploadSyllabus = async (file, id_curso, id_periodo) => {
     setUploadStatus({ loading: true, message: 'Subiendo y procesando...' });
     try {
-      const result = await syllabusAPI.uploadSyllabus(file, user?.id);
+      const result = await syllabusAPI.uploadSyllabus(file, id_curso, id_periodo);
       
       // Procesar el resultado del backend
       const nuevoSilabo = {
@@ -96,7 +77,6 @@ export const SyllabusProvider = ({ children }) => {
   const clearUploadStatus = () => setUploadStatus(null);
 
   const value = {
-    preloadedSyllabus,
     userSyllabi,
     selectedSyllabusId,
     loading,

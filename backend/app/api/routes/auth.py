@@ -272,7 +272,12 @@ def _get_token_blacklist(db: Session, id_token: int) -> TokenBlacklist:
 
 
 def _is_admin(current_user: Usuario) -> bool:
-    return cast(str, current_user.rol) == "admin"
+    # Manejar `rol` que puede ser Enum (RolUsuario) o string
+    try:
+        rol_value = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
+    except Exception:
+        rol_value = str(current_user.rol)
+    return rol_value.upper() == "ADMIN"
 
 
 def _can_access_sesion_usuario(db: Session, sesion: SesionUsuario, current_user: Usuario) -> bool:

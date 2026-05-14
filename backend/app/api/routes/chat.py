@@ -28,7 +28,7 @@ async def consultar_chat(
     # Verificar que el contexto pertenece al usuario
     contexto = db.query(ContextoCursoUsuario).filter(
         ContextoCursoUsuario.id_contexto == request.id_contexto,
-        ContextoCursoUsuario.id_usuario == current_user.id_usuario
+        ContextoCursoUsuario.id_usuario == current_user.id
     ).first()
     
     if not contexto:
@@ -36,7 +36,7 @@ async def consultar_chat(
 
     resultado = ChatHandler.procesar_consulta(
         db=db,
-        id_usuario=current_user.id_usuario,
+        id_usuario=current_user.id,
         id_contexto=request.id_contexto,
         pregunta=request.pregunta
     )

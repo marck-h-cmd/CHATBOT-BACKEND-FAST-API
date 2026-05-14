@@ -69,7 +69,11 @@ def _verify_chunk_access(db: Session, chunk: SilaboChunk, current_user: Usuario)
 
 
 def _is_admin_or_docente(current_user: Usuario) -> bool:
-    return cast(str, current_user.rol) in ["admin", "docente"]
+    try:
+        rol_value = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
+    except Exception:
+        rol_value = str(current_user.rol)
+    return rol_value.upper() in ["ADMIN", "DOCENTE"]
 
 
 # CRUD para SilaboChunk

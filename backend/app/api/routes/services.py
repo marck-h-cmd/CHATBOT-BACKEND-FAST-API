@@ -21,34 +21,33 @@ def _iso_or_none(value: Any) -> Optional[str]:
 
 def _format_solicitud(solicitud: SolicitudServicio) -> dict:
     return {
-        "id": cast(int, solicitud.id),
+        "id": cast(int, solicitud.id_solicitud),
         "id_usuario": cast(int, solicitud.id_usuario),
         "id_silabo": cast(Optional[int], solicitud.id_silabo),
-        "tipo": cast(Optional[str], solicitud.tipo),
-        "pregunta": cast(Optional[str], solicitud.pregunta),
-        "respuesta": cast(Optional[str], solicitud.respuesta),
+        "categoria": cast(str, solicitud.categoria),
+        "descripcion": cast(str, solicitud.descripcion),
+        "respuesta_generada": cast(Optional[str], solicitud.respuesta_generada),
         "fragmentos_usados": cast(Optional[Any], solicitud.fragmentos_usados),
-        "reglas_aplicadas": cast(Optional[Any], solicitud.reglas_aplicadas),
         "tiempo_respuesta_ms": cast(Optional[int], solicitud.tiempo_respuesta_ms),
-        "fecha": _iso_or_none(solicitud.fecha),
+        "fecha": _iso_or_none(solicitud.fecha_creacion),
         "estado": cast(str, solicitud.estado),
-        "escalada": _to_bool(solicitud.escalada)
+        "escalada": _to_bool(solicitud.escalada_a_docente)
     }
 
 
 def _format_incidente(incidente: IncidenteAcademico) -> dict:
     return {
-        "id": cast(int, incidente.id),
+        "id": cast(int, incidente.id_incidente),
         "id_usuario": cast(int, incidente.id_usuario),
         "id_silabo": cast(Optional[int], incidente.id_silabo),
         "severidad": cast(Optional[str], incidente.severidad),
         "promedio_actual": cast(Optional[float], incidente.promedio_actual),
         "nota_necesaria": cast(Optional[float], incidente.nota_necesaria),
         "recomendacion": cast(Optional[str], incidente.recomendacion),
-        "notificado": _to_bool(incidente.notificado),
-        "resuelto": _to_bool(incidente.resuelto),
-        "fecha_deteccion": _iso_or_none(incidente.fecha_deteccion),
-        "fecha_resolucion": _iso_or_none(incidente.fecha_resolucion)
+        "estado": cast(str, incidente.estado),
+        "escalada": _to_bool(incidente.escalado_a_tutoria),
+        "fecha_creacion": _iso_or_none(incidente.fecha_creacion),
+        "fecha_cierre": _iso_or_none(incidente.fecha_cierre)
     }
 
 
@@ -97,21 +96,25 @@ class IncidenteAcademicoUpdate(BaseModel):
 
 
 def _get_solicitud(db: Session, id_solicitud: int) -> SolicitudServicio:
-    solicitud = db.query(SolicitudServicio).filter(SolicitudServicio.id == id_solicitud).first()
+    solicitud = db.query(SolicitudServicio).filter(SolicitudServicio.id_solicitud == id_solicitud).first()
     if not solicitud:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Solicitud no encontrada")
     return solicitud
 
 
 def _get_incidente(db: Session, id_incidente: int) -> IncidenteAcademico:
-    incidente = db.query(IncidenteAcademico).filter(IncidenteAcademico.id == id_incidente).first()
+    incidente = db.query(IncidenteAcademico).filter(IncidenteAcademico.id_incidente == id_incidente).first()
     if not incidente:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incidente no encontrado")
     return incidente
 
 
 def _is_admin_or_docente(current_user: Usuario) -> bool:
-    return cast(str, current_user.rol) in ["admin", "docente"]
+    try:
+        rol_value = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
+    except Exception:
+        rol_value = str(current_user.rol)
+    return rol_value.upper() in ["ADMIN", "DOCENTE"]
 
 
 def _can_access_solicitud(db: Session, solicitud: SolicitudServicio, current_user: Usuario) -> bool:
@@ -159,7 +162,18 @@ async def crear_solicitud(
     current_user: Usuario = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    solicitud = SolicitudServicio(id_usuario=cast(int, current_user.id), **solicitud_data.dict())
+    payload = solicitud_data.model_dump(exclude_unset=True)
+    solicitud = SolicitudServicio(
+        id_usuario=cast(int, current_user.id),
+        id_silabo=payload.get("id_silabo"),
+        categoria=payload.get("tipo") or payload.get("categoria") or "general",
+        descripcion=payload.get("pregunta") or payload.get("descripcion") or "",
+        respuesta_generada=payload.get("respuesta") or payload.get("respuesta_generada"),
+        fragmentos_usados=payload.get("fragmentos_usados"),
+        tiempo_respuesta_ms=payload.get("tiempo_respuesta_ms"),
+        estado=payload.get("estado") or "RESUELTA",
+        escalada_a_docente=payload.get("escalada") or False,
+    )
     db.add(solicitud)
     db.commit()
     db.refresh(solicitud)
@@ -177,9 +191,15 @@ async def actualizar_solicitud(
     if not _can_access_solicitud(db, solicitud, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para actualizar esta solicitud")
 
-    update_data = solicitud_data.dict(exclude_unset=True)
+    update_data = solicitud_data.model_dump(exclude_unset=True)
+    mapping = {
+        "tipo": "categoria",
+        "pregunta": "descripcion",
+        "respuesta": "respuesta_generada",
+        "escalada": "escalada_a_docente",
+    }
     for key, value in update_data.items():
-        setattr(solicitud, key, value)
+        setattr(solicitud, mapping.get(key, key), value)
     db.commit()
     db.refresh(solicitud)
     return _format_solicitud(solicitud)
@@ -233,7 +253,18 @@ async def crear_incidente(
     current_user: Usuario = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    incidente = IncidenteAcademico(id_usuario=cast(int, current_user.id), **incidente_data.dict())
+    payload = incidente_data.model_dump(exclude_unset=True)
+    incidente = IncidenteAcademico(
+        id_usuario=cast(int, current_user.id),
+        id_silabo=payload.get("id_silabo"),
+        severidad=payload.get("severidad") or "MEDIA",
+        descripcion=payload.get("recomendacion") or "",
+        promedio_actual=payload.get("promedio_actual"),
+        nota_necesaria=payload.get("nota_necesaria"),
+        recomendacion=payload.get("recomendacion"),
+        escalado_a_tutoria=payload.get("notificado") or False,
+        fecha_cierre=payload.get("fecha_resolucion"),
+    )
     db.add(incidente)
     db.commit()
     db.refresh(incidente)
@@ -251,9 +282,14 @@ async def actualizar_incidente(
     if not _can_access_incidente(db, incidente, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para actualizar este incidente")
 
-    update_data = incidente_data.dict(exclude_unset=True)
+    update_data = incidente_data.model_dump(exclude_unset=True)
+    mapping = {
+        "notificado": "escalado_a_tutoria",
+        "resuelto": "estado",
+        "fecha_resolucion": "fecha_cierre",
+    }
     for key, value in update_data.items():
-        setattr(incidente, key, value)
+        setattr(incidente, mapping.get(key, key), value)
     db.commit()
     db.refresh(incidente)
     return _format_incidente(incidente)

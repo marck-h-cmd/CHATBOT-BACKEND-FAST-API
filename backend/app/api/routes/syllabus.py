@@ -75,7 +75,7 @@ async def subir_silabo(
     nuevo_silabo = Silabo(
         id_curso=id_curso,
         id_periodo=id_periodo,
-        id_usuario_subida=current_user.id_usuario,
+        id_usuario_subida=current_user.id,
         nombre_archivo=archivo.filename,
         texto_extraido=texto[:15000],
         tipo_silabo=TipoSilabo.SUBIDO_USUARIO,
@@ -96,7 +96,7 @@ async def subir_silabo(
             db, nuevo_silabo.id_silabo, 
             TipoIncidenteServicio.FALLO_PARSING if score > 20 else TipoIncidenteServicio.PDF_ILEGIBLE,
             f"Bajo score de confianza: {score}%",
-            id_usuario=current_user.id_usuario
+            id_usuario=current_user.id
         )
         
     # 8. Procesar agrupamiento
@@ -127,7 +127,7 @@ async def listar_pendientes_revision(
         {
             "id_silabo": s.id_silabo,
             "curso": s.curso.nombre_curso,
-            "usuario": s.usuario_subida.codigo_estudiante,
+            "usuario": s.usuario_subida.codigo_universitario,
             "score": s.puntaje_confianza,
             "fecha": s.fecha_subida
         } for s in silabos
@@ -144,11 +144,36 @@ async def aprobar_silabo(
         raise HTTPException(status_code=403, detail="Acceso denegado")
         
     silabo = db.query(Silabo).filter(Silabo.id_silabo == id_silabo).first()
+    if not silabo:
+        raise HTTPException(status_code=404, detail="Sílabo no encontrado")
+
     silabo.estado_validacion = EstadoVerificacion.APROBADO
     silabo.ambito_uso = AmbitoUso.PUBLICADO
     silabo.observaciones_validacion = request.comentario
+
+    # Sincronizar el estado del sílabo con los contextos del estudiante
+    from app.database.models import ContextoCursoUsuario, OrigenContexto
+    contextos_actualizados = db.query(ContextoCursoUsuario).filter(
+        ContextoCursoUsuario.id_curso == silabo.id_curso,
+        ContextoCursoUsuario.id_periodo == silabo.id_periodo
+    ).all()
+
+    for contexto in contextos_actualizados:
+        contexto.id_silabo_asignado = silabo.id_silabo
+        contexto.origen_contexto = OrigenContexto.OFICIAL
+        contexto.estado_verificacion = EstadoVerificacion.OFICIAL
+        contexto.puntaje_confianza = silabo.puntaje_confianza or contexto.puntaje_confianza
+
     db.commit()
-    return {"message": "Sílabo aprobado y publicado"}
+    return {
+        "message": "Sílabo aprobado y publicado",
+        "contextos_actualizados": len(contextos_actualizados),
+        "id_silabo": silabo.id_silabo,
+        "id_curso": silabo.id_curso,
+        "id_periodo": silabo.id_periodo,
+        "estado_validacion": silabo.estado_validacion,
+        "ambito_uso": silabo.ambito_uso,
+    }
 
 @router.post("/rechazar/{id_silabo}")
 async def rechazar_silabo(
@@ -161,7 +186,16 @@ async def rechazar_silabo(
         raise HTTPException(status_code=403, detail="Acceso denegado")
         
     silabo = db.query(Silabo).filter(Silabo.id_silabo == id_silabo).first()
+    if not silabo:
+        raise HTTPException(status_code=404, detail="Sílabo no encontrado")
+
     silabo.estado_validacion = EstadoVerificacion.RECHAZADO
     silabo.observaciones_validacion = request.comentario
     db.commit()
-    return {"message": "Sílabo rechazado"}
+    return {
+        "message": "Sílabo rechazado",
+        "id_silabo": silabo.id_silabo,
+        "id_curso": silabo.id_curso,
+        "id_periodo": silabo.id_periodo,
+        "estado_validacion": silabo.estado_validacion,
+    }

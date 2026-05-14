@@ -20,7 +20,9 @@ const LoginPage = () => {
     const result = await login(email, password);
     setLoading(false);
     if (result.success) {
-      navigate('/dashboard');
+      const role = result.user?.rol || '';
+      if (role === 'admin') navigate('/admin');
+      else navigate('/dashboard');
     } else {
       setError(result.error?.message || 'Error al iniciar sesión');
     }

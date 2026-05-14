@@ -1,9 +1,9 @@
 import apiClient from './client';
 
-export const sendQuestion = async (pregunta, idSilabo) => {
+export const sendQuestion = async (pregunta, idContexto) => {
   const response = await apiClient.post('/chat/consultar', {
     pregunta,
-    id_silabo: idSilabo,
+    id_contexto: idContexto,
   });
   return response.data;
 };

@@ -31,7 +31,6 @@ class ITILServiceDesk:
             categoria=categoria,
             descripcion=descripcion,
             respuesta_generada=respuesta[:500],
-            reglas_aplicadas=reglas_aplicadas,
             tiempo_respuesta_ms=tiempo_ms,
             estado=EstadoSolicitud.RESUELTA if not escalar else EstadoSolicitud.ESCALADA,
             escalada_a_docente=escalar

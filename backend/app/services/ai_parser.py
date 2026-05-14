@@ -207,7 +207,7 @@ class GeminiParserService:
             score += 20
             coincidencias["periodo"] = "ACTUAL"
         elif periodo_extraido:
-            coincidencias["periodo"] = "OTRO"
+            coincidencias["periodo"] = "NO_COINCIDE"
 
         # 4. Estructura mínima - Evaluación (25 pts)
         formulas = data.get("formulas", {})

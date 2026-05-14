@@ -108,18 +108,31 @@ class AccionRevision(str, enum.Enum):
 class Usuario(Base):
     __tablename__ = "usuario"
     
-    id_usuario = Column(Integer, primary_key=True, index=True)
-    codigo_estudiante = Column(String(20), unique=True, nullable=False, index=True)
+    id = Column(Integer, primary_key=True, index=True)
+    codigo_universitario = Column(String(20), unique=True, nullable=False, index=True)
     nombres = Column(String(100), nullable=False)
     apellidos = Column(String(100), nullable=False)
-    correo = Column(String(100), unique=True, nullable=False, index=True)
+    email = Column(String(100), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
     rol = Column(Enum(RolUsuario), default=RolUsuario.ESTUDIANTE)
-    estado = Column(Enum(EstadoUsuario), default=EstadoUsuario.ACTIVO)
+    es_activo = Column(Boolean, default=True)
     email_verificado = Column(Boolean, default=False)
     ultimo_login = Column(DateTime, nullable=True)
-    fecha_creacion = Column(DateTime, default=func.now())
-    fecha_actualizacion = Column(DateTime, default=func.now(), onupdate=func.now())
+    fecha_registro = Column(DateTime, default=func.now())
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'codigo_universitario': self.codigo_universitario,
+            'email': self.email,
+            'nombres': self.nombres,
+            'apellidos': self.apellidos,
+            'rol': self.rol.value if self.rol else None,
+            'es_activo': self.es_activo,
+            'email_verificado': self.email_verificado,
+            'ultimo_login': self.ultimo_login.isoformat() if self.ultimo_login else None,
+            'fecha_registro': self.fecha_registro.isoformat() if self.fecha_registro else None
+        }
     
     # Relationships
     sesiones = relationship("SesionUsuario", back_populates="usuario", cascade="all, delete-orphan")
@@ -136,7 +149,7 @@ class SesionUsuario(Base):
     __tablename__ = "sesiones_usuario"
     
     id = Column(Integer, primary_key=True, index=True)
-    id_usuario = Column(Integer, ForeignKey("usuario.id_usuario", ondelete="CASCADE"))
+    id_usuario = Column(Integer, ForeignKey("usuario.id", ondelete="CASCADE"))
     token = Column(String(500), unique=True, nullable=False, index=True)
     refresh_token = Column(String(500), unique=True, nullable=True)
     ip_address = Column(String(45), nullable=True)
@@ -197,7 +210,7 @@ class ContextoCursoUsuario(Base):
     __tablename__ = "contexto_curso_usuario"
     
     id_contexto = Column(Integer, primary_key=True, index=True)
-    id_usuario = Column(Integer, ForeignKey("usuario.id_usuario", ondelete="CASCADE"), nullable=False)
+    id_usuario = Column(Integer, ForeignKey("usuario.id", ondelete="CASCADE"), nullable=False)
     id_curso = Column(Integer, ForeignKey("curso.id_curso", ondelete="CASCADE"), nullable=False)
     id_periodo = Column(Integer, ForeignKey("periodo_academico.id_periodo", ondelete="CASCADE"), nullable=False)
     id_silabo_asignado = Column(Integer, ForeignKey("silabo.id_silabo", ondelete="SET NULL"), nullable=True)  # <<< FK CORREGIDA
@@ -232,7 +245,7 @@ class Silabo(Base):
     id_silabo = Column(Integer, primary_key=True, index=True)
     id_curso = Column(Integer, ForeignKey("curso.id_curso"), nullable=False)
     id_periodo = Column(Integer, ForeignKey("periodo_academico.id_periodo"), nullable=True)
-    id_usuario_subida = Column(Integer, ForeignKey("usuario.id_usuario"), nullable=True)
+    id_usuario_subida = Column(Integer, ForeignKey("usuario.id"), nullable=True)
     
     tipo_silabo = Column(Enum(TipoSilabo), default=TipoSilabo.SUBIDO_USUARIO)
     ambito_uso = Column(Enum(AmbitoUso), default=AmbitoUso.PRIVADO)
@@ -305,7 +318,7 @@ class SesionChat(Base):
     __tablename__ = "sesion_chat"
     
     id_sesion = Column(Integer, primary_key=True, index=True)
-    id_usuario = Column(Integer, ForeignKey("usuario.id_usuario"), nullable=False)
+    id_usuario = Column(Integer, ForeignKey("usuario.id"), nullable=False)
     id_contexto = Column(Integer, ForeignKey("contexto_curso_usuario.id_contexto"), nullable=False)
     fecha_inicio = Column(DateTime, default=func.now())
     fecha_fin = Column(DateTime, nullable=True)
@@ -336,7 +349,7 @@ class SolicitudServicio(Base):
     __tablename__ = "solicitud_servicio"
     
     id_solicitud = Column(Integer, primary_key=True, index=True)
-    id_usuario = Column(Integer, ForeignKey("usuario.id_usuario"), nullable=False)
+    id_usuario = Column(Integer, ForeignKey("usuario.id"), nullable=False)
     id_contexto = Column(Integer, ForeignKey("contexto_curso_usuario.id_contexto"), nullable=False)
     id_silabo = Column(Integer, ForeignKey("silabo.id_silabo"), nullable=True)
     
@@ -362,7 +375,7 @@ class IncidenteAcademico(Base):
     __tablename__ = "incidente_academico"
     
     id_incidente = Column(Integer, primary_key=True, index=True)
-    id_usuario = Column(Integer, ForeignKey("usuario.id_usuario"), nullable=False)
+    id_usuario = Column(Integer, ForeignKey("usuario.id"), nullable=False)
     id_contexto = Column(Integer, ForeignKey("contexto_curso_usuario.id_contexto"), nullable=False)
     id_silabo = Column(Integer, ForeignKey("silabo.id_silabo"), nullable=True)
     
@@ -385,7 +398,7 @@ class IncidenteServicio(Base):
     __tablename__ = "incidente_servicio"
     
     id_incidente_servicio = Column(Integer, primary_key=True, index=True)
-    id_usuario = Column(Integer, ForeignKey("usuario.id_usuario"), nullable=True)
+    id_usuario = Column(Integer, ForeignKey("usuario.id"), nullable=True)
     id_silabo = Column(Integer, ForeignKey("silabo.id_silabo"), nullable=False)
     
     tipo_incidente = Column(Enum(TipoIncidenteServicio), nullable=False)
@@ -405,7 +418,7 @@ class RevisionSilabo(Base):
     
     id_revision = Column(Integer, primary_key=True, index=True)
     id_silabo = Column(Integer, ForeignKey("silabo.id_silabo", ondelete="CASCADE"), nullable=False)
-    id_admin = Column(Integer, ForeignKey("usuario.id_usuario"), nullable=False)
+    id_admin = Column(Integer, ForeignKey("usuario.id"), nullable=False)
     
     accion = Column(Enum(AccionRevision), nullable=False)
     comentario = Column(Text, nullable=True)
@@ -422,7 +435,7 @@ class LogIngestion(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     id_silabo = Column(Integer, ForeignKey("silabo.id_silabo"), nullable=False)
-    id_usuario = Column(Integer, ForeignKey("usuario.id_usuario"), nullable=True)
+    id_usuario = Column(Integer, ForeignKey("usuario.id"), nullable=True)
     
     exito = Column(Boolean, default=False)
     puntaje_confianza = Column(Float, default=0.0)

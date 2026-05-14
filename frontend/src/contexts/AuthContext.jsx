@@ -22,8 +22,10 @@ export const AuthProvider = ({ children }) => {
       }
       try {
         const userData = await authAPI.getCurrentUser();
-        setUser(userData);
-        storage.saveUser(userData);
+        // Normalizar rol a minúsculas para comparaciones consistentes en frontend
+        const normalized = { ...userData, rol: userData?.rol ? String(userData.rol).toLowerCase() : userData?.rol };
+        setUser(normalized);
+        storage.saveUser(normalized);
       } catch (error) {
         console.error('Error al cargar usuario:', error);
         storage.clearAll();
@@ -39,9 +41,10 @@ export const AuthProvider = ({ children }) => {
       const data = await authAPI.login(email, password);
       // Los tokens ya se guardaron en api/auth.js
       const userData = await authAPI.getCurrentUser();
-      setUser(userData);
-      storage.saveUser(userData);
-      return { success: true };
+      const normalized = { ...userData, rol: userData?.rol ? String(userData.rol).toLowerCase() : userData?.rol };
+      setUser(normalized);
+      storage.saveUser(normalized);
+      return { success: true, user: normalized };
     } catch (error) {
       const errorInfo = handleApiError(error);
       return { success: false, error: errorInfo };
