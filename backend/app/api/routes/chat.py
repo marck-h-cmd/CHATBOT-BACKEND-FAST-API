@@ -8,9 +8,12 @@ from app.database.models import Usuario, ContextoCursoUsuario
 
 router = APIRouter(prefix="/chat", tags=["Chat & Service Desk"])
 
+from typing import List, Dict, Optional
+
 class ChatRequest(BaseModel):
     id_contexto: int
     pregunta: str
+    historial: Optional[List[Dict[str, str]]] = []
 
 class ChatResponse(BaseModel):
     respuesta: str
@@ -38,7 +41,8 @@ async def consultar_chat(
         db=db,
         id_usuario=current_user.id,
         id_contexto=request.id_contexto,
-        pregunta=request.pregunta
+        pregunta=request.pregunta,
+        historial=request.historial
     )
     
     return ChatResponse(**resultado)

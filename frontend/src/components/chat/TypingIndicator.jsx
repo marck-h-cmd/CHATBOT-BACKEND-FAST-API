@@ -1,17 +1,40 @@
 import React from 'react';
+import { motion } from 'framer-motion';
+import { Bot } from 'lucide-react';
 
 const TypingIndicator = () => {
   return (
-    <div className="flex justify-start mb-4">
-      <div className="bg-gray-100 rounded-lg rounded-bl-none px-4 py-2">
-        <div className="flex space-x-1 items-center">
-          <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-          <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-          <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-          <span className="text-sm text-gray-500 ml-1">El asistente está pensando...</span>
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex gap-3 mb-6"
+    >
+      {/* Avatar */}
+      <div className="shrink-0 flex flex-col items-center">
+        <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center shadow-sm">
+          <Bot className="w-5 h-5" />
         </div>
       </div>
-    </div>
+
+      {/* Bubble */}
+      <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-sm px-4 py-3.5 shadow-sm flex items-center gap-1.5 h-[42px]">
+        <motion.div
+          animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 1, repeat: Infinity, delay: 0 }}
+          className="w-1.5 h-1.5 bg-indigo-500 rounded-full"
+        />
+        <motion.div
+          animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
+          className="w-1.5 h-1.5 bg-indigo-500 rounded-full"
+        />
+        <motion.div
+          animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
+          className="w-1.5 h-1.5 bg-indigo-500 rounded-full"
+        />
+      </div>
+    </motion.div>
   );
 };
 

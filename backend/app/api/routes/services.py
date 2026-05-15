@@ -5,7 +5,7 @@ from typing import Optional, List, Any, cast
 import datetime
 from app.database.connection import get_db
 from app.database.models import Usuario, SolicitudServicio, IncidenteAcademico, Silabo
-from app.api.dependencies import get_current_active_user
+from app.api.dependencies import get_current_user_from_token
 
 router = APIRouter(prefix="/services", tags=["Services"])
 
@@ -27,7 +27,6 @@ def _format_solicitud(solicitud: SolicitudServicio) -> dict:
         "categoria": cast(str, solicitud.categoria),
         "descripcion": cast(str, solicitud.descripcion),
         "respuesta_generada": cast(Optional[str], solicitud.respuesta_generada),
-        "fragmentos_usados": cast(Optional[Any], solicitud.fragmentos_usados),
         "tiempo_respuesta_ms": cast(Optional[int], solicitud.tiempo_respuesta_ms),
         "fecha": _iso_or_none(solicitud.fecha_creacion),
         "estado": cast(str, solicitud.estado),
@@ -114,7 +113,8 @@ def _is_admin_or_docente(current_user: Usuario) -> bool:
         rol_value = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
     except Exception:
         rol_value = str(current_user.rol)
-    return rol_value.upper() in ["ADMIN", "DOCENTE"]
+    rol_clean = str(rol_value).split(".")[-1].upper()
+    return rol_clean in ["ADMIN", "DOCENTE"]
 
 
 def _can_access_solicitud(db: Session, solicitud: SolicitudServicio, current_user: Usuario) -> bool:
@@ -133,7 +133,7 @@ def _can_access_incidente(db: Session, incidente: IncidenteAcademico, current_us
 
 @router.get("/requests", response_model=List[dict])
 async def listar_solicitudes(
-    current_user: Usuario = Depends(get_current_active_user),
+    current_user: Usuario = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
     """Lista solicitudes de servicio"""
@@ -147,7 +147,7 @@ async def listar_solicitudes(
 @router.get("/requests/{id_solicitud}")
 async def obtener_solicitud(
     id_solicitud: int,
-    current_user: Usuario = Depends(get_current_active_user),
+    current_user: Usuario = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
     solicitud = _get_solicitud(db, id_solicitud)
@@ -159,7 +159,7 @@ async def obtener_solicitud(
 @router.post("/requests")
 async def crear_solicitud(
     solicitud_data: SolicitudServicioCreate,
-    current_user: Usuario = Depends(get_current_active_user),
+    current_user: Usuario = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
     payload = solicitud_data.model_dump(exclude_unset=True)
@@ -169,7 +169,6 @@ async def crear_solicitud(
         categoria=payload.get("tipo") or payload.get("categoria") or "general",
         descripcion=payload.get("pregunta") or payload.get("descripcion") or "",
         respuesta_generada=payload.get("respuesta") or payload.get("respuesta_generada"),
-        fragmentos_usados=payload.get("fragmentos_usados"),
         tiempo_respuesta_ms=payload.get("tiempo_respuesta_ms"),
         estado=payload.get("estado") or "RESUELTA",
         escalada_a_docente=payload.get("escalada") or False,
@@ -184,7 +183,7 @@ async def crear_solicitud(
 async def actualizar_solicitud(
     id_solicitud: int,
     solicitud_data: SolicitudServicioUpdate,
-    current_user: Usuario = Depends(get_current_active_user),
+    current_user: Usuario = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
     solicitud = _get_solicitud(db, id_solicitud)
@@ -208,7 +207,7 @@ async def actualizar_solicitud(
 @router.delete("/requests/{id_solicitud}")
 async def eliminar_solicitud(
     id_solicitud: int,
-    current_user: Usuario = Depends(get_current_active_user),
+    current_user: Usuario = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
     solicitud = _get_solicitud(db, id_solicitud)
@@ -224,7 +223,7 @@ async def eliminar_solicitud(
 
 @router.get("/incidents", response_model=List[dict])
 async def listar_incidentes(
-    current_user: Usuario = Depends(get_current_active_user),
+    current_user: Usuario = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
     """Lista incidentes académicos"""
@@ -238,7 +237,7 @@ async def listar_incidentes(
 @router.get("/incidents/{id_incidente}")
 async def obtener_incidente(
     id_incidente: int,
-    current_user: Usuario = Depends(get_current_active_user),
+    current_user: Usuario = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
     incidente = _get_incidente(db, id_incidente)
@@ -250,7 +249,7 @@ async def obtener_incidente(
 @router.post("/incidents")
 async def crear_incidente(
     incidente_data: IncidenteAcademicoCreate,
-    current_user: Usuario = Depends(get_current_active_user),
+    current_user: Usuario = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
     payload = incidente_data.model_dump(exclude_unset=True)
@@ -275,7 +274,7 @@ async def crear_incidente(
 async def actualizar_incidente(
     id_incidente: int,
     incidente_data: IncidenteAcademicoUpdate,
-    current_user: Usuario = Depends(get_current_active_user),
+    current_user: Usuario = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
     incidente = _get_incidente(db, id_incidente)
@@ -298,7 +297,7 @@ async def actualizar_incidente(
 @router.delete("/incidents/{id_incidente}")
 async def eliminar_incidente(
     id_incidente: int,
-    current_user: Usuario = Depends(get_current_active_user),
+    current_user: Usuario = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
     incidente = _get_incidente(db, id_incidente)

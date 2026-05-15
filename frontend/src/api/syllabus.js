@@ -97,3 +97,34 @@ export const rejectSyllabus = async (id_silabo, comentario = null) => {
   });
   return response.data;
 };
+
+// ==================== ADMIN: GESTIÓN OFICIAL DE SÍLABOS ====================
+
+// Admin: Subir sílabo oficial
+export const uploadOfficialSyllabus = async (file, id_curso, id_periodo) => {
+  const formData = new FormData();
+  formData.append('id_curso', id_curso);
+  formData.append('id_periodo', id_periodo);
+  formData.append('archivo', file);
+  const response = await apiClient.post('/silabo/upload-oficial', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+};
+
+// Admin: Listar sílabos oficiales publicados
+export const getOfficialSyllabi = async (id_curso = null, id_periodo = null) => {
+  const params = new URLSearchParams();
+  if (id_curso) params.append('id_curso', id_curso);
+  if (id_periodo) params.append('id_periodo', id_periodo);
+  
+  const url = `/silabo/list-oficial${params.toString() ? '?' + params.toString() : ''}`;
+  const response = await apiClient.get(url);
+  return response.data;
+};
+
+// Admin: Obtener detalle completo de un sílabo
+export const getSyllabusFullDetail = async (id_silabo) => {
+  const response = await apiClient.get(`/silabo/${id_silabo}/detalle`);
+  return response.data;
+};

@@ -49,6 +49,7 @@ def _init_gemini() -> None:
         modelos_a_probar = _unique_model_names(
             [
                 Config.GEMINI_MODEL,
+                "gemini-flash-lite-latest",
                 "gemini-2.5-flash",
                 "gemini-2.5-pro",
                 "gemini-2.0-flash",
@@ -94,9 +95,8 @@ class GeminiParserService:
         "email_docente": "email institucional",
         "nota_aprobatoria": 14,
         "evidencias": {
-            "PFD": {"nombre": "nombre de la evidencia", "peso": 1},
-            "TAD": {"nombre": "nombre de la evidencia", "peso": 1},
-            "ELD": {"nombre": "nombre de la evidencia", "peso": 2}
+            "SIGLA_EXACTA_1": {"nombre": "nombre completo de la evidencia", "peso": 1},
+            "SIGLA_EXACTA_2": {"nombre": "nombre completo de la evidencia", "peso": 2}
         },
         "unidades": [
             {"id": "U1", "nombre": "nombre", "semanas": "rango", "competencias": []}
@@ -139,22 +139,21 @@ class GeminiParserService:
                 # Limitar texto para optimizar tokens (primeros 25000 caracteres)
                 texto_limitado = texto[:20000] if len(texto) > 20000 else texto
                 
-                # Una sola llamada
+                # Una sola llamada con Structured JSON Output
+                import google.generativeai as genai
                 prompt = cls.PROMPT_UNICO + "\n\n" + texto_limitado
-                response = MODEL.generate_content(prompt)
+                response = MODEL.generate_content(
+                    prompt,
+                    generation_config=genai.GenerationConfig(
+                        response_mime_type="application/json",
+                        temperature=0.1
+                    )
+                )
                 
-                # Limpiar respuesta
-                respuesta_texto = getattr(response, "text", None)
-                if not isinstance(respuesta_texto, str) or not respuesta_texto.strip():
-                    try:
-                        respuesta_texto = response.candidates[0].content.parts[0].text  # type: ignore[attr-defined]
-                    except Exception as e:
-                        raise ValueError("Respuesta de Gemini sin texto utilizable") from e
-                
-                respuesta_texto = respuesta_texto.strip()
-                respuesta_texto = re.sub(r'^```json\s*', '', respuesta_texto)
-                respuesta_texto = re.sub(r'^```\s*', '', respuesta_texto)
-                respuesta_texto = re.sub(r'\s*```$', '', respuesta_texto)
+                # Obtener texto garantizado como JSON
+                respuesta_texto = response.text
+                if not respuesta_texto or not respuesta_texto.strip():
+                    raise ValueError("Respuesta JSON vacía")
                 
                 resultado = json.loads(respuesta_texto)
                 resultado = cls._validar_estructura(resultado)
@@ -239,18 +238,9 @@ class GeminiParserService:
             "docente": "No especificado",
             "email_docente": "",
             "nota_aprobatoria": 14,
-            "evidencias": {
-                "PFD": {"nombre": "Examen de unidad", "peso": 1},
-                "TAD": {"nombre": "Trabajo aplicativo", "peso": 1},
-                "ELD": {"nombre": "Examen de laboratorio", "peso": 2}
-            },
+            "evidencias": {},
             "unidades": [],
-            "formulas": {
-                "PU1": "PU1 = (PFD + TAD + ELD×2) / 4",
-                "PU2": "PU2 = (PFD + TAD×2 + ELD) / 4",
-                "PU3": "PU3 = (PFD + TAD×2 + ELD) / 4",
-                "PP": "PP = (PU1 + PU2 + PU3) / 3"
-            },
+            "formulas": {},
             "tutoria": {
                 "dia": "Jueves",
                 "horario": "12:00 - 13:00",
@@ -269,11 +259,6 @@ class GeminiParserService:
             if key not in resultado or not resultado.get(key):
                 resultado[key] = default_value
         
-        # Asegurar que tenga las 3 evidencias principales
-        for ev in ["PFD", "TAD", "ELD"]:
-            if ev not in resultado.get("evidencias", {}):
-                resultado["evidencias"][ev] = defaults["evidencias"][ev]
-        
         # Asegurar que tenga al menos 3 unidades
         if len(resultado.get("unidades", [])) < 3:
             unidades_existentes = {u.get("id", "") for u in resultado.get("unidades", [])}
@@ -284,12 +269,7 @@ class GeminiParserService:
                         "id": unidad_id,
                         "nombre": f"Unidad {i}",
                         "semanas": cls._get_semanas_default(i),
-                        "competencias": [],
-                        "evidencias": [
-                            {"tipo": "PFD", "peso": 1},
-                            {"tipo": "TAD", "peso": 1 if i == 1 else 2},
-                            {"tipo": "ELD", "peso": 2 if i != 2 else 1}
-                        ]
+                        "competencias": []
                     })
         return resultado
     

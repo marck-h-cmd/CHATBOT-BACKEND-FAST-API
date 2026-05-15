@@ -35,7 +35,8 @@ export const getCurrentUser = async () => {
 
 export const getUserSessions = async () => {
   const response = await apiClient.get('/auth/sesiones');
-  return response.data;
+  // El backend devuelve { success, message, data: { total, sesiones } }
+  return response.data.data || response.data;
 };
 
 export const closeAllSessions = async () => {

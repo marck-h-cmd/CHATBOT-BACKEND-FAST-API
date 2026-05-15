@@ -12,19 +12,24 @@ export const ChatProvider = ({ children }) => {
   const [currentResponse, setCurrentResponse] = useState(null);
 
   const sendMessage = async (pregunta, idContexto, onChunk = null) => {
-    // Añadir mensaje del usuario
+    // Preparar historial actual (sin el nuevo mensaje de usuario) para mandarlo al backend
+    const historial = messages.map(msg => ({ role: msg.role, content: msg.content }));
+
+    // Añadir mensaje del usuario a la vista
     const userMessage = { role: 'user', content: pregunta, timestamp: new Date().toISOString() };
     setMessages(prev => [...prev, userMessage]);
     setLoading(true);
 
     try {
-      const response = await chatAPI.sendQuestion(pregunta, idContexto);
+      const response = await chatAPI.sendQuestion(pregunta, idContexto, historial);
       const botMessage = {
         role: 'assistant',
         content: response.respuesta,
         intent: response.intent,
         riesgo: response.riesgo,
         fragmentos: response.fragmentos_usados,
+        escalado: response.escalado,
+        tiempoMs: response.tiempo_ms,
         timestamp: new Date().toISOString(),
       };
       setMessages(prev => [...prev, botMessage]);

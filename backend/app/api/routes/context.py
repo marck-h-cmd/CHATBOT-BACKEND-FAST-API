@@ -80,6 +80,8 @@ async def listar_mis_cursos(
     for ctx in contextos:
         result.append({
             "id_contexto": ctx.id_contexto,
+            "id_curso": ctx.id_curso,
+            "id_periodo": ctx.id_periodo,
             "curso": ctx.curso.nombre_curso,
             "codigo": ctx.curso.codigo_curso,
             "periodo": ctx.periodo.nombre,

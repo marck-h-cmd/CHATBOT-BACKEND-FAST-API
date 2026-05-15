@@ -13,10 +13,26 @@ from app.database.models import PeriodoAcademico
 
 PERIODS_DATA = [
     {
+        "anio": 2023,
+        "termino": "I",
+        "nombre": "2023-I",
+        "es_actual": False,
+        "fecha_inicio": "2023-03-01",
+        "fecha_fin": "2023-07-15"
+    },
+    {
+        "anio": 2023,
+        "termino": "II",
+        "nombre": "2023-II",
+        "es_actual": False,
+        "fecha_inicio": "2023-08-01",
+        "fecha_fin": "2023-12-15"
+    },
+    {
         "anio": 2024,
         "termino": "I",
         "nombre": "2024-I",
-        "es_actual": True,
+        "es_actual": False,
         "fecha_inicio": "2024-03-01",
         "fecha_fin": "2024-07-15"
     },
@@ -44,6 +60,22 @@ PERIODS_DATA = [
         "fecha_inicio": "2025-03-01",
         "fecha_fin": "2025-07-15"
     },
+    {
+        "anio": 2025,
+        "termino": "II",
+        "nombre": "2025-II",
+        "es_actual": False,
+        "fecha_inicio": "2025-08-01",
+        "fecha_fin": "2025-12-15"
+    },
+    {
+        "anio": 2026,
+        "termino": "I",
+        "nombre": "2026-I",
+        "es_actual": True,
+        "fecha_inicio": "2026-03-01",
+        "fecha_fin": "2026-07-15"
+    },
 ]
 
 def seed_periods():
@@ -67,6 +99,9 @@ def seed_periods():
             
             if existing:
                 print(f"⏭️  Periodo ya existe: {period_data['nombre']}")
+                if existing.es_actual != period_data.get("es_actual", False):
+                    existing.es_actual = period_data.get("es_actual", False)
+                    print(f"🔄 Actualizando estado es_actual de {period_data['nombre']} a {period_data.get('es_actual', False)}")
                 skipped_count += 1
             else:
                 new_period = PeriodoAcademico(**period_data)

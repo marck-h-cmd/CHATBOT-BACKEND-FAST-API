@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from app.database.connection import get_db
 from app.database.models import Usuario, Curso, RolUsuario
-from app.api.dependencies import get_current_active_user
+from app.api.dependencies import get_current_user_from_token
 
 router = APIRouter(prefix="/cursos", tags=["Catálogo de Cursos"])
 
@@ -31,7 +31,7 @@ async def listar_cursos(db: Session = Depends(get_db)):
 @router.post("/", response_model=CursoResponse)
 async def crear_curso(
     curso: CursoCreate,
-    current_user: Usuario = Depends(get_current_active_user),
+    current_user: Usuario = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
     if current_user.rol != RolUsuario.ADMIN:
@@ -47,7 +47,7 @@ async def crear_curso(
 async def actualizar_curso(
     id_curso: int,
     curso_data: CursoCreate,
-    current_user: Usuario = Depends(get_current_active_user),
+    current_user: Usuario = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
     if current_user.rol != RolUsuario.ADMIN:

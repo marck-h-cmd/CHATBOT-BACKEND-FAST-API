@@ -79,7 +79,7 @@ const MetricsPage = () => {
           value={`${metrics.tasa_resolucion_nivel1 || 0}%`} 
           icon="✅" 
           color="green"
-          subtitle="Resueltas por chatbot"
+          subtitle="Resueltas por Sylia"
         />
       </div>
 

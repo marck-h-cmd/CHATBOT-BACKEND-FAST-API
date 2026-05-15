@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import * as metricsAPI from '../../api/metrics';
-import Card from '../../components/ui/Card';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import { Users, GraduationCap, FileSearch, MessageSquare, Search, BookMarked, Calendar, BarChart3, Clock, AlertTriangle, ShieldAlert } from 'lucide-react';
 
 const AdminSummaryPage = () => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -28,135 +28,119 @@ const AdminSummaryPage = () => {
     return <LoadingSpinner />;
   }
 
+  const StatCard = ({ title, value, icon: Icon, colorClass, bgClass }) => (
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between group hover:border-indigo-200 transition-colors">
+      <div className="flex justify-between items-start mb-4">
+        <div className={`p-3 rounded-xl ${bgClass} ${colorClass}`}>
+          <Icon className="w-6 h-6" />
+        </div>
+      </div>
+      <div>
+        <p className="text-3xl font-bold text-slate-800 mb-1 tracking-tight">
+          {value || 0}
+        </p>
+        <p className="text-sm font-medium text-slate-500">{title}</p>
+      </div>
+    </div>
+  );
+
+  const QuickAction = ({ to, icon: Icon, label }) => (
+    <Link to={to} className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col items-center justify-center gap-3 hover:bg-slate-50 hover:border-indigo-200 transition-all group">
+      <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-indigo-50 transition-colors text-slate-500 group-hover:text-indigo-600">
+        <Icon className="w-6 h-6" />
+      </div>
+      <span className="text-sm font-semibold text-slate-700">{label}</span>
+    </Link>
+  );
+
+  const StatusRow = ({ label, value, highlight = false, alert = false }) => (
+    <div className="flex justify-between items-center py-3 border-b border-slate-100 last:border-0">
+      <span className="text-sm font-medium text-slate-600">{label}</span>
+      <span className={`text-sm font-bold ${
+        alert ? 'text-red-600' : highlight ? 'text-indigo-600' : 'text-slate-800'
+      }`}>
+        {value}
+      </span>
+    </div>
+  );
+
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Dashboard ITIL - Resumen Operativo</h1>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Resumen Operativo</h1>
+        <p className="text-slate-500 mt-1">Visión general del sistema RAG y operaciones académicas.</p>
+      </div>
 
       {/* KPIs principales */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <div className="text-center">
-            <p className="text-3xl font-bold text-blue-600">
-              {dashboardData?.total_estudiantes || 0}
-            </p>
-            <p className="text-sm text-gray-500 mt-1">Estudiantes Activos</p>
-          </div>
-        </Card>
-        <Card>
-          <div className="text-center">
-            <p className="text-3xl font-bold text-green-600">
-              {dashboardData?.total_inscripciones || 0}
-            </p>
-            <p className="text-sm text-gray-500 mt-1">Inscripciones</p>
-          </div>
-        </Card>
-        <Card>
-          <div className="text-center">
-            <p className="text-3xl font-bold text-yellow-600">
-              {dashboardData?.silabos_pendientes || 0}
-            </p>
-            <p className="text-sm text-gray-500 mt-1">Sílabos Pendientes</p>
-          </div>
-        </Card>
-        <Card>
-          <div className="text-center">
-            <p className="text-3xl font-bold text-purple-600">
-              {dashboardData?.total_consultas || 0}
-            </p>
-            <p className="text-sm text-gray-500 mt-1">Consultas Chat</p>
-          </div>
-        </Card>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+        <StatCard 
+          title="Estudiantes Activos" 
+          value={dashboardData?.total_estudiantes} 
+          icon={Users} 
+          colorClass="text-blue-600" 
+          bgClass="bg-blue-50" 
+        />
+        <StatCard 
+          title="Inscripciones" 
+          value={dashboardData?.total_inscripciones} 
+          icon={GraduationCap} 
+          colorClass="text-emerald-600" 
+          bgClass="bg-emerald-50" 
+        />
+        <StatCard 
+          title="Sílabos en Revisión" 
+          value={dashboardData?.silabos_pendientes} 
+          icon={FileSearch} 
+          colorClass="text-amber-600" 
+          bgClass="bg-amber-50" 
+        />
+        <StatCard 
+          title="Consultas a Sylia" 
+          value={dashboardData?.total_consultas} 
+          icon={MessageSquare} 
+          colorClass="text-indigo-600" 
+          bgClass="bg-indigo-50" 
+        />
       </div>
 
       {/* Acciones rápidas */}
-      <Card title="Acciones Rápidas" className="mb-8">
+      <div className="mb-8">
+        <h2 className="text-lg font-bold text-slate-800 mb-4">Acciones Rápidas</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Link to="/admin/silabos/pendientes">
-            <div className="p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors text-center">
-              <span className="text-2xl">🔍</span>
-              <p className="text-sm font-medium mt-2">Validar Sílabos</p>
-            </div>
-          </Link>
-          <Link to="/admin/cursos">
-            <div className="p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors text-center">
-              <span className="text-2xl">📚</span>
-              <p className="text-sm font-medium mt-2">Gestionar Cursos</p>
-            </div>
-          </Link>
-          <Link to="/admin/periodos">
-            <div className="p-4 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors text-center">
-              <span className="text-2xl">📅</span>
-              <p className="text-sm font-medium mt-2">Gestionar Periodos</p>
-            </div>
-          </Link>
-          <Link to="/metrics">
-            <div className="p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors text-center">
-              <span className="text-2xl">📊</span>
-              <p className="text-sm font-medium mt-2">Ver Métricas</p>
-            </div>
-          </Link>
+          <QuickAction to="/admin/silabos/pendientes" icon={Search} label="Validar Sílabos" />
+          <QuickAction to="/admin/cursos" icon={BookMarked} label="Gestionar Cursos" />
+          <QuickAction to="/admin/periodos" icon={Calendar} label="Gestionar Periodos" />
+          <QuickAction to="/admin/metricas" icon={BarChart3} label="Ver Métricas" />
         </div>
-      </Card>
+      </div>
 
       {/* Estado del sistema */}
       <div className="grid md:grid-cols-2 gap-6">
-        <Card title="Estado del Servicio Desk">
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Solicitudes Abiertas</span>
-              <span className="font-semibold text-blue-600">
-                {dashboardData?.solicitudes_abiertas || 0}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Solicitudes Resueltas</span>
-              <span className="font-semibold text-green-600">
-                {dashboardData?.solicitudes_resueltas || 0}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Incidentes Activos</span>
-              <span className="font-semibold text-yellow-600">
-                {dashboardData?.incidentes_activos || 0}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Tiempo Promedio Respuesta</span>
-              <span className="font-semibold text-gray-600">
-                {dashboardData?.tiempo_promedio_respuesta || 0}ms
-              </span>
-            </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-6">
+            <ShieldAlert className="w-5 h-5 text-indigo-600" />
+            <h2 className="text-lg font-bold text-slate-800">Estado del Service Desk</h2>
           </div>
-        </Card>
+          <div className="space-y-1">
+            <StatusRow label="Solicitudes Abiertas" value={dashboardData?.solicitudes_abiertas || 0} highlight />
+            <StatusRow label="Solicitudes Resueltas" value={dashboardData?.solicitudes_resueltas || 0} />
+            <StatusRow label="Incidentes Activos" value={dashboardData?.incidentes_activos || 0} alert={(dashboardData?.incidentes_activos || 0) > 0} />
+            <StatusRow label="Tiempo Prom. Respuesta" value={`${dashboardData?.tiempo_promedio_respuesta || 0} ms`} />
+          </div>
+        </div>
 
-        <Card title="Estado Académico">
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Sílabos Validados</span>
-              <span className="font-semibold text-green-600">
-                {dashboardData?.silabos_validados || 0}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Sílabos Rechazados</span>
-              <span className="font-semibold text-red-600">
-                {dashboardData?.silabos_rechazados || 0}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Alertas de Riesgo</span>
-              <span className="font-semibold text-yellow-600">
-                {dashboardData?.alertas_riesgo || 0}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Estudiantes en Riesgo</span>
-              <span className="font-semibold text-orange-600">
-                {dashboardData?.estudiantes_riesgo || 0}
-              </span>
-            </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-6">
+            <BookMarked className="w-5 h-5 text-indigo-600" />
+            <h2 className="text-lg font-bold text-slate-800">Salud Académica</h2>
           </div>
-        </Card>
+          <div className="space-y-1">
+            <StatusRow label="Sílabos Validados (Automáticos/Manual)" value={dashboardData?.silabos_validados || 0} highlight />
+            <StatusRow label="Sílabos Rechazados" value={dashboardData?.silabos_rechazados || 0} alert={(dashboardData?.silabos_rechazados || 0) > 0} />
+            <StatusRow label="Alertas de Riesgo ITIL" value={dashboardData?.alertas_riesgo || 0} alert={(dashboardData?.alertas_riesgo || 0) > 0} />
+            <StatusRow label="Estudiantes en Riesgo" value={dashboardData?.estudiantes_riesgo || 0} alert={(dashboardData?.estudiantes_riesgo || 0) > 0} />
+          </div>
+        </div>
       </div>
     </div>
   );

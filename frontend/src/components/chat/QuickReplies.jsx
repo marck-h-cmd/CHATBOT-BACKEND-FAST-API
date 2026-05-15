@@ -1,51 +1,39 @@
 import React from 'react';
+import { motion } from 'framer-motion';
+import { Lightbulb, Calculator, HelpCircle } from 'lucide-react';
 
-// Sugerencias predeterminadas relacionadas con el sílabo
-const DEFAULT_SUGGESTIONS = [
-  { text: "¿Cómo se calcula PU1?", intent: "calcular_promedio" },
-  { text: "Simular notas: PFD=14, TAD=12, ELD=15", intent: "simular_notas" },
-  { text: "¿Qué peso tiene TAD?", intent: "consultar_peso" },
-  { text: "¿Necesito tutoría?", intent: "evaluar_riesgo" },
-  { text: "Horarios de tutoría", intent: "consultar_tutoria" },
-];
-
-// Sugerencias dinámicas según la última intención (opcional)
-const getSuggestionsByIntent = (lastIntent) => {
-  if (lastIntent === 'calcular_promedio') {
-    return [
-      { text: "Simular PU1 con PFD=15, TAD=12, ELD=10" },
-      { text: "¿Y el promedio promocional?" },
-    ];
-  }
-  if (lastIntent === 'simular_notas') {
-    return [
-      { text: "¿Apruebo con esas notas?" },
-      { text: "¿Qué nota necesito en PU3?" },
-    ];
-  }
-  return DEFAULT_SUGGESTIONS;
+const SUGGESTIONS = {
+  general: [
+    { text: '¿Cómo se llama el curso?', icon: <HelpCircle className="w-3.5 h-3.5" /> },
+    { text: '¿Cuál es la nota mínima aprobatoria?', icon: <Lightbulb className="w-3.5 h-3.5" /> },
+    { text: 'Simular promedio con 14 en todo', icon: <Calculator className="w-3.5 h-3.5" /> }
+  ],
+  simulation: [
+    { text: '¿Qué nota necesito en la siguiente unidad?', icon: <Calculator className="w-3.5 h-3.5" /> },
+    { text: '¿Cómo se calcula el promedio final?', icon: <HelpCircle className="w-3.5 h-3.5" /> }
+  ]
 };
 
-const QuickReplies = ({ onSelect, lastIntent = null }) => {
-  const suggestions = lastIntent ? getSuggestionsByIntent(lastIntent) : DEFAULT_SUGGESTIONS;
-
-  const handleClick = (text) => {
-    onSelect(text);
-  };
+const QuickReplies = ({ onSelect, lastIntent }) => {
+  const replies = lastIntent === 'simulation' ? SUGGESTIONS.simulation : SUGGESTIONS.general;
 
   return (
-    <div className="px-4 py-2 border-t border-gray-100 bg-gray-50 overflow-x-auto">
-      <div className="flex gap-2">
-        {suggestions.map((sugg, idx) => (
-          <button
-            key={idx}
-            onClick={() => handleClick(sugg.text)}
-            className="px-3 py-1.5 bg-white border border-gray-300 rounded-full text-sm text-gray-700 hover:bg-blue-50 hover:border-blue-300 transition-colors whitespace-nowrap"
-          >
-            {sugg.text}
-          </button>
-        ))}
-      </div>
+    <div className="flex flex-wrap gap-2">
+      {replies.map((reply, idx) => (
+        <motion.button
+          key={idx}
+          initial={{ opacity: 0, y: 10, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.3, delay: idx * 0.1 }}
+          whileHover={{ scale: 1.03, backgroundColor: '#f1f5f9' }}
+          whileTap={{ scale: 0.97 }}
+          onClick={() => onSelect(reply.text)}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-xs font-medium rounded-full shadow-sm hover:text-indigo-600 hover:border-indigo-200 transition-colors"
+        >
+          {reply.icon}
+          {reply.text}
+        </motion.button>
+      ))}
     </div>
   );
 };

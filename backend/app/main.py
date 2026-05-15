@@ -1,8 +1,9 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from datetime import datetime
-from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.routes import syllabus, chat, metrics, courses, chunks, services, logs, periods, context
 from app.api.routes.auth import router as auth_router
@@ -13,30 +14,94 @@ from app.config import Config
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="Chatbot Académico ITIL 4",
+    title="Sylia AI",
     description="Service Desk para interpretación de sílabos con autenticación",
     version="1.0.0"
 )
 
-# CORS
+# CORS - Configuración segura
+allowed_origins = [
+    "http://localhost:5173",      # Vite dev server
+    "http://localhost:5174",      # Vite dev server (alternate port)
+    "http://localhost:3000",      # Alternative frontend
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",      # Alternate port
+    "http://127.0.0.1:3000"
+]
+
+# En producción, agregar los dominios reales
+if Config.ENVIRONMENT == "production":
+    allowed_origins.extend([
+        "https://yourdomain.com",
+        "https://www.yourdomain.com"
+    ])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Content-Type", "Authorization"],
+    max_age=3600,
+    expose_headers=["Content-Length", "X-Total-Count"]
 )
 
-# Manejador global de excepciones para CORS
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
+# Manejadores globales de excepciones
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail},
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "*",
-            "Access-Control-Allow-Headers": "*",
+        content={
+            "success": False,
+            "status": exc.status_code,
+            "message": exc.detail if isinstance(exc.detail, str) else "Error HTTP",
+            "data": None,
+            "errors": []
+        }
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = []
+    for error in exc.errors():
+        errors.append({
+            "field": ".".join(str(x) for x in error["loc"]),
+            "message": error["msg"],
+            "type": error["type"]
+        })
+    
+    return JSONResponse(
+        status_code=422,
+        content={
+            "success": False,
+            "status": 422,
+            "message": "Validación fallida",
+            "data": None,
+            "errors": errors
+        }
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """Maneja todas las excepciones no capturadas"""
+    import traceback
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    logger.error(f"Unhandled exception: {str(exc)}\n{traceback.format_exc()}")
+    
+    # En desarrollo, mostrar el error; en producción, mensaje genérico
+    error_detail = str(exc) if Config.ENVIRONMENT == "development" else "Error interno del servidor"
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "status": 500,
+            "message": "Error interno del servidor",
+            "data": None,
+            "errors": [error_detail] if Config.ENVIRONMENT == "development" else []
         }
     )
 
@@ -56,7 +121,7 @@ app.include_router(logs.router)
 @app.get("/")
 async def root():
     return {
-        "message": "Chatbot Académico ITIL 4",
+        "message": "Sylia AI",
         "docs": "/docs",
         "version": "1.0.0",
         "status": "online",
@@ -75,7 +140,7 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "OK", "service": "Chatbot ITIL 4", "timestamp": datetime.now().isoformat()}
+    return {"status": "OK", "service": "Sylia AI", "timestamp": datetime.now().isoformat()}
 
 
 if __name__ == "__main__":

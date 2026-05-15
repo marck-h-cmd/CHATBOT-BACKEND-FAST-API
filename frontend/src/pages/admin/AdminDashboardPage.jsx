@@ -1,103 +1,147 @@
 import React, { useState } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useServiceDesk } from '../../contexts/ServiceDeskContext';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import { LayoutDashboard, BookMarked, CalendarDays, FileText, Search, Ticket, AlertTriangle, BarChart3, Menu, Home, LogOut, ShieldAlert } from 'lucide-react';
 
 const AdminDashboardPage = () => {
-  const { user } = useAuth();
-  const { metrics, loading } = useServiceDesk();
+  const { user, logout } = useAuth();
+  const { loading } = useServiceDesk();
   const location = useLocation();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const menuItems = [
-    { path: '/admin/dashboard', icon: '📊', label: 'Dashboard' },
-    { path: '/admin/cursos', icon: '📚', label: 'Gestión de Cursos' },
-    { path: '/admin/periodos', icon: '📅', label: 'Gestión de Periodos' },
-    { path: '/admin/silabos', icon: '📄', label: 'Sílabos' },
-    { path: '/admin/silabos/pendientes', icon: '🔍', label: 'Sílabos Pendientes' },
-    { path: '/admin/service-desk', icon: '🎫', label: 'Service Desk' },
-    { path: '/admin/incidentes', icon: '⚠️', label: 'Incidentes' },
-    { path: '/admin/metricas', icon: '📈', label: 'Métricas ITIL' },
+    { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/admin/cursos', icon: BookMarked, label: 'Gestión de Cursos' },
+    { path: '/admin/periodos', icon: CalendarDays, label: 'Gestión de Periodos' },
+    { path: '/admin/silabos', icon: FileText, label: 'Sílabos Oficiales' },
+    { path: '/admin/silabos/pendientes', icon: Search, label: 'Validación Pendiente' },
+    { path: '/admin/service-desk', icon: Ticket, label: 'Service Desk' },
+    { path: '/admin/incidentes', icon: AlertTriangle, label: 'Incidentes' },
+    { path: '/admin/metricas', icon: BarChart3, label: 'Métricas RAG' },
   ];
 
-  if (user?.rol !== 'admin') {
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
+  if (!user || (user?.rol && user.rol.toLowerCase() !== 'admin')) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 text-xl mb-4">Acceso denegado</p>
-          <p className="text-gray-600">Solo administradores pueden acceder a esta página.</p>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center p-8 bg-white border border-slate-200 rounded-2xl shadow-sm max-w-sm w-full">
+          <ShieldAlert className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Acceso Denegado</h2>
+          <p className="text-slate-500 mb-6">Solo personal autorizado puede acceder al panel de administración.</p>
+          <Link to="/dashboard" className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors w-full inline-block">
+            Volver al Inicio
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-100">
+    <div className="min-h-screen flex bg-slate-50">
       {/* Sidebar */}
-      <div className={`${sidebarOpen ? 'w-64' : 'w-20'} transition-all duration-300 bg-gray-900 text-white`}>
-        <div className="p-4 border-b border-gray-700">
-          <h1 className={`font-bold ${sidebarOpen ? 'text-xl' : 'text-center text-lg'}`}>
-            {sidebarOpen ? 'Admin ITIL' : '🔧'}
+      <div className={`${sidebarOpen ? 'w-64' : 'w-20'} transition-all duration-300 bg-white border-r border-slate-200 flex flex-col z-20 shadow-sm hidden md:flex`}>
+        <div className="h-16 flex items-center justify-center border-b border-slate-100">
+          <h1 className={`font-bold text-indigo-700 tracking-tight transition-all ${sidebarOpen ? 'text-lg' : 'text-xs'}`}>
+            {sidebarOpen ? 'Centro de Mando' : 'ADMIN'}
           </h1>
         </div>
         
-        <nav className="p-4 space-y-2">
-          {menuItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                location.pathname === item.path
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-300 hover:bg-gray-800'
-              }`}
-            >
-              <span className="text-xl">{item.icon}</span>
-              {sidebarOpen && <span>{item.label}</span>}
-            </Link>
-          ))}
+        <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+          <div className="mb-4">
+            {sidebarOpen && <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-3">Gestión ITIL</p>}
+          </div>
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${
+                  isActive
+                    ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-indigo-600'
+                }`}
+                title={!sidebarOpen ? item.label : ''}
+              >
+                <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-indigo-600' : 'text-slate-400 group-hover:text-indigo-500'}`} />
+                {sidebarOpen && <span className="truncate">{item.label}</span>}
+              </Link>
+            );
+          })}
         </nav>
 
-        <div className="absolute bottom-4 left-4 right-4">
+        <div className="p-4 border-t border-slate-100 space-y-2">
           <Link
             to="/dashboard"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 hover:text-indigo-600 transition-colors group"
+            title={!sidebarOpen ? 'Vista Estudiante' : ''}
           >
-            <span className="text-xl">🏠</span>
-            {sidebarOpen && <span>Volver al Dashboard</span>}
+            <Home className="w-5 h-5 shrink-0 text-slate-400 group-hover:text-indigo-500" />
+            {sidebarOpen && <span className="font-medium">Vista Estudiante</span>}
           </Link>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-600 hover:bg-red-50 w-full transition-colors"
+            title={!sidebarOpen ? 'Salir' : ''}
+          >
+            <LogOut className="w-5 h-5 shrink-0" />
+            {sidebarOpen && <span className="font-medium">Cerrar Sesión</span>}
+          </button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Top Bar */}
-        <div className="bg-white shadow-sm px-6 py-4 flex justify-between items-center">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-gray-600 hover:text-gray-800"
-          >
-            ☰
-          </button>
+        <header className="bg-white border-b border-slate-200 h-16 shrink-0 flex items-center justify-between px-6 z-10">
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">
-              Bienvenido, {user?.nombres}
-            </span>
-            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-              Administrador
-            </span>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 -ml-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors hidden md:block"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-2">
+               <div className="w-8 h-8 rounded-lg overflow-hidden shadow-sm border border-slate-100">
+                  <img src="/logo.png" alt="Sylia Logo" className="w-full h-full object-cover" />
+               </div>
+               <span className="font-bold text-slate-800 md:hidden">Admin Panel</span>
+            </div>
           </div>
-        </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:flex flex-col items-end mr-2">
+              <span className="text-sm font-bold text-slate-800 leading-tight">
+                {user?.nombres}
+              </span>
+              <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">
+                Administrador
+              </span>
+            </div>
+            <div className="w-9 h-9 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-sm border border-indigo-200">
+              {user?.nombres?.charAt(0) || 'A'}
+            </div>
+          </div>
+        </header>
 
         {/* Content Area */}
-        <div className="flex-1 p-6 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-slate-50">
           {loading ? (
-            <LoadingSpinner />
+            <LoadingSpinner fullScreen />
           ) : (
-            <Outlet />
+            <div className="max-w-7xl mx-auto">
+              <Outlet />
+            </div>
           )}
-        </div>
+        </main>
       </div>
     </div>
   );

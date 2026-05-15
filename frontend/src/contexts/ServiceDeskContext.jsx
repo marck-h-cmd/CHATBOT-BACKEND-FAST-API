@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import * as serviceDeskAPI from '../api/service-desk';
 import * as metricsAPI from '../api/metrics';
 import { handleApiError } from '../utils/errorHandler';
+import { useAuth } from './AuthContext';
 
 const ServiceDeskContext = createContext();
 
@@ -14,6 +15,7 @@ export const useServiceDesk = () => {
 };
 
 export const ServiceDeskProvider = ({ children }) => {
+  const { user } = useAuth();
   const [requests, setRequests] = useState([]);
   const [incidents, setIncidents] = useState([]);
   const [metrics, setMetrics] = useState(null);
@@ -29,15 +31,20 @@ export const ServiceDeskProvider = ({ children }) => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [requestsData, incidentsData, metricsData] = await Promise.all([
+      const [requestsData, incidentsData] = await Promise.all([
         serviceDeskAPI.getServiceRequests(),
-        serviceDeskAPI.getIncidents(),
-        metricsAPI.getDashboardSummary()
+        serviceDeskAPI.getIncidents()
       ]);
       setRequests(requestsData);
       setIncidents(incidentsData);
-      setMetrics(metricsData);
-      setEscalations(metricsData?.incidentes_escalados || []);
+      
+      // Solo cargar métricas si es admin
+      if (user?.rol === 'admin') {
+        const metricsData = await metricsAPI.getDashboardSummary();
+        setMetrics(metricsData);
+        setEscalations(metricsData?.incidentes_escalados || []);
+      }
+      
       setError('');
     } catch (err) {
       const errorInfo = handleApiError(err);

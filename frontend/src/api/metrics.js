@@ -6,6 +6,12 @@ export const getDashboardSummary = async () => {
   return response.data;
 };
 
+// Alias para compatibilidad
+export const getDashboardMetrics = async () => {
+  const response = await apiClient.get('/metrics/dashboard');
+  return response.data;
+};
+
 export const getTicketMetrics = async () => {
   const response = await apiClient.get('/metrics/tickets');
   return response.data;

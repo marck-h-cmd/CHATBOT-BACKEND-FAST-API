@@ -58,9 +58,9 @@ class ChunkerService:
             if match:
                 secciones[nombre] = match.group(0).strip()
         
-        # Si no se detectaron secciones, incluir todo el texto
-        if not secciones:
-            secciones["general"] = texto[:5000]
+        # Siempre incluir el inicio del documento como 'general' (cabecera del curso)
+        if "general" not in secciones:
+            secciones["general"] = texto[:3000]
         
         return secciones
     

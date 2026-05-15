@@ -98,6 +98,32 @@ class EmbeddingService:
         embeddings = self._model.encode(textos)
         return embeddings.tolist()
     
+    @staticmethod
+    def calcular_similitud_coseno(embedding1: List[float], embedding2: List[float]) -> float:
+        """Calcula similitud coseno entre dos embeddings"""
+        if not embedding1 or not embedding2:
+            return 0.0
+        
+        if len(embedding1) != len(embedding2):
+            return 0.0
+        
+        try:
+            # Convertir a numpy arrays si es necesario
+            arr1 = np.array(embedding1, dtype=np.float32)
+            arr2 = np.array(embedding2, dtype=np.float32)
+            
+            # Calcular similitud coseno
+            norm1 = np.linalg.norm(arr1)
+            norm2 = np.linalg.norm(arr2)
+            
+            if norm1 == 0 or norm2 == 0:
+                return 0.0
+            
+            similitud = np.dot(arr1, arr2) / (norm1 * norm2)
+            return float(similitud)
+        except Exception:
+            return 0.0
+    
     def calcular_similitud_coseno(self, emb1: List[float], emb2: List[float]) -> float:
         """Calcula similitud entre embeddings"""
         arr1 = np.array(emb1)

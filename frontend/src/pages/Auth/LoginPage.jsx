@@ -31,9 +31,12 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="max-w-md w-full">
-        <div className="text-center mb-6">
-          <h2 className="text-3xl font-bold text-gray-800">Chatbot Académico</h2>
-          <p className="text-gray-600 mt-2">Inicia sesión con tu correo institucional</p>
+        <div className="text-center mb-8 flex flex-col items-center">
+          <div className="w-16 h-16 mb-4 rounded-2xl overflow-hidden shadow-sm">
+            <img src="/logo.png" alt="Sylia Logo" className="w-full h-full object-cover" />
+          </div>
+          <h2 className="text-3xl font-bold text-gray-800">Sylia AI</h2>
+          <p className="text-gray-600 mt-2">Inicia sesión en tu cuenta</p>
         </div>
         <form onSubmit={handleSubmit}>
           <Input

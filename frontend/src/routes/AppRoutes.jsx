@@ -21,6 +21,7 @@ import MetricsPage from '../pages/MetricsPage';
 import ProfilePage from '../pages/ProfilePage';
 import CourseListPage from '../pages/CourseListPage';
 import EnrollmentPage from '../pages/EnrollmentPage';
+import EnrollmentSuccessPage from '../pages/EnrollmentSuccessPage';
 import MyCoursesPage from '../pages/MyCoursesPage';
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
 import AdminSummaryPage from '../pages/admin/AdminSummaryPage';
@@ -28,6 +29,11 @@ import CourseManagementPage from '../pages/admin/CourseManagementPage';
 import PeriodManagementPage from '../pages/admin/PeriodManagementPage';
 import PendingSyllabiPage from '../pages/admin/PendingSyllabiPage';
 import ServiceDeskPage from '../pages/admin/ServiceDeskPage';
+import SyllabusManagementPage from '../pages/admin/SyllabusManagementPage';
+import SyllabusUploadPage from '../pages/admin/SyllabusUploadPage';
+import SyllabusDetailPage from '../pages/admin/SyllabusDetailPage';
+import IncidentsManagementPage from '../pages/admin/IncidentsManagementPage';
+import MetricsAdminPage from '../pages/admin/MetricsAdminPage';
 import NotFoundPage from '../pages/NotFoundPage';
 
 // Layout wrapper para páginas con navegación (todas excepto auth)
@@ -102,16 +108,23 @@ const AppRoutes = () => {
                     </PrivateRoute>
                   } />
                   <Route path="/cursos" element={
-                    <PrivateRoute>
+                    <PrivateRoute requiredRole="estudiante">
                       <AppLayout>
                         <CourseListPage />
                       </AppLayout>
                     </PrivateRoute>
                   } />
                   <Route path="/inscripcion" element={
-                    <PrivateRoute>
+                    <PrivateRoute requiredRole="estudiante">
                       <AppLayout>
                         <EnrollmentPage />
+                      </AppLayout>
+                    </PrivateRoute>
+                  } />
+                  <Route path="/inscripcion-exitosa" element={
+                    <PrivateRoute requiredRole="estudiante">
+                      <AppLayout>
+                        <EnrollmentSuccessPage />
                       </AppLayout>
                     </PrivateRoute>
                   } />
@@ -135,10 +148,16 @@ const AppRoutes = () => {
                     </PrivateRoute>
                   }>
                     <Route index element={<AdminSummaryPage />} />
+                    <Route path="dashboard" element={<AdminSummaryPage />} />
                     <Route path="cursos" element={<CourseManagementPage />} />
                     <Route path="periodos" element={<PeriodManagementPage />} />
+                    <Route path="silabos" element={<SyllabusManagementPage />} />
+                    <Route path="silabos/subir" element={<SyllabusUploadPage />} />
+                    <Route path="silabos/:id" element={<SyllabusDetailPage />} />
                     <Route path="silabos/pendientes" element={<PendingSyllabiPage />} />
                     <Route path="service-desk" element={<ServiceDeskPage />} />
+                    <Route path="incidentes" element={<IncidentsManagementPage />} />
+                    <Route path="metricas" element={<MetricsAdminPage />} />
                   </Route>
                   <Route path="/profile" element={
                     <PrivateRoute>
