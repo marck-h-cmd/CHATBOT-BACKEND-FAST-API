@@ -10,29 +10,39 @@ const Input = ({
   required = false,
   disabled = false,
   className = '',
+  icon: Icon,
   ...props
 }) => {
   return (
     <div className={`w-full ${className}`}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-semibold text-slate-700 mb-1.5">
           {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}
-      <input
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        disabled={disabled}
-        className={`
-          w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500
-          ${error ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}
-          ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}
-        `}
-        {...props}
-      />
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      <div className="relative">
+        {Icon && (
+          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+            <Icon className="h-5 w-5" />
+          </div>
+        )}
+        <input
+          type={type}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          disabled={disabled}
+          className={`
+            w-full py-2.5 rounded-xl text-slate-800 placeholder-slate-400 transition-all duration-200
+            border bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500
+            ${Icon ? 'pl-10 pr-4' : 'px-4'}
+            ${error ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-200'}
+            ${disabled ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200' : ''}
+          `}
+          {...props}
+        />
+      </div>
+      {error && <p className="mt-1.5 text-sm font-medium text-red-500">{error}</p>}
     </div>
   );
 };

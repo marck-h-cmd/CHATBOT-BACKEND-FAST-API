@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
-import Card from '../../components/ui/Card';
+import { Mail, Lock, User, Hash, AlertCircle, ArrowLeft } from 'lucide-react';
 import { isValidUniversityEmail, isValidUniversityCode, isValidPassword, isValidName } from '../../utils/validators';
 
 const RegisterPage = () => {
@@ -57,92 +57,154 @@ const RegisterPage = () => {
     if (result.success) {
       navigate('/login', { state: { message: 'Registro exitoso. Ahora inicia sesión.' } });
     } else {
-      setErrors({ general: result.error?.message || 'Error al registrar' });
+      setErrors({ general: result.error?.message || 'Hubo un error al crear la cuenta. Por favor, intenta de nuevo.' });
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="max-w-md w-full">
-        <div className="text-center mb-6">
-          <h2 className="text-3xl font-bold text-gray-800">Registro</h2>
-          <p className="text-gray-600 mt-2">Crea tu cuenta institucional</p>
+    <div className="min-h-screen flex">
+      {/* Decorative Panel (Hidden on mobile) */}
+      <div className="hidden lg:flex lg:w-5/12 bg-indigo-900 flex-col justify-between p-12 relative overflow-hidden">
+        {/* Subtle background pattern/glow */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
+          <div className="absolute -bottom-[20%] -right-[10%] w-[70%] h-[70%] rounded-full bg-indigo-800/50 blur-[120px]"></div>
+          <div className="absolute top-[10%] left-[0%] w-[60%] h-[60%] rounded-full bg-indigo-600/30 blur-[100px]"></div>
         </div>
-        <form onSubmit={handleSubmit}>
-          <Input
-            label="Código universitario"
-            name="codigo_universitario"
-            value={formData.codigo_universitario}
-            onChange={handleChange}
-            placeholder="12345678"
-            required
-            error={errors.codigo_universitario}
-          />
-          <Input
-            label="Correo electrónico"
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleChange}
-            placeholder="usuario@unitru.edu.pe"
-            required
-            error={errors.email}
-            className="mt-4"
-          />
-          <Input
-            label="Nombres"
-            name="nombres"
-            value={formData.nombres}
-            onChange={handleChange}
-            placeholder="Juan Carlos"
-            required
-            error={errors.nombres}
-            className="mt-4"
-          />
-          <Input
-            label="Apellidos"
-            name="apellidos"
-            value={formData.apellidos}
-            onChange={handleChange}
-            placeholder="Pérez Gómez"
-            required
-            error={errors.apellidos}
-            className="mt-4"
-          />
-          <Input
-            label="Contraseña"
-            name="password"
-            type="password"
-            value={formData.password}
-            onChange={handleChange}
-            placeholder="Mínimo 6 caracteres"
-            required
-            error={errors.password}
-            className="mt-4"
-          />
-          <Input
-            label="Confirmar contraseña"
-            name="confirmPassword"
-            type="password"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            placeholder="Repite la contraseña"
-            required
-            error={errors.confirmPassword}
-            className="mt-4"
-          />
-          {errors.general && <p className="text-red-600 text-sm mt-2">{errors.general}</p>}
-          <Button type="submit" loading={loading} className="w-full mt-6">
-            Registrarse
-          </Button>
-        </form>
-        <p className="text-center text-sm text-gray-600 mt-4">
-          ¿Ya tienes cuenta?{' '}
-          <Link to="/login" className="text-blue-600 hover:text-blue-800">
-            Inicia sesión
+
+        <div className="relative z-10">
+          <Link to="/login" className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 transition-colors backdrop-blur-md border border-white/20 mb-12 shadow-sm text-white">
+            <ArrowLeft className="w-5 h-5" />
           </Link>
-        </p>
-      </Card>
+          <h1 className="text-4xl font-bold text-white tracking-tight leading-tight mb-5">
+            Únete a la nueva<br />plataforma Sylia
+          </h1>
+          <p className="text-indigo-200 text-lg leading-relaxed max-w-sm">
+            Crea tu cuenta institucional en segundos y comienza a gestionar tus herramientas académicas con el poder de la IA.
+          </p>
+        </div>
+
+        <div className="relative z-10 text-indigo-300/80 text-sm font-medium">
+          &copy; {new Date().getFullYear()} Sylia AI. Todos los derechos reservados.
+        </div>
+      </div>
+
+      {/* Form Panel */}
+      <div className="w-full lg:w-7/12 flex items-center justify-center bg-white p-6 sm:p-12 relative overflow-y-auto">
+        <div className="w-full max-w-2xl">
+          {/* Mobile Back Button & Logo */}
+          <div className="lg:hidden flex items-center justify-between mb-8">
+            <Link to="/login" className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 shadow-sm">
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shadow-sm">
+              <img src="/logo.png" alt="Sylia Logo" className="w-6 h-6 object-contain" />
+            </div>
+          </div>
+          
+          <div className="mb-10">
+            <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Crear cuenta</h2>
+            <p className="text-slate-500 mt-2 text-sm sm:text-base">Completa tus datos usando tu correo institucional @unitru.edu.pe</p>
+          </div>
+
+          {errors.general && (
+            <div className="mb-8 p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-red-800">Error de registro</h3>
+                <p className="text-sm text-red-600 mt-1">{errors.general}</p>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Grid Layout for Desktop */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Nombres"
+                name="nombres"
+                value={formData.nombres}
+                onChange={handleChange}
+                placeholder="Ej. Juan Carlos"
+                icon={User}
+                required
+                error={errors.nombres}
+              />
+              <Input
+                label="Apellidos"
+                name="apellidos"
+                value={formData.apellidos}
+                onChange={handleChange}
+                placeholder="Ej. Pérez Gómez"
+                icon={User}
+                required
+                error={errors.apellidos}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Código Universitario"
+                name="codigo_universitario"
+                value={formData.codigo_universitario}
+                onChange={handleChange}
+                placeholder="Ej. 12345678"
+                icon={Hash}
+                required
+                error={errors.codigo_universitario}
+              />
+              <Input
+                label="Correo Institucional"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="usuario@unitru.edu.pe"
+                icon={Mail}
+                required
+                error={errors.email}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Contraseña"
+                name="password"
+                type="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Mínimo 6 caracteres"
+                icon={Lock}
+                required
+                error={errors.password}
+              />
+              <Input
+                label="Confirmar Contraseña"
+                name="confirmPassword"
+                type="password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="Repite la contraseña"
+                icon={Lock}
+                required
+                error={errors.confirmPassword}
+              />
+            </div>
+
+            <div className="pt-4">
+              <Button type="submit" loading={loading} className="w-full h-12 text-base">
+                Crear cuenta institucional
+              </Button>
+            </div>
+          </form>
+
+          <p className="text-center text-sm text-slate-600 mt-8">
+            ¿Ya tienes una cuenta?{' '}
+            <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-700 transition-colors">
+              Inicia sesión aquí
+            </Link>
+          </p>
+        </div>
+      </div>
     </div>
   );
 };

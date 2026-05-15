@@ -10,7 +10,7 @@ const AdminDashboardPage = () => {
   const { loading } = useServiceDesk();
   const location = useLocation();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
 
   const menuItems = [
     { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -44,11 +44,24 @@ const AdminDashboardPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex bg-slate-50">
+    <div className="min-h-screen flex bg-slate-50 relative overflow-hidden">
+      
+      {/* Mobile Backdrop */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 z-40 md:hidden backdrop-blur-sm transition-opacity"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className={`${sidebarOpen ? 'w-64' : 'w-20'} transition-all duration-300 bg-white border-r border-slate-200 flex flex-col z-20 shadow-sm hidden md:flex`}>
-        <div className="h-16 flex items-center justify-center border-b border-slate-100">
-          <h1 className={`font-bold text-indigo-700 tracking-tight transition-all ${sidebarOpen ? 'text-lg' : 'text-xs'}`}>
+      <div className={`
+        fixed inset-y-0 left-0 z-50 md:relative
+        ${sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0 md:w-20'} 
+        transition-all duration-300 bg-white border-r border-slate-200 flex flex-col shadow-xl md:shadow-sm
+      `}>
+        <div className="h-16 shrink-0 flex items-center justify-between px-4 border-b border-slate-100">
+          <h1 className={`font-bold text-indigo-700 tracking-tight transition-all ${sidebarOpen ? 'text-lg' : 'text-xs mx-auto'}`}>
             {sidebarOpen ? 'Centro de Mando' : 'ADMIN'}
           </h1>
         </div>
@@ -64,6 +77,9 @@ const AdminDashboardPage = () => {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={() => {
+                  if (window.innerWidth < 768) setSidebarOpen(false);
+                }}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${
                   isActive
                     ? 'bg-indigo-50 text-indigo-700 font-semibold'
@@ -78,7 +94,7 @@ const AdminDashboardPage = () => {
           })}
         </nav>
 
-        <div className="p-4 border-t border-slate-100 space-y-2">
+        <div className="p-4 border-t border-slate-100 space-y-2 shrink-0">
           <Link
             to="/dashboard"
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 hover:text-indigo-600 transition-colors group"
@@ -99,45 +115,45 @@ const AdminDashboardPage = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
         {/* Top Bar */}
-        <header className="bg-white border-b border-slate-200 h-16 shrink-0 flex items-center justify-between px-6 z-10">
-          <div className="flex items-center gap-4">
+        <header className="bg-white border-b border-slate-200 h-16 shrink-0 flex items-center justify-between px-4 sm:px-6 z-10">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 -ml-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors hidden md:block"
+              className="p-2 -ml-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
             >
               <Menu className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-2">
-               <div className="w-8 h-8 rounded-lg overflow-hidden shadow-sm border border-slate-100">
+               <div className="w-8 h-8 rounded-lg overflow-hidden shadow-sm border border-slate-100 hidden sm:block">
                   <img src="/logo.png" alt="Sylia Logo" className="w-full h-full object-cover" />
                </div>
-               <span className="font-bold text-slate-800 md:hidden">Admin Panel</span>
+               <span className="font-bold text-slate-800 text-sm hidden sm:block md:hidden">Admin Panel</span>
             </div>
           </div>
           
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:flex flex-col items-end mr-2">
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col items-end mr-1">
               <span className="text-sm font-bold text-slate-800 leading-tight">
-                {user?.nombres}
+                {user?.nombres?.split(' ')[0] || 'Administrador'}
               </span>
-              <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">
+              <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider hidden sm:block">
                 Administrador
               </span>
             </div>
-            <div className="w-9 h-9 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-sm border border-indigo-200">
+            <div className="w-9 h-9 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-sm border border-indigo-200 shrink-0">
               {user?.nombres?.charAt(0) || 'A'}
             </div>
           </div>
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-slate-50">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 bg-slate-50 relative">
           {loading ? (
             <LoadingSpinner fullScreen />
           ) : (
-            <div className="max-w-7xl mx-auto">
+            <div className="max-w-7xl mx-auto w-full">
               <Outlet />
             </div>
           )}
