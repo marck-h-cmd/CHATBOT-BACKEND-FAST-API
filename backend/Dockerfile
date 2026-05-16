@@ -17,8 +17,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar el código fuente
 COPY . .
 
+# Dar permisos de ejecución al entrypoint
+RUN chmod +x entrypoint.sh
+
 # Exponer el puerto
 EXPOSE 8000
 
-# Iniciar servidor con recarga automática para desarrollo
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Usar entrypoint script
+ENTRYPOINT ["./entrypoint.sh"]
