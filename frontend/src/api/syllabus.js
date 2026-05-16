@@ -83,9 +83,10 @@ export const getPendingSyllabi = async () => {
 };
 
 // ITIL: Aprobar sílabo (admin)
-export const approveSyllabus = async (id_silabo, comentario = null) => {
+export const approveSyllabus = async (id_silabo, comentario = null, id_periodo_nuevo = null) => {
   const response = await apiClient.post(`/silabo/aprobar/${id_silabo}`, {
-    comentario
+    comentario,
+    id_periodo_nuevo
   });
   return response.data;
 };

@@ -7,7 +7,7 @@ import ChatInput from '../components/chat/ChatInput';
 import TypingIndicator from '../components/chat/TypingIndicator';
 import QuickReplies from '../components/chat/QuickReplies';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, CheckCircle, Clock, Bot, Info, ShieldAlert, Sparkles, MessageSquare } from 'lucide-react';
+import { BookOpen, CheckCircle, Clock, Info, ShieldAlert, Sparkles, Menu, X, Search } from 'lucide-react';
 
 const ChatPage = () => {
   const { messages, loading, sendMessage, currentResponse } = useChat();
@@ -17,6 +17,8 @@ const ChatPage = () => {
   
   const [selectedContextId, setSelectedContextId] = useState(null);
   const [selectedContext, setSelectedContext] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -33,6 +35,9 @@ const ChatPage = () => {
   const handleContextSelect = (contexto) => {
     setSelectedContextId(contexto.id_contexto);
     setSelectedContext(contexto);
+    if (window.innerWidth < 1024) {
+      setSidebarOpen(false); // Cierra drawer en móviles al seleccionar
+    }
   };
 
   if (!isAuthenticated) {
@@ -41,173 +46,229 @@ const ChatPage = () => {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white border border-slate-200 shadow-xl p-8 rounded-2xl max-w-md w-full text-center"
+          className="bg-white border border-slate-200 shadow-sm p-8 rounded-3xl max-w-md w-full text-center"
         >
           <ShieldAlert className="w-16 h-16 text-indigo-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Acceso Denegado</h2>
-          <p className="text-gray-600">Inicia sesión para usar el asistente de inteligencia artificial.</p>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Acceso Denegado</h2>
+          <p className="text-slate-600">Inicia sesión para usar el asistente de inteligencia artificial.</p>
         </motion.div>
       </div>
     );
   }
 
+  const filteredEnrollments = enrollments.filter(ctx => 
+    ctx.curso.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    ctx.periodo.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Agrupar por periodo
+  const groupedEnrollments = filteredEnrollments.reduce((acc, ctx) => {
+    const periodo = ctx.periodo || 'Otros';
+    if (!acc[periodo]) acc[periodo] = [];
+    acc[periodo].push(ctx);
+    return acc;
+  }, {});
+
+  // Ordenar periodos (más reciente primero)
+  const sortedPeriods = Object.keys(groupedEnrollments).sort((a, b) => b.localeCompare(a));
+
   return (
-    <div className="h-full min-h-0 flex flex-col overflow-hidden bg-slate-50">
-      <div className="flex-1 min-h-0 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 overflow-hidden">
-        <div className="flex h-full min-h-0 flex-col gap-6 lg:flex-row">
+    <div className="h-full w-full flex bg-white overflow-hidden relative">
+      
+      {/* Mobile Backdrop */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/20 z-40 lg:hidden transition-opacity backdrop-blur-sm"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar (Desktop & Mobile Drawer) */}
+      <div className={`
+        fixed inset-y-0 left-0 z-50 w-[280px] bg-[#f9fafb] border-r border-slate-200 transform transition-transform duration-300 ease-in-out
+        lg:relative lg:translate-x-0 shrink-0
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        {/* Mobile close button inside drawer */}
+        <div className="absolute top-3 right-3 lg:hidden z-10">
+          <button onClick={() => setSidebarOpen(false)} className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 rounded-lg transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <div className="flex flex-col h-full bg-[#F9FAFB]">
+          <div className="p-5 border-b border-slate-200 shrink-0 bg-white">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5 text-slate-800">
+                <div className="bg-indigo-600 p-1.5 rounded-lg shadow-sm shadow-indigo-100">
+                  <BookOpen className="w-4 h-4 text-white" />
+                </div>
+                <h3 className="font-bold text-lg tracking-tight">Mis Cursos</h3>
+              </div>
+            </div>
+            
+            {/* Buscador de cursos */}
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
+                <Search className="w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+              </div>
+              <input
+                type="text"
+                placeholder="Buscar curso o periodo..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+              />
+            </div>
+          </div>
           
-          {/* Sidebar Izquierdo: Cursos */}
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-            className="w-full space-y-6 overflow-y-auto no-scrollbar min-h-0 lg:w-80 shrink-0"
-          >
-            <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-5 flex flex-col gap-4">
-              <div className="flex items-center gap-2 text-indigo-600 mb-2">
-                <BookOpen className="w-5 h-5" />
-                <h3 className="font-semibold text-lg">Mis Cursos</h3>
+          <div className="flex-1 overflow-y-auto p-3 space-y-6 no-scrollbar custom-scrollbar">
+            {enrollments.length === 0 ? (
+              <div className="text-center py-12 px-4">
+                <div className="bg-slate-100 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-200">
+                  <Info className="w-5 h-5 text-slate-400" />
+                </div>
+                <p className="text-slate-500 text-sm font-medium">Aún no estás inscrito en ningún curso.</p>
               </div>
-              
-              {enrollments.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="bg-indigo-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Info className="w-6 h-6 text-indigo-400" />
+            ) : sortedPeriods.length === 0 ? (
+              <div className="text-center py-12 px-4">
+                <p className="text-slate-400 text-sm italic">No se encontraron cursos con "{searchTerm}"</p>
+              </div>
+            ) : (
+              sortedPeriods.map(periodo => (
+                <div key={periodo} className="space-y-2">
+                  <div className="flex items-center gap-2 px-2 py-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">{periodo}</span>
+                    <div className="h-px flex-1 bg-slate-100"></div>
                   </div>
-                  <p className="text-gray-500 text-sm">No estás inscrito en ningún curso.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {enrollments.map((ctx) => {
-                    const isSelected = selectedContextId === ctx.id_contexto;
-                    return (
-                      <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        key={ctx.id_contexto}
-                        onClick={() => handleContextSelect(ctx)}
-                        className={`p-4 rounded-xl cursor-pointer transition-all duration-300 ${
-                          isSelected
-                            ? 'bg-slate-900 text-white shadow-md'
-                            : 'bg-slate-50 hover:bg-slate-100 border border-slate-200'
-                        }`}
-                      >
-                        <p className={`font-semibold line-clamp-2 ${isSelected ? 'text-white' : 'text-slate-800'}`}>
-                          {ctx.curso}
-                        </p>
-                        <p className={`text-xs mt-1 ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
-                          {ctx.periodo}
-                        </p>
-                        
-                        <div className="mt-3 flex items-center gap-1.5">
-                          {ctx.silabo_validado ? (
-                            <span className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-semibold px-2 py-1 rounded-full ${isSelected ? 'bg-slate-700 text-slate-100' : 'bg-emerald-100 text-emerald-700'}`}>
-                              <CheckCircle className="w-3 h-3" /> Validado
-                            </span>
-                          ) : (
-                            <span className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-semibold px-2 py-1 rounded-full ${isSelected ? 'bg-slate-700 text-slate-100' : 'bg-amber-100 text-amber-700'}`}>
-                              <Clock className="w-3 h-3" /> Pendiente
-                            </span>
-                          )}
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <AnimatePresence>
-              {selectedContext && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="bg-white border border-slate-200 shadow-sm rounded-2xl p-5"
-                >
-                  <div className="flex items-center gap-2 text-indigo-600 mb-3">
-                    <Info className="w-5 h-5" />
-                    <h3 className="font-semibold text-lg">Contexto Activo</h3>
-                  </div>
-                  <p className="font-medium text-gray-800">{selectedContext.curso}</p>
-                  <p className="text-sm text-gray-500 mt-1">{selectedContext.periodo}</p>
                   
-                  <div className={`mt-4 p-3 rounded-xl text-sm flex gap-3 items-start ${selectedContext.silabo_validado ? 'bg-indigo-50 text-indigo-800' : 'bg-amber-50 text-amber-800'}`}>
-                    {selectedContext.silabo_validado ? (
-                      <>
-                        <Sparkles className="w-5 h-5 shrink-0 text-indigo-500" />
-                        <p>Modo avanzado activado. Puedes realizar consultas complejas y simulaciones de notas.</p>
-                      </>
-                    ) : (
-                      <>
-                        <ShieldAlert className="w-5 h-5 shrink-0 text-amber-500" />
-                        <p>Sílabo en revisión. Solo están disponibles consultas teóricas generales.</p>
-                      </>
-                    )}
+                  <div className="space-y-1.5">
+                    {groupedEnrollments[periodo].map((ctx) => {
+                      const isSelected = selectedContextId === ctx.id_contexto;
+                      return (
+                        <motion.div
+                          whileHover={{ x: 2 }}
+                          whileTap={{ scale: 0.98 }}
+                          key={ctx.id_contexto}
+                          onClick={() => handleContextSelect(ctx)}
+                          className={`group p-3 rounded-xl cursor-pointer transition-all duration-200 border-2 flex items-center gap-3 ${
+                            isSelected
+                              ? 'bg-white border-indigo-500 shadow-sm shadow-indigo-100'
+                              : 'bg-transparent border-transparent hover:bg-slate-200/50'
+                          }`}
+                        >
+                          <div className={`w-1.5 h-8 rounded-full shrink-0 transition-all ${
+                            isSelected ? 'bg-indigo-500' : 'bg-transparent group-hover:bg-slate-300'
+                          }`} />
+                          
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-bold truncate text-[13px] mb-0.5 ${isSelected ? 'text-indigo-900' : 'text-slate-700'}`}>
+                              {ctx.curso}
+                            </p>
+                            <div className="flex items-center gap-2">
+                               <span className={`flex items-center gap-1 text-[10px] font-bold ${
+                                 ctx.silabo_validado ? 'text-emerald-500' : 'text-amber-500'
+                               }`}>
+                                 <div className={`w-1.5 h-1.5 rounded-full ${ctx.silabo_validado ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                                 {ctx.silabo_validado ? 'OFICIAL' : 'PENDIENTE'}
+                               </span>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
+                </div>
+              ))
+            )}
+          </div>
 
-          {/* Columna Derecha: Chat Area */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="flex-1 min-h-0 flex flex-col overflow-hidden bg-white border border-slate-200 rounded-3xl shadow-lg"
-          >
-            {/* Header del Chat */}
-            <div className="px-6 py-4 border-b border-slate-100 bg-white flex justify-between items-center z-10 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shadow-sm shrink-0">
-                  <img src="/logo.png" alt="Sylia Logo" className="w-full h-full object-cover" />
+          {selectedContext && (
+            <div className="shrink-0 p-4 border-t border-slate-200 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Estado del Asistente</h4>
+              </div>
+              <div className={`p-3 rounded-xl text-[11px] flex items-center gap-3 border ${
+                selectedContext.silabo_validado 
+                  ? 'bg-emerald-50 border-emerald-100 text-emerald-800' 
+                  : 'bg-amber-50 border-amber-100 text-amber-800'
+              }`}>
+                <div className={`shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${
+                  selectedContext.silabo_validado ? 'bg-emerald-500/10' : 'bg-amber-500/10'
+                }`}>
+                  {selectedContext.silabo_validado ? <CheckCircle className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
                 </div>
-                <div>
-                  <h2 className="font-bold text-slate-800">Sylia</h2>
-                  <p className="text-xs text-slate-500 font-medium">{selectedContext ? `Conectada a ${selectedContext.curso}` : 'Lista para ayudarte'}</p>
-                </div>
+                <p className="font-semibold leading-snug">
+                  {selectedContext.silabo_validado 
+                    ? 'Base de conocimiento completa y validada.' 
+                    : 'Sílabo en validación. Algunas funciones están limitadas.'}
+                </p>
               </div>
             </div>
+          )}
+        </div>
+      </div>
 
-            {/* Área de mensajes con scroll interno */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 min-h-0 no-scrollbar scroll-smooth">
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col h-full min-w-0 bg-white">
+        
+        {/* Mobile Header (Only visible on mobile/tablet) */}
+        <div className="lg:hidden shrink-0 h-14 border-b border-slate-200 flex items-center px-4 gap-3 bg-white/80 backdrop-blur-md sticky top-0 z-30">
+          <button 
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full overflow-hidden shadow-sm">
+              <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
+            </div>
+            <span className="font-bold text-slate-800 text-sm">Sylia</span>
+          </div>
+        </div>
+
+        {/* Mensajes */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-6 scroll-smooth">
+          <div className="max-w-3xl mx-auto w-full flex flex-col">
+            <div className="flex flex-col space-y-6">
               {messages.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center opacity-70">
-                  <div className="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mb-6">
-                    <MessageSquare className="w-10 h-10" />
+                <div className="flex flex-col items-center justify-center py-24 text-center opacity-90">
+                  <div className="w-16 h-16 bg-white border border-slate-200 rounded-full flex items-center justify-center mb-6 shadow-sm overflow-hidden p-3">
+                    <img src="/logo.png" alt="Sylia" className="w-full h-full object-contain" />
                   </div>
-                  <h3 className="text-2xl font-bold text-slate-800 mb-2">
-                    {selectedContext ? '¡Hola! ¿En qué puedo ayudarte?' : 'Comencemos'}
+                  <h3 className="text-2xl font-bold text-slate-800 mb-3 tracking-tight">
+                    {selectedContext ? `Estás en ${selectedContext.curso}` : 'Bienvenido a Sylia'}
                   </h3>
-                  <p className="text-slate-500 max-w-xs">
+                  <p className="text-slate-500 max-w-sm leading-relaxed text-sm">
                     {selectedContext 
-                      ? 'Pregúntame sobre evaluaciones, fechas, fórmulas o reglas del curso.' 
-                      : 'Selecciona un curso en el panel izquierdo para inicializar mi contexto.'}
+                      ? 'Hazme cualquier pregunta sobre fórmulas de calificación, reglas de evaluación o temas del curso.' 
+                      : 'Selecciona un curso en el menú izquierdo para inicializar mi base de conocimiento y comenzar.'}
                   </p>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  {messages.map((msg, idx) => (
-                    <ChatMessage key={idx} message={msg} />
-                  ))}
-                  {loading && <TypingIndicator />}
-                </div>
+                messages.map((msg, idx) => (
+                  <ChatMessage key={idx} message={msg} />
+                ))
               )}
-              <div ref={messagesEndRef} className="h-4" />
+              {loading && <TypingIndicator />}
             </div>
+            <div ref={messagesEndRef} className="h-4" />
+          </div>
+        </div>
 
-            {/* Footer fijo con input y quick replies */}
-            <div className="shrink-0 bg-white border-t border-slate-100 p-4 relative z-10">
-              <div className="max-w-4xl mx-auto">
-                <QuickReplies onSelect={handleSend} lastIntent={currentResponse?.intent} />
-                <div className="mt-3">
-                  <ChatInput onSend={handleSend} isLoading={loading} disabled={!selectedContextId} />
-                </div>
-              </div>
+        {/* Input Footer */}
+        <div className="shrink-0 bg-white px-4 pb-6 pt-2">
+          <div className="max-w-3xl mx-auto w-full">
+            <QuickReplies onSelect={handleSend} lastIntent={currentResponse?.intent} />
+            <div className="mt-3">
+              <ChatInput onSend={handleSend} isLoading={loading} disabled={!selectedContextId} />
             </div>
-          </motion.div>
-
+            <div className="text-center mt-3">
+              <span className="text-[11px] text-slate-400 font-medium">Sylia puede cometer errores. Por favor, verifica la información con tu docente.</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

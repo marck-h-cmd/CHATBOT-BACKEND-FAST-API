@@ -30,7 +30,7 @@ class DashboardService:
         silabos_validados = db.query(Silabo).filter(Silabo.estado_validacion == EstadoVerificacion.APROBADO).count()
         silabos_rechazados = db.query(Silabo).filter(Silabo.estado_validacion == EstadoVerificacion.RECHAZADO).count()
         alertas_riesgo = db.query(IncidenteAcademico).filter(IncidenteAcademico.estado == EstadoIncidente.ACTIVO).count()
-        estudiantes_riesgo = db.query(IncidenteAcademico.id_estudiante).filter(IncidenteAcademico.estado == EstadoIncidente.ACTIVO).distinct().count()
+        estudiantes_riesgo = db.query(IncidenteAcademico.id_usuario).filter(IncidenteAcademico.estado == EstadoIncidente.ACTIVO).distinct().count()
         tiempo_promedio_respuesta = db.query(func.avg(SolicitudServicio.tiempo_respuesta_ms)).scalar() or 0
         tasa_resolucion = DashboardService._calcular_tasa_resolucion(db)
         

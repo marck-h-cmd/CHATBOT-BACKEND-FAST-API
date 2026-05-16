@@ -64,15 +64,12 @@ const RegisterPage = () => {
   return (
     <div className="min-h-screen flex">
       {/* Decorative Panel (Hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-5/12 bg-indigo-900 flex-col justify-between p-12 relative overflow-hidden">
-        {/* Subtle background pattern/glow */}
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-          <div className="absolute -bottom-[20%] -right-[10%] w-[70%] h-[70%] rounded-full bg-indigo-800/50 blur-[120px]"></div>
-          <div className="absolute top-[10%] left-[0%] w-[60%] h-[60%] rounded-full bg-indigo-600/30 blur-[100px]"></div>
-        </div>
+      <div className="hidden lg:flex lg:w-5/12 bg-indigo-950 flex-col justify-between p-12 relative overflow-hidden">
+        {/* Subtle geometric pattern (optional, kept minimal) */}
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:24px_24px]"></div>
 
         <div className="relative z-10">
-          <Link to="/login" className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 transition-colors backdrop-blur-md border border-white/20 mb-12 shadow-sm text-white">
+          <Link to="/login" className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white/5 hover:bg-white/10 transition-colors border border-white/10 mb-12 shadow-sm text-white">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <h1 className="text-4xl font-bold text-white tracking-tight leading-tight mb-5">
@@ -83,7 +80,7 @@ const RegisterPage = () => {
           </p>
         </div>
 
-        <div className="relative z-10 text-indigo-300/80 text-sm font-medium">
+        <div className="relative z-10 text-indigo-200/60 text-sm font-medium tracking-wide">
           &copy; {new Date().getFullYear()} Sylia AI. Todos los derechos reservados.
         </div>
       </div>
@@ -96,14 +93,14 @@ const RegisterPage = () => {
             <Link to="/login" className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 shadow-sm">
               <ArrowLeft className="w-5 h-5" />
             </Link>
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shadow-sm">
+            <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center shadow-sm">
               <img src="/logo.png" alt="Sylia Logo" className="w-6 h-6 object-contain" />
             </div>
           </div>
           
           <div className="mb-10">
             <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Crear cuenta</h2>
-            <p className="text-slate-500 mt-2 text-sm sm:text-base">Completa tus datos usando tu correo institucional @unitru.edu.pe</p>
+            <p className="text-slate-500 mt-2 text-sm sm:text-base font-medium">Completa tus datos usando tu correo institucional @unitru.edu.pe</p>
           </div>
 
           {errors.general && (
@@ -191,13 +188,13 @@ const RegisterPage = () => {
             </div>
 
             <div className="pt-4">
-              <Button type="submit" loading={loading} className="w-full h-12 text-base">
+              <Button type="submit" loading={loading} className="w-full h-12 text-base font-semibold shadow-sm">
                 Crear cuenta institucional
               </Button>
             </div>
           </form>
 
-          <p className="text-center text-sm text-slate-600 mt-8">
+          <p className="text-center text-sm text-slate-600 mt-8 font-medium">
             ¿Ya tienes una cuenta?{' '}
             <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-700 transition-colors">
               Inicia sesión aquí

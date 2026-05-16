@@ -5,19 +5,28 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from datetime import datetime
 
+from fastapi.staticfiles import StaticFiles
 from app.api.routes import syllabus, chat, metrics, courses, chunks, services, logs, periods, context
 from app.api.routes.auth import router as auth_router
 from app.database.connection import engine, Base
 from app.config import Config
+import os
 
 # Crear tablas
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="Sylia AI",
+    title="Chatbot Académico ITIL 4",
     description="Service Desk para interpretación de sílabos con autenticación",
     version="1.0.0"
 )
+
+# Asegurar que el directorio de uploads existe
+UPLOAD_DIR = os.path.join("app", "static", "uploads", "syllabi")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Montar archivos estáticos
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # CORS - Configuración segura
 allowed_origins = [
@@ -121,7 +130,7 @@ app.include_router(logs.router)
 @app.get("/")
 async def root():
     return {
-        "message": "Sylia AI",
+        "message": "Chatbot Académico ITIL 4",
         "docs": "/docs",
         "version": "1.0.0",
         "status": "online",
@@ -140,7 +149,7 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "OK", "service": "Sylia AI", "timestamp": datetime.now().isoformat()}
+    return {"status": "OK", "service": "Chatbot ITIL 4", "timestamp": datetime.now().isoformat()}
 
 
 if __name__ == "__main__":

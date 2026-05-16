@@ -4,6 +4,7 @@ import * as courseAPI from '../../api/courses';
 import Button from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Modal from '../../components/ui/Modal';
+import Pagination from '../../components/ui/Pagination';
 import { Search, Plus, Edit2, Trash2, BookMarked, Filter } from 'lucide-react';
 
 const CourseManagementPage = () => {
@@ -12,6 +13,8 @@ const CourseManagementPage = () => {
   const [editingCourse, setEditingCourse] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterEscuela, setFilterEscuela] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   const [formData, setFormData] = useState({
     codigo_curso: '',
@@ -96,6 +99,15 @@ const CourseManagementPage = () => {
     });
   }, [courses, searchTerm, filterEscuela]);
 
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterEscuela]);
+
+  const paginatedCourses = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredCourses.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredCourses, currentPage]);
+
   const escuelas = useMemo(() => {
     const list = new Set(courses.map(c => c.escuela).filter(Boolean));
     return Array.from(list);
@@ -167,7 +179,7 @@ const CourseManagementPage = () => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredCourses.length > 0 ? (
-                filteredCourses.map((course) => (
+                paginatedCourses.map((course) => (
                   <tr key={course.id_curso} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-6 py-4">
                       <span className="font-mono text-xs font-semibold bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-200">
@@ -223,6 +235,15 @@ const CourseManagementPage = () => {
             </tbody>
           </table>
         </div>
+        
+        {filteredCourses.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredCourses.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingCourse ? 'Editar Curso' : 'Registrar Nuevo Curso'}>

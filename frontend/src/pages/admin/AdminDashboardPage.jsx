@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useServiceDesk } from '../../contexts/ServiceDeskContext';
-import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import { LayoutDashboard, BookMarked, CalendarDays, FileText, Search, Ticket, AlertTriangle, BarChart3, Menu, Home, LogOut, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, BookMarked, CalendarDays, FileText, Search, Ticket, AlertTriangle, BarChart3, Menu, LogOut, ShieldAlert } from 'lucide-react';
 
 const AdminDashboardPage = () => {
   const { user, logout } = useAuth();
-  const { loading } = useServiceDesk();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
@@ -95,14 +92,6 @@ const AdminDashboardPage = () => {
         </nav>
 
         <div className="p-4 border-t border-slate-100 space-y-2 shrink-0">
-          <Link
-            to="/dashboard"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 hover:text-indigo-600 transition-colors group"
-            title={!sidebarOpen ? 'Vista Estudiante' : ''}
-          >
-            <Home className="w-5 h-5 shrink-0 text-slate-400 group-hover:text-indigo-500" />
-            {sidebarOpen && <span className="font-medium">Vista Estudiante</span>}
-          </Link>
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-600 hover:bg-red-50 w-full transition-colors"
@@ -150,13 +139,9 @@ const AdminDashboardPage = () => {
 
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 bg-slate-50 relative">
-          {loading ? (
-            <LoadingSpinner fullScreen />
-          ) : (
-            <div className="max-w-7xl mx-auto w-full">
-              <Outlet />
-            </div>
-          )}
+          <div className="max-w-7xl mx-auto w-full">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

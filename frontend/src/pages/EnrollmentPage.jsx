@@ -6,7 +6,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { Calendar, Search, Filter, BookOpen, ChevronLeft, Check, AlertCircle } from 'lucide-react';
 
 const EnrollmentPage = () => {
-  const { courses, enrollInCourse, getCurrentPeriod, loading } = useCourse();
+  const { courses, periods, enrollInCourse, getCurrentPeriod, loading } = useCourse();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -17,7 +17,18 @@ const EnrollmentPage = () => {
   const [error, setError] = useState(null);
 
   const currentPeriod = getCurrentPeriod();
+  const [selectedPeriodId, setSelectedPeriodId] = useState(null);
   const preSelectedCourseId = location.state?.courseId;
+
+  useEffect(() => {
+    if (!selectedPeriodId && periods && periods.length > 0) {
+      if (currentPeriod) {
+        setSelectedPeriodId(currentPeriod.id_periodo);
+      } else {
+        setSelectedPeriodId(periods[0].id_periodo);
+      }
+    }
+  }, [periods, currentPeriod, selectedPeriodId]);
 
   const getAvailableCycles = () => {
     const cycleSet = new Set(
@@ -56,14 +67,14 @@ const EnrollmentPage = () => {
     setError(null);
 
     try {
-      const result = await enrollInCourse(selectedCourse, currentPeriod.id_periodo);
+      const result = await enrollInCourse(selectedCourse, selectedPeriodId);
       
       if (result.success) {
         navigate('/inscripcion-exitosa', {
           state: {
             enrollment: {
               id_curso: selectedCourse,
-              id_periodo: currentPeriod.id_periodo,
+              id_periodo: selectedPeriodId,
               ...result.data
             }
           },
@@ -86,14 +97,14 @@ const EnrollmentPage = () => {
     return <LoadingSpinner fullScreen />;
   }
 
-  if (!currentPeriod) {
+  if (!periods || periods.length === 0) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm">
           <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-6" />
-          <h2 className="text-2xl font-bold text-slate-800 mb-3">Período No Disponible</h2>
+          <h2 className="text-2xl font-bold text-slate-800 mb-3">Períodos No Disponibles</h2>
           <p className="text-slate-500 mb-8 max-w-md mx-auto">
-            No hay un período académico activo en este momento. Por favor, contacta a la administración.
+            No hay períodos académicos registrados en el sistema. Por favor, contacta a la administración.
           </p>
           <Button onClick={() => navigate('/cursos')}>Volver al Catálogo</Button>
         </div>
@@ -106,12 +117,24 @@ const EnrollmentPage = () => {
       <div className="mb-8 md:flex md:items-end md:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">Matrícula</h1>
-          <p className="text-slate-500">Selecciona el curso al que deseas inscribirte en el periodo actual.</p>
+          <p className="text-slate-500">Selecciona el curso al que deseas inscribirte en el periodo seleccionado.</p>
         </div>
         <div className="mt-4 md:mt-0">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-semibold border border-indigo-100">
-            <Calendar className="w-4 h-4" /> {currentPeriod.nombre}
-          </span>
+          <div className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 rounded-xl border border-indigo-100 shadow-sm transition-colors hover:bg-indigo-100/70">
+            <Calendar className="w-4 h-4 text-indigo-700" />
+            <select 
+              value={selectedPeriodId || ''}
+              onChange={(e) => setSelectedPeriodId(Number(e.target.value))}
+              className="bg-transparent text-indigo-700 text-sm font-semibold focus:outline-none cursor-pointer appearance-none pr-5 py-0.5"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%234338ca' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0 center', backgroundRepeat: 'no-repeat', backgroundSize: '1.2em 1.2em' }}
+            >
+              {periods.map(p => (
+                <option key={p.id_periodo} value={p.id_periodo}>
+                  {p.nombre} {p.es_actual ? '(Actual)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 

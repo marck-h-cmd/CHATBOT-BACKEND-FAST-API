@@ -4,12 +4,16 @@ import * as periodAPI from '../../api/periods';
 import Button from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Modal from '../../components/ui/Modal';
+import Pagination from '../../components/ui/Pagination';
 import { CalendarDays, Plus, Edit2, CheckCircle2, PlayCircle } from 'lucide-react';
 
 const PeriodManagementPage = () => {
   const { periods, loading, refreshData } = useCourse();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPeriod, setEditingPeriod] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
   const [formData, setFormData] = useState({
     anio: new Date().getFullYear(),
     termino: '',
@@ -88,6 +92,9 @@ const PeriodManagementPage = () => {
     return <LoadingSpinner fullScreen />;
   }
 
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedPeriods = periods.slice(startIndex, startIndex + itemsPerPage);
+
   return (
     <div className="max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-8">
@@ -117,7 +124,7 @@ const PeriodManagementPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {periods.map((period) => (
+              {paginatedPeriods.map((period) => (
                 <tr key={period.id_periodo} className={`hover:bg-slate-50/80 transition-colors ${period.es_actual ? 'bg-indigo-50/30' : ''}`}>
                   <td className="px-6 py-4">
                     <p className="font-bold text-slate-800 text-sm">{period.nombre}</p>
@@ -165,6 +172,15 @@ const PeriodManagementPage = () => {
             </tbody>
           </table>
         </div>
+        
+        {periods.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={periods.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingPeriod ? 'Editar Periodo' : 'Aperturar Nuevo Periodo'}>

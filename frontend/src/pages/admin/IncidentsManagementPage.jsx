@@ -1,16 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import * as servicesAPI from '../../api/service-desk';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import Pagination from '../../components/ui/Pagination';
 import { AlertTriangle, Filter, CheckCircle2 } from 'lucide-react';
 
 const IncidentsManagementPage = () => {
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     loadIncidents();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter]);
 
   const loadIncidents = async () => {
     setLoading(true);
@@ -33,6 +40,9 @@ const IncidentsManagementPage = () => {
         if(filter === 'resuelto') return i.resuelto;
         return true;
       });
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedIncidents = filteredIncidents.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -84,7 +94,7 @@ const IncidentsManagementPage = () => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredIncidents.length > 0 ? (
-                filteredIncidents.map(incident => (
+                paginatedIncidents.map(incident => (
                   <tr key={incident.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-6 py-4">
                       <span className="font-mono text-xs font-semibold bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-200">
@@ -130,6 +140,15 @@ const IncidentsManagementPage = () => {
             </tbody>
           </table>
         </div>
+        
+        {filteredIncidents.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredIncidents.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
     </div>
   );

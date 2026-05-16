@@ -1,40 +1,40 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Bot } from 'lucide-react';
 
 const TypingIndicator = () => {
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex gap-3 mb-6"
-    >
-      {/* Avatar */}
-      <div className="shrink-0 flex flex-col items-center">
-        <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center shadow-sm">
-          <Bot className="w-5 h-5" />
+    <div className="flex w-full justify-start mb-6">
+      <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 mr-3 border border-slate-200 mt-1 bg-white shadow-sm flex items-center justify-center">
+        <img src="/logo.png" alt="Sylia" className="w-6 h-6 object-contain" />
+      </div>
+      
+      <div className="flex flex-col max-w-[85%] items-start">
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-1.5 text-[11px] text-slate-500 font-semibold px-1 tracking-wide">
+          <span className="text-slate-700">Sylia</span>
+          <span className="text-indigo-500 animate-pulse">escribiendo...</span>
+        </div>
+
+        {/* Bubble */}
+        <div className="px-5 py-4 shadow-sm bg-white border border-slate-100 rounded-2xl rounded-tl-sm flex items-center gap-1.5 h-[52px]">
+          <motion.div
+            animate={{ y: [0, -5, 0], opacity: [0.4, 1, 0.4] }}
+            transition={{ duration: 0.8, repeat: Infinity, delay: 0 }}
+            className="w-2 h-2 bg-indigo-500 rounded-full"
+          />
+          <motion.div
+            animate={{ y: [0, -5, 0], opacity: [0.4, 1, 0.4] }}
+            transition={{ duration: 0.8, repeat: Infinity, delay: 0.2 }}
+            className="w-2 h-2 bg-indigo-500 rounded-full"
+          />
+          <motion.div
+            animate={{ y: [0, -5, 0], opacity: [0.4, 1, 0.4] }}
+            transition={{ duration: 0.8, repeat: Infinity, delay: 0.4 }}
+            className="w-2 h-2 bg-indigo-500 rounded-full"
+          />
         </div>
       </div>
-
-      {/* Bubble */}
-      <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-sm px-4 py-3.5 shadow-sm flex items-center gap-1.5 h-[42px]">
-        <motion.div
-          animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 1, repeat: Infinity, delay: 0 }}
-          className="w-1.5 h-1.5 bg-indigo-500 rounded-full"
-        />
-        <motion.div
-          animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
-          className="w-1.5 h-1.5 bg-indigo-500 rounded-full"
-        />
-        <motion.div
-          animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
-          className="w-1.5 h-1.5 bg-indigo-500 rounded-full"
-        />
-      </div>
-    </motion.div>
+    </div>
   );
 };
 

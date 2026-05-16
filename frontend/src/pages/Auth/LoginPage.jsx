@@ -31,15 +31,12 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen flex">
       {/* Decorative Panel (Hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-1/2 bg-indigo-900 flex-col justify-between p-12 relative overflow-hidden">
-        {/* Subtle background pattern/glow */}
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-          <div className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] rounded-full bg-indigo-800/50 blur-[120px]"></div>
-          <div className="absolute bottom-[10%] right-[0%] w-[60%] h-[60%] rounded-full bg-indigo-600/30 blur-[100px]"></div>
-        </div>
+      <div className="hidden lg:flex lg:w-1/2 bg-indigo-950 flex-col justify-between p-12 relative overflow-hidden">
+        {/* Subtle geometric pattern (optional, kept minimal) */}
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:24px_24px]"></div>
 
         <div className="relative z-10">
-          <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-md border border-white/20 mb-8 shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 mb-8 shadow-sm">
             <img src="/logo.png" alt="Sylia Logo" className="w-10 h-10 object-contain" />
           </div>
           <h1 className="text-4xl lg:text-5xl font-bold text-white tracking-tight leading-tight mb-5">
@@ -50,7 +47,7 @@ const LoginPage = () => {
           </p>
         </div>
 
-        <div className="relative z-10 text-indigo-300/80 text-sm font-medium">
+        <div className="relative z-10 text-indigo-200/60 text-sm font-medium tracking-wide">
           &copy; {new Date().getFullYear()} Sylia AI. Todos los derechos reservados.
         </div>
       </div>
@@ -59,13 +56,13 @@ const LoginPage = () => {
       <div className="w-full lg:w-1/2 flex items-center justify-center bg-white p-6 sm:p-12 relative overflow-y-auto">
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
-          <div className="lg:hidden w-16 h-16 mb-8 rounded-2xl overflow-hidden bg-indigo-50 border border-indigo-100 flex items-center justify-center shadow-sm mx-auto">
+          <div className="lg:hidden w-16 h-16 mb-8 rounded-2xl overflow-hidden bg-slate-50 border border-slate-200 flex items-center justify-center shadow-sm mx-auto">
             <img src="/logo.png" alt="Sylia Logo" className="w-10 h-10 object-contain" />
           </div>
           
           <div className="text-center lg:text-left mb-10">
             <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Bienvenido de nuevo</h2>
-            <p className="text-slate-500 mt-2 text-sm sm:text-base">Ingresa tus credenciales para acceder a tu panel.</p>
+            <p className="text-slate-500 mt-2 text-sm sm:text-base font-medium">Ingresa tus credenciales para acceder a tu panel.</p>
           </div>
 
           {error && (
@@ -106,12 +103,12 @@ const LoginPage = () => {
               </div>
             </div>
 
-            <Button type="submit" loading={loading} className="w-full h-12 mt-2 text-base">
+            <Button type="submit" loading={loading} className="w-full h-12 mt-4 text-base font-semibold shadow-sm">
               Iniciar Sesión
             </Button>
           </form>
 
-          <p className="text-center text-sm text-slate-600 mt-8">
+          <p className="text-center text-sm text-slate-600 mt-8 font-medium">
             ¿No tienes una cuenta institucional?{' '}
             <Link to="/register" className="font-semibold text-indigo-600 hover:text-indigo-700 transition-colors">
               Regístrate aquí

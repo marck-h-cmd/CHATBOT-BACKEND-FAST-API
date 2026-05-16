@@ -3,24 +3,25 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, Any, List
 import datetime
+import os
+import uuid
 from app.database.connection import get_db
 from app.database.models import (
     Usuario, Silabo, Curso, PeriodoAcademico, 
     EstadoVerificacion, AmbitoUso, TipoSilabo, 
     TipoIncidenteServicio, RolUsuario, CoincidenciaPeriodo,
-    ContextoCursoUsuario, OrigenContexto, SilaboChunk, TipoSeccionChunk
+    ContextoCursoUsuario, OrigenContexto
 )
 from app.services.pdf_parser import PDFParserService
 from app.services.ai_parser import gemini_parser
 from app.services.itil_desk import ITILServiceDesk
-from app.services.chunker import ChunkerService
-from app.services.embeddings import embedding_service
 from app.api.dependencies import get_current_user_from_token
 
 router = APIRouter(prefix="/silabo", tags=["Gestión de Sílabos"])
 
 class RevisionRequest(BaseModel):
     comentario: Optional[str] = None
+    id_periodo_nuevo: Optional[int] = None
 
 @router.post("/upload")
 async def subir_silabo(
@@ -45,6 +46,14 @@ async def subir_silabo(
 
     # 2. Procesar PDF
     contenido = await archivo.read()
+    
+    # 2.1 Guardar archivo físico para consulta administrativa
+    filename = f"{uuid.uuid4()}_{archivo.filename}"
+    filepath = os.path.join("app", "static", "uploads", "syllabi", filename)
+    with open(filepath, "wb") as f:
+        f.write(contenido)
+    
+    relative_path = f"/static/uploads/syllabi/{filename}"
     texto = PDFParserService.extraer_texto(contenido)
     
     # 3. Obtener referencias para el score
@@ -63,16 +72,33 @@ async def subir_silabo(
     coincidencias = parsing_data["coincidencias"]
     
     # 5. Determinar estado y ámbito según score (Reglas ITIL 4)
+    # REGLA ESTRICTA DE NEGOCIO: No aprobar automáticamente si el periodo no es el ACTUAL
     estado = EstadoVerificacion.PENDIENTE_CONFIRMACION
     ambito = AmbitoUso.PRIVADO
     
-    if score >= 70 and coincidencias["estructura"]:
-        estado = EstadoVerificacion.APROBADO
-    elif score < 40:
-        estado = EstadoVerificacion.RECHAZADO
+    # 5.1 Caso: El periodo coincide exactamente con el actual
+    if coincidencias["periodo"] == CoincidenciaPeriodo.ACTUAL:
+        if score >= 70 and coincidencias["estructura"]:
+            estado = EstadoVerificacion.APROBADO
+        elif score < 40:
+            estado = EstadoVerificacion.RECHAZADO
+        else:
+            estado = EstadoVerificacion.PENDIENTE_CONFIRMACION
+            
+    # 5.2 Caso: Es un sílabo de un periodo anterior (2025 vs 2026)
+    elif coincidencias["periodo"] == CoincidenciaPeriodo.ANTERIOR:
+        # Nunca aprobamos automáticamente periodos antiguos
+        estado = EstadoVerificacion.PENDIENTE_CONFIRMACION
         
-    if score > 80:
-        ambito = AmbitoUso.COMPARTIBLE # Candidato a revisión
+    # 5.3 Caso: Periodo no coincide en absoluto o es desconocido
+    else:
+        if score < 60:
+            estado = EstadoVerificacion.RECHAZADO
+        else:
+            estado = EstadoVerificacion.PENDIENTE_CONFIRMACION
+            
+    if estado == EstadoVerificacion.APROBADO and score > 80:
+        ambito = AmbitoUso.COMPARTIBLE # Candidato a revisión por ser altamente confiable
 
     # 6. Guardar Sílabo
     nuevo_silabo = Silabo(
@@ -80,6 +106,7 @@ async def subir_silabo(
         id_periodo=id_periodo,
         id_usuario_subida=current_user.id,
         nombre_archivo=archivo.filename,
+        ruta_pdf=relative_path,
         texto_extraido=texto[:15000],
         tipo_silabo=TipoSilabo.SUBIDO_USUARIO,
         ambito_uso=ambito,
@@ -93,51 +120,20 @@ async def subir_silabo(
     db.commit()
     db.refresh(nuevo_silabo)
     
-    # 7. Crear Chunks para RAG
-    metadata_base = {"nombre_curso": curso.nombre_curso}
-    chunks_creados = ChunkerService.crear_chunks(nuevo_silabo.texto_extraido, metadata_base)
-    for c in chunks_creados:
-        emb = embedding_service.generar_embedding(c["texto"])
-        
-        tipo_str = c["metadata"].get("tipo_seccion", "").upper()
-        tipo_enum = TipoSeccionChunk.CONTENIDOS
-        if "COMPETENCIA" in tipo_str:
-            tipo_enum = TipoSeccionChunk.COMPETENCIAS
-        elif "EVALUA" in tipo_str or "CRITERIO" in tipo_str:
-            tipo_enum = TipoSeccionChunk.EVALUACION
-        elif "TUTOR" in tipo_str:
-            tipo_enum = TipoSeccionChunk.TUTORIA
-        elif "SUMILLA" in tipo_str:
-            tipo_enum = TipoSeccionChunk.SUMILLA
-        elif "FORMULA" in tipo_str:
-            tipo_enum = TipoSeccionChunk.FORMULA
-            
-        nuevo_chunk = SilaboChunk(
-            id_silabo=nuevo_silabo.id_silabo,
-            contenido=c["texto"],
-            tipo_seccion=tipo_enum,
-            embedding=emb,
-            metadata_json=c["metadata"]
-        )
-        db.add(nuevo_chunk)
-    db.commit()
-    
-    # 7. Auto-asignar el sílabo al contexto del estudiante
-    contexto_estudiante = db.query(ContextoCursoUsuario).filter(
+    # Actualizar el contexto del estudiante que acaba de subir el sílabo
+    contexto_usuario = db.query(ContextoCursoUsuario).filter(
         ContextoCursoUsuario.id_usuario == current_user.id,
         ContextoCursoUsuario.id_curso == id_curso,
         ContextoCursoUsuario.id_periodo == id_periodo
     ).first()
 
-    if contexto_estudiante:
-        contexto_estudiante.id_silabo_asignado = nuevo_silabo.id_silabo
-        contexto_estudiante.origen_contexto = OrigenContexto.DECLARADO_USUARIO
-        contexto_estudiante.puntaje_confianza = score
-        # Hereda el estado: APROBADO (si score >= 70) o PENDIENTE_CONFIRMACION
-        contexto_estudiante.estado_verificacion = estado 
+    if contexto_usuario:
+        contexto_usuario.id_silabo_asignado = nuevo_silabo.id_silabo
+        contexto_usuario.estado_verificacion = estado
+        contexto_usuario.puntaje_confianza = score
         db.commit()
     
-    # 8. Registrar incidente de servicio si falló el parsing
+    # 7. Registrar incidente de servicio si falló el parsing
     if score < 50:
         ITILServiceDesk.registrar_incidente_servicio(
             db, nuevo_silabo.id_silabo, 
@@ -173,17 +169,37 @@ async def listar_pendientes_revision(
         
     silabos = db.query(Silabo).filter(
         Silabo.estado_validacion == EstadoVerificacion.PENDIENTE_CONFIRMACION
-    ).all()
+    ).order_by(Silabo.fecha_subida.desc()).all()
     
-    return [
-        {
+    result = []
+    for s in silabos:
+        # Generar advertencias basadas en metadatos para ayudar al Admin
+        advertencias = []
+        if s.coincidencia_periodo == CoincidenciaPeriodo.ANTERIOR:
+            advertencias.append("Este sílabo pertenece a un periodo académico anterior.")
+        elif s.coincidencia_periodo == CoincidenciaPeriodo.NO_COINCIDE:
+            advertencias.append("⚠️ El periodo detectado en el PDF no coincide con el curso actual.")
+            
+        if s.puntaje_confianza < 50:
+            advertencias.append("La IA tuvo dificultades para extraer las fórmulas de calificación.")
+
+        result.append({
             "id_silabo": s.id_silabo,
-            "curso": s.curso.nombre_curso,
-            "usuario": s.usuario_subida.codigo_universitario,
-            "score": s.puntaje_confianza,
-            "fecha": s.fecha_subida
-        } for s in silabos
-    ]
+            "id_curso": s.id_curso,
+            "id_periodo": s.id_periodo,
+            "codigo_curso": s.curso.codigo_curso if s.curso else "N/A",
+            "nombre_curso": s.curso.nombre_curso if s.curso else "Curso Desconocido",
+            "codigo_periodo": s.periodo.nombre if s.periodo else "N/A",
+            "puntaje_confianza": s.puntaje_confianza,
+            "usuario_nombre": f"{s.usuario_subida.nombres} {s.usuario_subida.apellidos}" if s.usuario_subida else "Sistema",
+            "codigo_universitario": s.usuario_subida.codigo_universitario if s.usuario_subida else "N/A",
+            "fecha_subida": s.fecha_subida.isoformat() if s.fecha_subida else None,
+            "fiabilidad": s.aviso_fiabilidad or "Requiere validación humana para asegurar precisión.",
+            "ruta_pdf": s.ruta_pdf,
+            "advertencias": advertencias
+        })
+    
+    return result
 
 @router.post("/aprobar/{id_silabo}")
 async def aprobar_silabo(
@@ -192,12 +208,41 @@ async def aprobar_silabo(
     current_user: Usuario = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
+    print(f"DEBUG: Intentando aprobar silabo {id_silabo}")
+    print(f"DEBUG: Request: {request.dict()}")
     if current_user.rol != RolUsuario.ADMIN:
         raise HTTPException(status_code=403, detail="Acceso denegado")
         
     silabo = db.query(Silabo).filter(Silabo.id_silabo == id_silabo).first()
     if not silabo:
         raise HTTPException(status_code=404, detail="Sílabo no encontrado")
+
+    # LÓGICA DE CORRECCIÓN DE PERIODO (Si el admin detectó que el alumno se equivocó al matricularse)
+    periodo_original = silabo.id_periodo
+    if request.id_periodo_nuevo and request.id_periodo_nuevo != periodo_original:
+        silabo.id_periodo = request.id_periodo_nuevo
+        
+        # Migrar la matrícula del alumno al periodo correcto si es necesario
+        contexto_estudiante = db.query(ContextoCursoUsuario).filter(
+            ContextoCursoUsuario.id_usuario == silabo.id_usuario_subida,
+            ContextoCursoUsuario.id_curso == silabo.id_curso,
+            ContextoCursoUsuario.id_periodo == periodo_original
+        ).first()
+        
+        if contexto_estudiante:
+            # Verificar si ya existe matrícula en el nuevo periodo
+            existe_en_nuevo = db.query(ContextoCursoUsuario).filter(
+                ContextoCursoUsuario.id_usuario == silabo.id_usuario_subida,
+                ContextoCursoUsuario.id_curso == silabo.id_curso,
+                ContextoCursoUsuario.id_periodo == request.id_periodo_nuevo
+            ).first()
+            
+            if not existe_en_nuevo:
+                contexto_estudiante.id_periodo = request.id_periodo_nuevo
+            else:
+                # Si ya existe, simplemente vinculamos el sílabo a esa y borramos la "errónea"
+                db.delete(contexto_estudiante)
+                contexto_estudiante = existe_en_nuevo
 
     silabo.estado_validacion = EstadoVerificacion.APROBADO
     silabo.ambito_uso = AmbitoUso.PUBLICADO
@@ -217,11 +262,9 @@ async def aprobar_silabo(
 
     db.commit()
     return {
-        "message": "Sílabo aprobado y publicado",
-        "contextos_actualizados": len(contextos_actualizados),
+        "message": f"Sílabo aprobado y publicado. Se actualizaron {len(contextos_actualizados)} contextos.",
+        "periodo_corregido": request.id_periodo_nuevo is not None,
         "id_silabo": silabo.id_silabo,
-        "id_curso": silabo.id_curso,
-        "id_periodo": silabo.id_periodo,
         "estado_validacion": silabo.estado_validacion,
         "ambito_uso": silabo.ambito_uso,
     }
@@ -280,6 +323,14 @@ async def subir_silabo_oficial(
 
     # 3. Procesar PDF
     contenido = await archivo.read()
+    
+    # 3.1 Guardar archivo físico
+    filename = f"{uuid.uuid4()}_{archivo.filename}"
+    filepath = os.path.join("app", "static", "uploads", "syllabi", filename)
+    with open(filepath, "wb") as f:
+        f.write(contenido)
+    
+    relative_path = f"/static/uploads/syllabi/{filename}"
     texto = PDFParserService.extraer_texto(contenido)
     
     # 4. Obtener referencias
@@ -306,47 +357,19 @@ async def subir_silabo_oficial(
         id_periodo=id_periodo,
         id_usuario_subida=current_user.id,
         nombre_archivo=archivo.filename,
+        ruta_pdf=relative_path,
         texto_extraido=texto[:15000],
         tipo_silabo=TipoSilabo.OFICIAL,
         ambito_uso=ambito,
         estado_validacion=estado,
         puntaje_confianza=score,
         coincidencia_periodo=parsing_data["coincidencias"].get("periodo", False),
-        reglas_json=parsing_data
+        reglas_json=parsing_data.get("formulas")
     )
     
     db.add(nuevo_silabo)
     db.commit()
     db.refresh(nuevo_silabo)
-    
-    # 8. Crear Chunks para RAG
-    metadata_base = {"nombre_curso": curso.nombre_curso}
-    chunks_creados = ChunkerService.crear_chunks(nuevo_silabo.texto_extraido, metadata_base)
-    for c in chunks_creados:
-        emb = embedding_service.generar_embedding(c["texto"])
-        
-        tipo_str = c["metadata"].get("tipo_seccion", "").upper()
-        tipo_enum = TipoSeccionChunk.CONTENIDOS
-        if "COMPETENCIA" in tipo_str:
-            tipo_enum = TipoSeccionChunk.COMPETENCIAS
-        elif "EVALUA" in tipo_str or "CRITERIO" in tipo_str:
-            tipo_enum = TipoSeccionChunk.EVALUACION
-        elif "TUTOR" in tipo_str:
-            tipo_enum = TipoSeccionChunk.TUTORIA
-        elif "SUMILLA" in tipo_str:
-            tipo_enum = TipoSeccionChunk.SUMILLA
-        elif "FORMULA" in tipo_str:
-            tipo_enum = TipoSeccionChunk.FORMULA
-            
-        nuevo_chunk = SilaboChunk(
-            id_silabo=nuevo_silabo.id_silabo,
-            contenido=c["texto"],
-            tipo_seccion=tipo_enum,
-            embedding=emb,
-            metadata_json=c["metadata"]
-        )
-        db.add(nuevo_chunk)
-    db.commit()
     
     # 8. Sincronizar automáticamente con contextos de estudiantes
     contextos = db.query(ContextoCursoUsuario).filter(
@@ -450,6 +473,7 @@ async def obtener_detalle_silabo(
         "ambito_uso": silabo.ambito_uso,
         "estado_validacion": silabo.estado_validacion,
         "score": silabo.puntaje_confianza,
+        "ruta_pdf": silabo.ruta_pdf,
         "texto_extraido": silabo.texto_extraido,
         "reglas_json": silabo.reglas_json,
         "coincidencia_periodo": silabo.coincidencia_periodo,

@@ -3,6 +3,7 @@ import { useServiceDesk } from '../../contexts/ServiceDeskContext';
 import Button from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Modal from '../../components/ui/Modal';
+import Pagination from '../../components/ui/Pagination';
 import { Ticket, AlertTriangle, Clock, CheckCircle2, RefreshCw, MessageSquare, ArrowRight, User } from 'lucide-react';
 
 const ServiceDeskPage = () => {
@@ -11,10 +12,16 @@ const ServiceDeskPage = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     refreshData();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, statusFilter]);
 
   const filteredRequests = requests.filter(req => {
     if (statusFilter === 'all') return true;
@@ -26,6 +33,9 @@ const ServiceDeskPage = () => {
     if (statusFilter === 'RESUELTA' || statusFilter === 'CERRADA') return inc.resuelto;
     return !inc.resuelto;
   });
+
+  const paginatedRequests = filteredRequests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const paginatedIncidents = filteredIncidents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleUpdateStatus = async (item, newStatus) => {
     try {
@@ -142,7 +152,7 @@ const ServiceDeskPage = () => {
                 <p className="font-medium">No hay solicitudes que coincidan con el filtro.</p>
               </div>
             ) : (
-              filteredRequests.map((request) => (
+              paginatedRequests.map((request) => (
                 <div key={request.id} className="p-5 hover:bg-slate-50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4 group">
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -190,7 +200,7 @@ const ServiceDeskPage = () => {
                 <p className="font-medium">No hay incidentes activos.</p>
               </div>
             ) : (
-              filteredIncidents.map((incident) => (
+              paginatedIncidents.map((incident) => (
                 <div key={incident.id} className="p-5 hover:bg-slate-50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -223,6 +233,14 @@ const ServiceDeskPage = () => {
               ))
             )}
           </div>
+        )}
+        {((activeTab === 'requests' && filteredRequests.length > 0) || (activeTab === 'incidents' && filteredIncidents.length > 0)) && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={activeTab === 'requests' ? filteredRequests.length : filteredIncidents.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+          />
         )}
       </div>
 

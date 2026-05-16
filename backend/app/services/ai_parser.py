@@ -205,8 +205,28 @@ class GeminiParserService:
         if periodo_ref and periodo_ref in periodo_extraido:
             score += 20
             coincidencias["periodo"] = "ACTUAL"
-        elif periodo_extraido:
-            coincidencias["periodo"] = "NO_COINCIDE"
+        elif periodo_extraido and periodo_ref:
+            # Lógica para detectar si es un periodo anterior
+            try:
+                # Extraer año y término (ej: 2025-I, 2025-II, 2025-1, 2025-2)
+                match_ref = re.search(r'(\d{4})[- ]?([IV120]+)', periodo_ref)
+                match_ext = re.search(r'(\d{4})[- ]?([IV120]+)', periodo_extraido)
+                
+                if match_ref and match_ext:
+                    anio_ref = int(match_ref.group(1))
+                    anio_ext = int(match_ext.group(1))
+                    
+                    if anio_ext < anio_ref:
+                        coincidencias["periodo"] = "ANTERIOR"
+                        score += 5 # Bono parcial por ser el mismo curso aunque sea otro año
+                    else:
+                        coincidencias["periodo"] = "NO_COINCIDE"
+                else:
+                    coincidencias["periodo"] = "NO_COINCIDE"
+            except:
+                coincidencias["periodo"] = "NO_COINCIDE"
+        else:
+            coincidencias["periodo"] = "DESCONOCIDO"
 
         # 4. Estructura mínima - Evaluación (25 pts)
         formulas = data.get("formulas", {})

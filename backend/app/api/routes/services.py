@@ -23,12 +23,14 @@ def _format_solicitud(solicitud: SolicitudServicio) -> dict:
     return {
         "id": cast(int, solicitud.id_solicitud),
         "id_usuario": cast(int, solicitud.id_usuario),
+        "usuario_nombre": f"{solicitud.usuario.nombres} {solicitud.usuario.apellidos}" if solicitud.usuario else "Desconocido",
+        "codigo_universitario": solicitud.usuario.codigo_universitario if solicitud.usuario else "N/A",
         "id_silabo": cast(Optional[int], solicitud.id_silabo),
         "categoria": cast(str, solicitud.categoria),
         "descripcion": cast(str, solicitud.descripcion),
         "respuesta_generada": cast(Optional[str], solicitud.respuesta_generada),
         "tiempo_respuesta_ms": cast(Optional[int], solicitud.tiempo_respuesta_ms),
-        "fecha": _iso_or_none(solicitud.fecha_creacion),
+        "fecha_creacion": _iso_or_none(solicitud.fecha_creacion),
         "estado": cast(str, solicitud.estado),
         "escalada": _to_bool(solicitud.escalada_a_docente)
     }
@@ -38,6 +40,8 @@ def _format_incidente(incidente: IncidenteAcademico) -> dict:
     return {
         "id": cast(int, incidente.id_incidente),
         "id_usuario": cast(int, incidente.id_usuario),
+        "usuario_nombre": f"{incidente.usuario.nombres} {incidente.usuario.apellidos}" if incidente.usuario else "Desconocido",
+        "codigo_universitario": incidente.usuario.codigo_universitario if incidente.usuario else "N/A",
         "id_silabo": cast(Optional[int], incidente.id_silabo),
         "severidad": cast(Optional[str], incidente.severidad),
         "promedio_actual": cast(Optional[float], incidente.promedio_actual),
