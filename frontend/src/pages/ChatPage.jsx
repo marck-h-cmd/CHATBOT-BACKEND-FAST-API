@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, CheckCircle, Clock, Info, ShieldAlert, Sparkles, Menu, X, Search } from 'lucide-react';
 
 const ChatPage = () => {
-  const { messages, loading, sendMessage, currentResponse } = useChat();
+  const { messages, loading, sendMessage, currentResponse, loadHistory } = useChat();
   const { enrollments } = useCourse();
   const { isAuthenticated } = useAuth();
   const messagesEndRef = useRef(null);
@@ -35,10 +35,13 @@ const ChatPage = () => {
   const handleContextSelect = (contexto) => {
     setSelectedContextId(contexto.id_contexto);
     setSelectedContext(contexto);
+    loadHistory(contexto.id_contexto); // Cargar historial al seleccionar
+    
     if (window.innerWidth < 1024) {
       setSidebarOpen(false); // Cierra drawer en móviles al seleccionar
     }
   };
+
 
   if (!isAuthenticated) {
     return (

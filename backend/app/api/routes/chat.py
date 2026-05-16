@@ -13,11 +13,13 @@ from typing import List, Dict, Optional
 class ChatRequest(BaseModel):
     id_contexto: int
     pregunta: str
+    id_sesion: Optional[int] = None
     historial: Optional[List[Dict[str, str]]] = []
 
 class ChatResponse(BaseModel):
     respuesta: str
     intent: str
+    id_sesion: int
     fragmentos_usados: int
     tiempo_ms: int
     escalado: bool
@@ -42,7 +44,58 @@ async def consultar_chat(
         id_usuario=current_user.id,
         id_contexto=request.id_contexto,
         pregunta=request.pregunta,
-        historial=request.historial
+        historial=request.historial,
+        id_sesion=request.id_sesion
     )
     
     return ChatResponse(**resultado)
+
+@router.get("/sessions/{id_contexto}")
+async def get_sessions(
+    id_contexto: int,
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    from app.database.models import SesionChat
+    sessions = db.query(SesionChat).filter(
+        SesionChat.id_contexto == id_contexto,
+        SesionChat.id_usuario == current_user.id
+    ).order_by(SesionChat.fecha_inicio.desc()).all()
+    
+    return [
+        {
+            "id_sesion": s.id_sesion,
+            "fecha_inicio": s.fecha_inicio,
+            "resumen": s.resumen
+        } for s in sessions
+    ]
+
+@router.get("/history/{id_sesion}")
+async def get_history(
+    id_sesion: int,
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    from app.database.models import SesionChat, MensajeChat
+    
+    # Verificar propiedad de la sesión
+    sesion = db.query(SesionChat).filter(
+        SesionChat.id_sesion == id_sesion,
+        SesionChat.id_usuario == current_user.id
+    ).first()
+    
+    if not sesion:
+        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+        
+    mensajes = db.query(MensajeChat).filter(
+        MensajeChat.id_sesion == id_sesion
+    ).order_by(MensajeChat.fecha_envio.asc()).all()
+    
+    return [
+        {
+            "role": "user" if m.remitente == "usuario" else "assistant",
+            "content": m.contenido,
+            "intent": m.tipo_consulta,
+            "timestamp": m.fecha_envio.isoformat()
+        } for m in mensajes
+    ]

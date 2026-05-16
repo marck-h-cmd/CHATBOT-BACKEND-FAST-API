@@ -13,6 +13,7 @@ export interface ChatMessage {
 export interface ChatResponse {
   respuesta: string;
   intent: string;
+  id_sesion: number;
   fragmentos_usados: number;
   tiempo_ms: number;
   escalado: boolean;
@@ -21,4 +22,7 @@ export interface ChatResponse {
 export interface ChatRequest {
   id_contexto: number;
   pregunta: string;
+  id_sesion?: number;
+  historial?: { role: string; content: string }[];
 }
+

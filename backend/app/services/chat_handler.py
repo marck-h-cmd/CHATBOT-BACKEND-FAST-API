@@ -16,7 +16,8 @@ class ChatHandler:
         id_usuario: int,
         id_contexto: int,
         pregunta: str,
-        historial: List[Dict] = None
+        historial: List[Dict] = None,
+        id_sesion: Optional[int] = None
     ) -> Dict:
         start_time = time.time()
         
@@ -27,8 +28,27 @@ class ChatHandler:
             
         silabo = contexto.silabo_asignado
         if not silabo:
-            # Fallback: buscar cualquier sílabo del curso si no hay uno asignado
             silabo = db.query(Silabo).filter(Silabo.id_curso == contexto.id_curso).first()
+
+        # 0.1 Gestionar Sesión de Chat
+        from app.database.models import SesionChat, MensajeChat
+        
+        if id_sesion:
+            sesion = db.query(SesionChat).filter(SesionChat.id_sesion == id_sesion, SesionChat.id_usuario == id_usuario).first()
+        else:
+            # Buscar última sesión activa para este contexto
+            sesion = db.query(SesionChat).filter(
+                SesionChat.id_usuario == id_usuario,
+                SesionChat.id_contexto == id_contexto
+            ).order_by(SesionChat.fecha_inicio.desc()).first()
+            
+            if not sesion:
+                sesion = SesionChat(id_usuario=id_usuario, id_contexto=id_contexto)
+                db.add(sesion)
+                db.commit()
+                db.refresh(sesion)
+        
+        id_sesion = sesion.id_sesion
 
         # 1. Clasificar intención
         intent, params = IntentClassifier.clasificar(pregunta)
@@ -39,7 +59,6 @@ class ChatHandler:
             fragmentos = RAGRetriever.recuperar_fragmentos(db, silabo.id_silabo, pregunta, top_k=5)
         
         # 3. Generar respuesta según intención
-        respuesta = ""
         respuesta = ""
         reglas_aplicadas = {}
         escalar = False
@@ -55,7 +74,6 @@ class ChatHandler:
             intent = "consulta_bloqueada"
             
         elif intent == "evaluar_riesgo" and puede_calcular:
-            # Caso especial: Evaluación de riesgo usa lógica dura de negocio
             riesgo = RuleEngine.evaluar_riesgo(contexto.pu1, contexto.pu2, contexto.pu3, silabo)
             respuesta = f"Tu riesgo actual es: **{riesgo['nivel']}**.\n{riesgo['recomendacion']}"
             
@@ -70,7 +88,7 @@ class ChatHandler:
             respuesta = "¡Hola! Soy Sylia, tu Asistente Académico. Estoy aquí para resolver tus dudas sobre el sílabo, fechas y simular tus promedios. ¿En qué te ayudo hoy?"
             
         else:
-            # FLUJO AGENTIC RAG (Preguntas generales y Simulaciones/Cálculos)
+            # FLUJO AGENTIC RAG
             from app.services.ai_parser import _init_gemini
             import app.services.ai_parser as ai_p
             
@@ -82,59 +100,58 @@ class ChatHandler:
                 
                 info_estructurada = ""
                 formulas = {}
-                evidencias = {}
                 nota_min = "14"
                 if silabo and silabo.reglas_json:
                     rj = silabo.reglas_json
                     if isinstance(rj, dict):
                         nota_min = rj.get("nota_aprobatoria", "14 (por reglamento)")
                         formulas = rj.get("formulas", rj)
-                        evidencias = rj.get("evidencias", {})
-                        info_estructurada = f"- Nota Mínima Aprobatoria: {nota_min}\n- Fórmulas Oficiales: {formulas}\n- Diccionario de Siglas (Evidencias): {evidencias}\n- Reglas adicionales: {rj.get('reglas', {})}"
+                        info_estructurada = f"- Nota Mínima Aprobatoria: {nota_min}\n- Fórmulas Oficiales: {formulas}"
                 
                 contexto_text = "\n\n".join([f"Fragmento {i+1}: {f['texto']}" for i, f in enumerate(fragmentos)]) if fragmentos else "No se encontraron fragmentos específicos."
                 
+                # Cargar historial desde la DB si no viene en el request (Optimización)
+                if not historial:
+                    mensajes_previos = db.query(MensajeChat).filter(
+                        MensajeChat.id_sesion == id_sesion
+                    ).order_by(MensajeChat.fecha_envio.desc()).limit(10).all()
+                    
+                    historial = []
+                    for m in reversed(mensajes_previos):
+                        role = "user" if m.remitente == "usuario" else "assistant"
+                        historial.append({"role": role, "content": m.contenido})
+
                 # Formatear el historial conversacional
                 historial_text = ""
-                if historial and isinstance(historial, list):
-                    recent_history = historial[-5:]
-                    if recent_history:
-                        historial_text = "[HISTORIAL DE LA CHARLA RECIENTE]\n"
-                        for h in recent_history:
-                            role = "Estudiante" if h.get("role") == "user" else "Asistente"
-                            historial_text += f"{role}: {h.get('content')}\n"
-                        historial_text += "\n"
+                if historial:
+                    recent_history = historial[-6:] # Un poco más de contexto
+                    historial_text = "[HISTORIAL DE LA CHARLA RECIENTE]\n"
+                    for h in recent_history:
+                        role_label = "Estudiante" if h.get("role") == "user" else "Asistente"
+                        historial_text += f"{role_label}: {h.get('content')}\n"
+                    historial_text += "\n"
 
-                # Instrucciones dinámicas según el Intent
                 instruccion_extra = ""
                 if intent in ["calcular_promedio", "simular_notas"] and puede_calcular:
                     instruccion_extra = f"""
 [MODO CÁLCULO ACTIVO]
-El estudiante quiere simular o calcular sus notas.
-USA OBLIGATORIAMENTE LAS FÓRMULAS OFICIALES PROVISTAS: {formulas}.
-1. Realiza el cálculo paso a paso mostrando tu razonamiento matemático.
-2. Si el estudiante dice siglas como PFD o TAD, usa el diccionario de siglas provisto.
-3. Si te faltan notas para hacer el cálculo, asume escenarios (ej. "Si sacas 14 en el final...") o pregúntale amablemente.
-4. Resalta la nota final en negrita. Menciona si aprueba o no sabiendo que la nota mínima es {nota_min}.
+USA OBLIGATORIAMENTE LAS FÓRMULAS: {formulas}. Realiza el cálculo paso a paso. Nota mínima: {nota_min}.
 """
 
-                prompt = f"""Eres un asesor académico universitario de alto nivel.
-Responde de forma natural, amigable y muy clara, utilizando EXCLUSIVAMENTE la información a continuación.
-Si no encuentras la respuesta, dilo honestamente sin inventar.
+                prompt = f"""Eres un asesor académico universitario de alto nivel (Sylia).
+Responde de forma amigable usando EXCLUSIVAMENTE esta información:
 
-[INFORMACIÓN GENERAL DEL CURSO]
-- Curso: {nombre_curso}
-- Periodo: {nombre_periodo}
+[CURSO] {nombre_curso} ({nombre_periodo})
 {info_estructurada}
-
 {instruccion_extra}
 
-[DOCUMENTOS Y REGLAMENTOS (RAG)]
+[RAG]
 {contexto_text}
 
 {historial_text}
 Estudiante: {pregunta}
 Asistente: """
+
                 try:
                     import google.generativeai as genai
                     response = ai_p.MODEL.generate_content(
@@ -143,18 +160,36 @@ Asistente: """
                     )
                     respuesta = response.text
                 except Exception as e:
-                    print(f"Error generando respuesta con Gemini: {e}")
-                    respuesta = "Lo siento, estoy procesando demasiadas simulaciones en este momento. Por favor, intenta tu pregunta de nuevo en unos segundos."
+                    print(f"Error Gemini: {e}")
+                    respuesta = "Lo siento, tuve un problema al procesar tu consulta. Intenta de nuevo."
+                    
             else:
-                respuesta = "Lo siento, el motor de inteligencia artificial no está configurado."
+                respuesta = "Motor IA no disponible."
                 
-            # Si a pesar de todo no hay fragmentos y no es una simulación, considerar escalar
             if not fragmentos and intent not in ["calcular_promedio", "simular_notas", "saludar", "evaluar_riesgo"]:
                 escalar = True
         
         tiempo_ms = int((time.time() - start_time) * 1000)
         
-        # 4. Registrar Solicitud de Servicio (ITIL)
+        # 4. Persistir Mensajes en la Base de Datos
+        msg_usuario = MensajeChat(
+            id_sesion=id_sesion,
+            remitente="usuario",
+            contenido=pregunta,
+            tipo_consulta=intent
+        )
+        msg_asistente = MensajeChat(
+            id_sesion=id_sesion,
+            remitente="asistente",
+            contenido=respuesta,
+            tipo_consulta=intent,
+            tiempo_respuesta_ms=tiempo_ms
+        )
+        db.add(msg_usuario)
+        db.add(msg_asistente)
+        db.commit()
+
+        # 5. Registrar Solicitud de Servicio (ITIL)
         ITILServiceDesk.registrar_solicitud(
             db=db,
             id_usuario=id_usuario,
@@ -171,6 +206,7 @@ Asistente: """
         return {
             "respuesta": respuesta,
             "intent": intent,
+            "id_sesion": id_sesion,
             "fragmentos_usados": len(fragmentos),
             "tiempo_ms": tiempo_ms,
             "escalado": escalar
