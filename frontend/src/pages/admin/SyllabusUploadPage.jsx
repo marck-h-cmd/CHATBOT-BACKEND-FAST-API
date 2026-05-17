@@ -11,9 +11,21 @@ export default function SyllabusUploadPage() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedPeriod, setSelectedPeriod] = useState('');
+  const [selectedCiclo, setSelectedCiclo] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [validationError, setValidationError] = useState('');
+
+  const ciclos = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'Electivo'];
+
+  const filteredCourses = selectedCiclo 
+    ? courses?.filter(c => c.ciclo_referencial === selectedCiclo || c.ciclo_referencial?.toUpperCase() === selectedCiclo.toUpperCase())
+    : courses;
+
+  const handleCicloChange = (e) => {
+    setSelectedCiclo(e.target.value);
+    setSelectedCourse('');
+  };
 
   // Cargar cursos y periodos
   useEffect(() => {
@@ -96,6 +108,7 @@ export default function SyllabusUploadPage() {
       setSelectedFile(null);
       setSelectedCourse('');
       setSelectedPeriod('');
+      setSelectedCiclo('');
       // Mantener el mensaje de éxito visible por unos segundos
       setTimeout(() => {
         clearUploadStatus();
@@ -119,6 +132,27 @@ export default function SyllabusUploadPage() {
         {/* Tarjeta principal */}
         <div className="bg-white rounded-lg shadow-md p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Selección de Ciclo (Filtro) */}
+            <div>
+              <label htmlFor="ciclo" className="block text-sm font-medium text-gray-900 mb-2">
+                Filtrar por Ciclo (Opcional)
+              </label>
+              <select
+                id="ciclo"
+                value={selectedCiclo}
+                onChange={handleCicloChange}
+                disabled={courseLoading}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="">Todos los ciclos</option>
+                {ciclos.map((ciclo) => (
+                  <option key={ciclo} value={ciclo}>
+                    Ciclo {ciclo}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Selección de Curso */}
             <div>
               <label htmlFor="course" className="block text-sm font-medium text-gray-900 mb-2">
@@ -134,9 +168,9 @@ export default function SyllabusUploadPage() {
                 <option value="">
                   {courseLoading ? 'Cargando cursos...' : 'Selecciona un curso'}
                 </option>
-                {courses?.map((course) => (
+                {filteredCourses?.map((course) => (
                   <option key={course.id_curso} value={course.id_curso}>
-                    {course.codigo_curso} - {course.nombre_curso}
+                    {course.ciclo_referencial ? `[Ciclo ${course.ciclo_referencial}] ` : ''}{course.codigo_curso} - {course.nombre_curso}
                   </option>
                 ))}
               </select>

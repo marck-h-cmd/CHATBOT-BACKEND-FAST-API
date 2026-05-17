@@ -34,6 +34,7 @@ import SyllabusManagementPage from '../pages/admin/SyllabusManagementPage';
 import SyllabusUploadPage from '../pages/admin/SyllabusUploadPage';
 import SyllabusDetailPage from '../pages/admin/SyllabusDetailPage';
 import IncidentsManagementPage from '../pages/admin/IncidentsManagementPage';
+import ServiceIncidentsPage from '../pages/admin/ServiceIncidentsPage';
 import MetricsAdminPage from '../pages/admin/MetricsAdminPage';
 import NotFoundPage from '../pages/NotFoundPage';
 
@@ -165,6 +166,7 @@ const AppRoutes = () => {
                     <Route path="silabos/pendientes" element={<PendingSyllabiPage />} />
                     <Route path="service-desk" element={<ServiceDeskPage />} />
                     <Route path="incidentes" element={<IncidentsManagementPage />} />
+                    <Route path="incidentes-servicio" element={<ServiceIncidentsPage />} />
                     <Route path="metricas" element={<MetricsAdminPage />} />
                   </Route>
                   <Route path="/profile" element={

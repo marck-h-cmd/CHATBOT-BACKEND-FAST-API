@@ -160,3 +160,72 @@ class ITILServiceDesk:
                 "canales": Config.TUTORIA_CANALES
             }
         }
+
+    @staticmethod
+    def validar_formulas_evidencias(parsing_data: Dict) -> List[str]:
+        """
+        Valida de forma robusta que los términos usados en las fórmulas correspondan
+        a las claves o nombres de las evidencias declaradas, o a identificadores de fórmula válidos.
+        """
+        errores = []
+        evidencias = parsing_data.get("evidencias", {})
+        formulas = parsing_data.get("formulas", {})
+        
+        if not evidencias:
+            errores.append("No se encontraron evidencias de evaluación declaradas en el sílabo.")
+            return errores
+
+        import re
+        
+        # 1. Recopilar todos los términos válidos conocidos
+        terminos_validos = []
+        
+        # Claves de evidencias (ej. PRACTICAS, INFORMES, EXAMEN_PARCIAL)
+        terminos_validos.extend(list(evidencias.keys()))
+        
+        # Nombres de evidencias (ej. Prácticas, Informes, Examen Parcial)
+        for val in evidencias.values():
+            if isinstance(val, dict) and val.get("nombre"):
+                terminos_validos.append(val.get("nombre"))
+                
+        # Nombres de fórmulas y variables estándar
+        terminos_validos.extend(list(formulas.keys()))
+        terminos_validos.extend(["PU1", "PU2", "PU3", "PU4", "PP", "NF", "PF", "FINAL", "PROM", "EP", "EF"])
+        
+        # Funciones matemáticas reservadas
+        terminos_validos.extend(["MIN", "MAX", "SUM", "AVG", "IF", "ELSE", "LOG", "EXP", "ROUND"])
+        
+        # Ordenar términos por longitud descendente para evitar reemplazos parciales (ej. Examen Parcial antes de Examen)
+        terminos_validos = sorted(list(set(terminos_validos)), key=len, reverse=True)
+
+        for nombre_formula, expr in formulas.items():
+            if not expr or not isinstance(expr, str):
+                continue
+                
+            expr_limpia = expr
+            # Reemplazar cada término válido por espacio
+            for termino in terminos_validos:
+                # Usar re.escape y manejar ignorar mayúsculas/minúsculas
+                expr_limpia = re.sub(r'\b' + re.escape(termino) + r'\b', ' ', expr_limpia, flags=re.IGNORECASE)
+                # También sin \b por si hay temas con tildes en los límites de palabra
+                expr_limpia = re.sub(re.escape(termino), ' ', expr_limpia, flags=re.IGNORECASE)
+                
+            # Eliminar números, operadores matemáticos y signos de puntuación
+            expr_limpia = re.sub(r'[\d\s\+\-\*\/\(\)\[\]\{\}\.\,\^\%\=\<\>\:\;]', '', expr_limpia)
+            
+            # Si queda algún texto, es un término desconocido
+            if expr_limpia.strip():
+                # Para dar un mejor mensaje, buscamos qué palabra original quedó
+                palabras_orig = re.findall(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ_]+', expr)
+                desconocidos = []
+                for p in palabras_orig:
+                    # Verificar si p está contenida en algún término válido
+                    if not any(p.lower() in t.lower() for t in terminos_validos):
+                        desconocidos.append(p)
+                
+                desc_desconocidos = ", ".join(set(desconocidos)) if desconocidos else expr_limpia.strip()
+                errores.append(
+                    f"Inconsistencia en fórmula '{nombre_formula}': Se detectó el término desconocido '{desc_desconocidos}' que no coincide con ninguna evidencia declarada."
+                )
+                    
+        return errores

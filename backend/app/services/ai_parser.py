@@ -84,7 +84,20 @@ class GeminiParserService:
     PROMPT_UNICO = """
     Analiza este sílabo universitario y extrae SOLO la información solicitada.
     Responde EXCLUSIVAMENTE con un objeto JSON válido, sin texto adicional.
-    
+
+    REGLAS ESTRICTAS DE ESTANDARIZACIÓN (¡MUY IMPORTANTE!):
+    1. EVIDENCIAS:
+       - Las claves del diccionario "evidencias" DEBEN ser siglas o códigos cortos en MAYÚSCULA, sin espacios ni caracteres especiales (ej: "PRACTICAS", "INFORMES", "EXAMEN_PARCIAL", "PC", "EX").
+       - El campo "peso" debe ser un número decimal entre 0 y 1 (ej: 0.3) o el peso relativo numérico exacto indicado en el sílabo.
+    2. FÓRMULAS (PU1, PU2, PU3, PP):
+       - Las fórmulas de cada unidad (PU1, PU2, PU3) DEBEN expresarse matemáticamente utilizando EXCLUSIVAMENTE las claves exactas en MAYÚSCULA declaradas en "evidencias", multiplicadas por sus pesos respectivos (ej: "0.3*PRACTICAS + 0.3*INFORMES + 0.4*EXAMEN_PARCIAL").
+       - NUNCA uses texto informal como "Promedio de Unidad 1", ni agregues números al final de las palabras (ej. no uses "Informes1" ni "Practicas1"). Usa siempre la clave estándar de la evidencia.
+       - La fórmula del Promedio Promocional (PP) DEBE expresarse en función de PU1, PU2, PU3 (ej: "(PU1 + PU2 + PU3) / 3" o "0.3*PU1 + 0.35*PU2 + 0.35*PU3").
+    3. REGLAS GENERALES:
+       - "asistencia_minima": número entero representativo del porcentaje (ej: 70).
+       - "redondeo": descripción clara y concisa (ej: "0.5 favorece al estudiante").
+       - "inhabilitacion_umbral": porcentaje de inasistencia para inhabilitación como número entero (ej: 30).
+
     JSON requerido:
     {
         "codigo_curso": "código numérico",
@@ -95,17 +108,18 @@ class GeminiParserService:
         "email_docente": "email institucional",
         "nota_aprobatoria": 14,
         "evidencias": {
-            "SIGLA_EXACTA_1": {"nombre": "nombre completo de la evidencia", "peso": 1},
-            "SIGLA_EXACTA_2": {"nombre": "nombre completo de la evidencia", "peso": 2}
+            "PRACTICAS": {"nombre": "Prácticas Calificadas", "peso": 0.3},
+            "INFORMES": {"nombre": "Informes de Laboratorio", "peso": 0.3},
+            "EXAMEN_PARCIAL": {"nombre": "Examen Parcial", "peso": 0.4}
         },
         "unidades": [
             {"id": "U1", "nombre": "nombre", "semanas": "rango", "competencias": []}
         ],
         "formulas": {
-            "PU1": "fórmula",
-            "PU2": "fórmula",
-            "PU3": "fórmula",
-            "PP": "fórmula"
+            "PU1": "0.3*PRACTICAS + 0.3*INFORMES + 0.4*EXAMEN_PARCIAL",
+            "PU2": "0.3*PRACTICAS + 0.3*INFORMES + 0.4*EXAMEN_PARCIAL",
+            "PU3": "0.3*PRACTICAS + 0.3*INFORMES + 0.4*EXAMEN_PARCIAL",
+            "PP": "(PU1 + PU2 + PU3) / 3"
         },
         "tutoria": {
             "dia": "día",
@@ -115,7 +129,7 @@ class GeminiParserService:
         },
         "reglas": {
             "asistencia_minima": 70,
-            "redondeo": "regla",
+            "redondeo": "0.5 favorece al estudiante",
             "inhabilitacion_umbral": 30
         }
     }

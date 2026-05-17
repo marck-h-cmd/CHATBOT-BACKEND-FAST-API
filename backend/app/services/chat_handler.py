@@ -138,28 +138,28 @@ class ChatHandler:
                 instruccion_extra = ""
                 if intent in ["calcular_promedio", "simular_notas"] and puede_calcular:
                     instruccion_extra = f"""
-[MODO CÁLCULO ACTIVO]
-USA OBLIGATORIAMENTE LAS FÓRMULAS: {formulas}. Realiza el cálculo paso a paso. Nota mínima: {nota_min}.
-REGLAS IMPORTANTES DE EXÁMENES DE RECUPERACIÓN:
-- SUSTITUTORIO: Reemplaza la nota de unidad más baja del estudiante si le favorece.
-- APLAZADO: Se suma al promedio final de las 3 unidades y se divide entre 2. Es decir, Promedio Aplazado = (Promedio 3 Unidades + Nota Aplazado) / 2.
-Ten esto muy en cuenta si el estudiante pregunta sobre qué nota necesita en aplazados o sustitutorio.
-"""
+                    [MODO CÁLCULO ACTIVO]
+                    USA OBLIGATORIAMENTE LAS FÓRMULAS: {formulas}. Realiza el cálculo paso a paso. Nota mínima: {nota_min}.
+                    REGLAS IMPORTANTES DE EXÁMENES DE RECUPERACIÓN:
+                    - SUSTITUTORIO: Reemplaza la nota de unidad más baja del estudiante si le favorece.
+                    - APLAZADO: Se suma al promedio final de las 3 unidades y se divide entre 2. Es decir, Promedio Aplazado = (Promedio 3 Unidades + Nota Aplazado) / 2.
+                    Ten esto muy en cuenta si el estudiante pregunta sobre qué nota necesita en aplazados o sustitutorio.
+                    """
 
                 prompt = f"""Eres Sylia, una asistente académica y asesora amigable, empática y natural.
-Tu objetivo es ayudar al estudiante a entender su curso, planificar su estudio y responder sus dudas, pero hazlo como si fueras un tutor humano de confianza: sé flexible, no repitas siempre las mismas frases, y siéntete libre de dar consejos breves y proactivos cuando lo veas conveniente.
-Usa la siguiente información como base para tus respuestas, pero puedes adaptarla para que suene más conversacional:
+                        Tu objetivo es ayudar al estudiante a entender su curso, planificar su estudio y responder sus dudas, pero hazlo como si fueras un tutor humano de confianza: sé flexible, no repitas siempre las mismas frases, y siéntete libre de dar consejos breves y proactivos cuando lo veas conveniente.
+                        Usa la siguiente información como base para tus respuestas, pero puedes adaptarla para que suene más conversacional:
 
-[CURSO] {nombre_curso} ({nombre_periodo})
-{info_estructurada}
-{instruccion_extra}
+                        [CURSO] {nombre_curso} ({nombre_periodo})
+                        {info_estructurada}
+                        {instruccion_extra}
 
-[RAG]
-{contexto_text}
+                        [RAG]
+                        {contexto_text}
 
-{historial_text}
-Estudiante: {pregunta}
-Asistente: """
+                        {historial_text}
+                        Estudiante: {pregunta}
+                        Asistente: """
 
                 try:
                     import google.generativeai as genai

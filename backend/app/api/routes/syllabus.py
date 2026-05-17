@@ -10,7 +10,7 @@ from app.database.models import (
     Usuario, Silabo, Curso, PeriodoAcademico, 
     EstadoVerificacion, AmbitoUso, TipoSilabo, 
     TipoIncidenteServicio, RolUsuario, CoincidenciaPeriodo,
-    ContextoCursoUsuario, OrigenContexto
+    ContextoCursoUsuario, OrigenContexto, IncidenteServicio, EstadoIncidente
 )
 from app.services.pdf_parser import PDFParserService
 from app.services.ai_parser import gemini_parser
@@ -100,7 +100,13 @@ async def subir_silabo(
     if estado == EstadoVerificacion.APROBADO and score > 80:
         ambito = AmbitoUso.COMPARTIBLE # Candidato a revisión por ser altamente confiable
 
-    # 6. Guardar Sílabo
+    # 5.4 Validar fórmulas y evidencias con ITILServiceDesk
+    errores_formulas = ITILServiceDesk.validar_formulas_evidencias(parsing_data)
+    if errores_formulas:
+        estado = EstadoVerificacion.PENDIENTE_CONFIRMACION
+        score = max(10, score - 30) # Penalizar score por inconsistencia
+
+    # 6. Guardar Sílabo (Guardamos parsing_data completo en reglas_json para mejor RAG)
     nuevo_silabo = Silabo(
         id_curso=id_curso,
         id_periodo=id_periodo,
@@ -113,7 +119,7 @@ async def subir_silabo(
         estado_validacion=estado,
         puntaje_confianza=score,
         coincidencia_periodo=coincidencias["periodo"],
-        reglas_json=parsing_data.get("formulas")
+        reglas_json=parsing_data
     )
     
     db.add(nuevo_silabo)
@@ -133,8 +139,16 @@ async def subir_silabo(
         contexto_usuario.puntaje_confianza = score
         db.commit()
     
-    # 7. Registrar incidente de servicio si falló el parsing
-    if score < 50:
+    # 7. Registrar incidente de servicio si falló el parsing o hay errores de fórmula
+    if errores_formulas:
+        desc_errores = "; ".join(errores_formulas)
+        ITILServiceDesk.registrar_incidente_servicio(
+            db, nuevo_silabo.id_silabo, 
+            TipoIncidenteServicio.FORMULA_AMBIGUA,
+            f"Errores en fórmulas de evaluación: {desc_errores}",
+            id_usuario=current_user.id
+        )
+    elif score < 50:
         ITILServiceDesk.registrar_incidente_servicio(
             db, nuevo_silabo.id_silabo, 
             TipoIncidenteServicio.FALLO_PARSING if score > 20 else TipoIncidenteServicio.PDF_ILEGIBLE,
@@ -347,11 +361,18 @@ async def subir_silabo_oficial(
     
     score = parsing_data["puntaje_confianza"]
     
-    # 6. Los sílabos oficiales se aprueban directamente
-    estado = EstadoVerificacion.APROBADO
-    ambito = AmbitoUso.PUBLICADO
+    # 5.1 Validar fórmulas y evidencias
+    errores_formulas = ITILServiceDesk.validar_formulas_evidencias(parsing_data)
     
-    # 7. Crear Sílabo Oficial
+    # 6. Los sílabos oficiales se aprueban directamente SOLO si no tienen errores en fórmulas
+    if errores_formulas:
+        estado = EstadoVerificacion.PENDIENTE_CONFIRMACION
+        ambito = AmbitoUso.PRIVADO
+    else:
+        estado = EstadoVerificacion.APROBADO
+        ambito = AmbitoUso.PUBLICADO
+    
+    # 7. Crear Sílabo Oficial (Guardamos parsing_data completo)
     nuevo_silabo = Silabo(
         id_curso=id_curso,
         id_periodo=id_periodo,
@@ -364,32 +385,42 @@ async def subir_silabo_oficial(
         estado_validacion=estado,
         puntaje_confianza=score,
         coincidencia_periodo=parsing_data["coincidencias"].get("periodo", False),
-        reglas_json=parsing_data.get("formulas")
+        reglas_json=parsing_data
     )
     
     db.add(nuevo_silabo)
     db.commit()
     db.refresh(nuevo_silabo)
     
-    # 8. Sincronizar automáticamente con contextos de estudiantes
-    contextos = db.query(ContextoCursoUsuario).filter(
-        ContextoCursoUsuario.id_curso == id_curso,
-        ContextoCursoUsuario.id_periodo == id_periodo
-    ).all()
+    # 8. Registrar incidente de servicio si hay errores en fórmulas
+    if errores_formulas:
+        desc_errores = "; ".join(errores_formulas)
+        ITILServiceDesk.registrar_incidente_servicio(
+            db, nuevo_silabo.id_silabo, 
+            TipoIncidenteServicio.FORMULA_AMBIGUA,
+            f"Sílabo Oficial con inconsistencia en fórmulas: {desc_errores}",
+            id_usuario=current_user.id
+        )
+    else:
+        # Sincronizar automáticamente con contextos de estudiantes SOLO si fue aprobado
+        contextos = db.query(ContextoCursoUsuario).filter(
+            ContextoCursoUsuario.id_curso == id_curso,
+            ContextoCursoUsuario.id_periodo == id_periodo
+        ).all()
 
-    for contexto in contextos:
-        contexto.id_silabo_asignado = nuevo_silabo.id_silabo
-        contexto.origen_contexto = OrigenContexto.OFICIAL
-        contexto.estado_verificacion = EstadoVerificacion.OFICIAL
-        contexto.puntaje_confianza = score
+        for contexto in contextos:
+            contexto.id_silabo_asignado = nuevo_silabo.id_silabo
+            contexto.origen_contexto = OrigenContexto.OFICIAL
+            contexto.estado_verificacion = EstadoVerificacion.OFICIAL
+            contexto.puntaje_confianza = score
 
-    db.commit()
+        db.commit()
     
     # 9. Procesar agrupamiento
     ITILServiceDesk.procesar_agrupamiento_conocimiento(db, id_curso, id_periodo)
     
     return {
-        "success": True,
+        "success": not bool(errores_formulas),
         "id_silabo": nuevo_silabo.id_silabo,
         "id_curso": id_curso,
         "id_periodo": id_periodo,
@@ -400,8 +431,9 @@ async def subir_silabo_oficial(
         "score": score,
         "estado": estado,
         "ambito": ambito,
-        "contextos_sincronizados": len(contextos),
-        "mensaje": "Sílabo oficial cargado y publicado exitosamente"
+        "contextos_sincronizados": len(contextos) if not errores_formulas else 0,
+        "mensaje": "Sílabo oficial cargado exitosamente." if not errores_formulas else f"Sílabo cargado con errores en fórmulas. Revisar Incidencias de Servicio.",
+        "errores": errores_formulas
     }
 
 @router.get("/list-oficial")
@@ -489,4 +521,114 @@ async def obtener_detalle_silabo(
                 ContextoCursoUsuario.id_silabo_asignado == id_silabo
             ).all()
         ]) if silabo.tipo_silabo == TipoSilabo.OFICIAL else 0
+    }
+
+@router.get("/incidentes-servicio")
+async def listar_incidentes_servicio(
+    current_user: Usuario = Depends(get_current_user_from_token),
+    db: Session = Depends(get_db)
+):
+    """Lista todos los incidentes de servicio activos (Admin only)"""
+    if current_user.rol != RolUsuario.ADMIN:
+        raise HTTPException(status_code=403, detail="Acceso denegado")
+        
+    incidentes = db.query(IncidenteServicio).filter(
+        IncidenteServicio.estado == EstadoIncidente.ACTIVO
+    ).order_by(IncidenteServicio.fecha_creacion.desc()).all()
+    
+    return [
+        {
+            "id_incidente_servicio": inc.id_incidente_servicio,
+            "id_silabo": inc.id_silabo,
+            "tipo_incidente": inc.tipo_incidente,
+            "descripcion": inc.descripcion,
+            "fecha_creacion": inc.fecha_creacion.isoformat() if inc.fecha_creacion else None,
+            "nombre_archivo": inc.silabo.nombre_archivo if inc.silabo else "N/A",
+            "nombre_curso": inc.silabo.curso.nombre_curso if inc.silabo and inc.silabo.curso else "N/A",
+            "periodo": inc.silabo.periodo.nombre if inc.silabo and inc.silabo.periodo else "N/A",
+            "usuario": f"{inc.silabo.usuario_subida.nombres} {inc.silabo.usuario_subida.apellidos}" if inc.silabo and inc.silabo.usuario_subida else "Sistema"
+        } for inc in incidentes
+    ]
+
+@router.post("/incidentes-servicio/{id_incidente}/resolver")
+async def resolver_incidente_servicio(
+    id_incidente: int,
+    accion: str = Form(...), # REEMPLAZAR_PDF o MANTENER
+    archivo: Optional[UploadFile] = File(None),
+    current_user: Usuario = Depends(get_current_user_from_token),
+    db: Session = Depends(get_db)
+):
+    """Resuelve un incidente de servicio con opciones de reemplazar PDF o mantenerlo"""
+    if current_user.rol != RolUsuario.ADMIN:
+        raise HTTPException(status_code=403, detail="Acceso denegado")
+        
+    incidente = db.query(IncidenteServicio).filter(
+        IncidenteServicio.id_incidente_servicio == id_incidente
+    ).first()
+    
+    if not incidente:
+        raise HTTPException(status_code=404, detail="Incidente no encontrado")
+        
+    silabo = incidente.silabo
+    if not silabo:
+        raise HTTPException(status_code=404, detail="Sílabo asociado no encontrado")
+
+    if accion == "REEMPLAZAR_PDF":
+        if not archivo:
+            raise HTTPException(status_code=400, detail="Debe proporcionar un nuevo archivo PDF")
+            
+        contenido = await archivo.read()
+        filename = f"{uuid.uuid4()}_{archivo.filename}"
+        filepath = os.path.join("app", "static", "uploads", "syllabi", filename)
+        with open(filepath, "wb") as f:
+            f.write(contenido)
+        
+        relative_path = f"/static/uploads/syllabi/{filename}"
+        texto = PDFParserService.extraer_texto(contenido)
+        
+        curso = silabo.curso
+        periodo = silabo.periodo
+        
+        parsing_data = gemini_parser.extraer_estructura_completa(
+            texto, curso.nombre_curso, periodo.nombre
+        )
+        
+        score = parsing_data["puntaje_confianza"]
+        
+        # Actualizar sílabo
+        silabo.nombre_archivo = archivo.filename
+        silabo.ruta_pdf = relative_path
+        silabo.texto_extraido = texto[:15000]
+        silabo.reglas_json = parsing_data
+        silabo.puntaje_confianza = score
+        silabo.estado_validacion = EstadoVerificacion.APROBADO
+        silabo.ambito_uso = AmbitoUso.PUBLICADO
+        
+    elif accion == "MANTENER":
+        # Forzar aprobación del sílabo actual
+        silabo.estado_validacion = EstadoVerificacion.APROBADO
+        silabo.ambito_uso = AmbitoUso.PUBLICADO
+    else:
+        raise HTTPException(status_code=400, detail="Acción no válida")
+        
+    # Sincronizar con contextos de los estudiantes
+    contextos = db.query(ContextoCursoUsuario).filter(
+        ContextoCursoUsuario.id_curso == silabo.id_curso,
+        ContextoCursoUsuario.id_periodo == silabo.id_periodo
+    ).all()
+
+    for contexto in contextos:
+        contexto.id_silabo_asignado = silabo.id_silabo
+        contexto.origen_contexto = OrigenContexto.OFICIAL
+        contexto.estado_verificacion = EstadoVerificacion.OFICIAL
+        contexto.puntaje_confianza = silabo.puntaje_confianza
+
+    incidente.estado = EstadoIncidente.RESUELTO
+    incidente.fecha_cierre = datetime.datetime.now()
+    db.commit()
+    
+    return {
+        "success": True, 
+        "message": "Incidente resuelto y sílabo publicado exitosamente",
+        "contextos_sincronizados": len(contextos)
     }

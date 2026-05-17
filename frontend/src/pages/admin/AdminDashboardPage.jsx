@@ -16,7 +16,8 @@ const AdminDashboardPage = () => {
     { path: '/admin/silabos', icon: FileText, label: 'Sílabos Oficiales' },
     { path: '/admin/silabos/pendientes', icon: Search, label: 'Validación Pendiente' },
     { path: '/admin/service-desk', icon: Ticket, label: 'Service Desk' },
-    { path: '/admin/incidentes', icon: AlertTriangle, label: 'Incidentes' },
+    { path: '/admin/incidentes', icon: AlertTriangle, label: 'Incidentes Académicos' },
+    { path: '/admin/incidentes-servicio', icon: ShieldAlert, label: 'Incidentes de Servicio' },
     { path: '/admin/metricas', icon: BarChart3, label: 'Métricas RAG' },
   ];
 

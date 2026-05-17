@@ -51,3 +51,18 @@ export const deleteIncident = async (id_incidente) => {
   const response = await apiClient.delete(`/services/incidents/${id_incidente}`);
   return response.data;
 };
+
+// Incidentes de Servicio (Admin)
+export const getServiceIncidents = async () => {
+  const response = await apiClient.get('/silabo/incidentes-servicio');
+  return response.data;
+};
+
+export const resolveServiceIncident = async (id_incidente, formData) => {
+  const response = await apiClient.post(`/silabo/incidentes-servicio/${id_incidente}/resolver`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
