@@ -47,7 +47,8 @@ class ChunkerService:
         # Patrones de secciones comunes en sílabos UNT
         patrones = {
             "competencias": r"(COMPETENCIAS|COMPETENCIA GENERAL|RESULTADOS DEL ESTUDIANTE)[\s\S]*?(?=(?:\n\s*(?:IV\.?|SUMARIO|EVALUACIÓN)|$))",
-            "evaluacion": r"(EVALUACIÓN|SISTEMA DE EVALUACIÓN|CRITERIOS DE EVALUACIÓN)[\s\S]*?(?=(?:\n\s*(?:V\.?|BIBLIOGRAFÍA|ANEXOS)|$))",
+            "evaluacion": r"(EVALUACIÓN|SISTEMA DE EVALUACIÓN|CRITERIOS DE EVALUACIÓN)[\s\S]*?(?=(?:\n\s*(?:V\.?|VI\.?|BIBLIOGRAFÍA|ANEXOS|EXÁ?MENES SUSTITUTORIOS|EXAMEN DE APLAZADOS)|$))",
+            "aplazados_susti": r"(EXÁ?MENES SUSTITUTORIOS|EXAMEN DE APLAZADOS)[\s\S]*?(?=(?:\n\s*(?:VI\.?|VII\.?|BIBLIOGRAFÍA|ANEXOS)|$))",
             "contenidos": r"(CONTENIDOS|PROGRAMACIÓN ACADÉMICA|UNIDADES)[\s\S]*?(?=(?:\n\s*(?:EVALUACIÓN|IV\.?)|$))",
             "metodologia": r"(METODOLOGÍA|ESTRATEGIAS DIDÁCTICAS)[\s\S]*?(?=(?:\n\s*(?:EVALUACIÓN|V\.?)|$))",
             "tutoria": r"(CONSEJERÍA ACADÉMICA|TUTORÍA)[\s\S]*?(?=(?:\n\s*(?:VI\.?)|$))"

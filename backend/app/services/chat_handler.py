@@ -140,6 +140,10 @@ class ChatHandler:
                     instruccion_extra = f"""
 [MODO CÁLCULO ACTIVO]
 USA OBLIGATORIAMENTE LAS FÓRMULAS: {formulas}. Realiza el cálculo paso a paso. Nota mínima: {nota_min}.
+REGLAS IMPORTANTES DE EXÁMENES DE RECUPERACIÓN:
+- SUSTITUTORIO: Reemplaza la nota de unidad más baja del estudiante si le favorece.
+- APLAZADO: Se suma al promedio final de las 3 unidades y se divide entre 2. Es decir, Promedio Aplazado = (Promedio 3 Unidades + Nota Aplazado) / 2.
+Ten esto muy en cuenta si el estudiante pregunta sobre qué nota necesita en aplazados o sustitutorio.
 """
 
                 prompt = f"""Eres Sylia, una asistente académica y asesora amigable, empática y natural.
