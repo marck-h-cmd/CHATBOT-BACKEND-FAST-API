@@ -264,7 +264,7 @@ const ChatPage = () => {
         {/* Input Footer */}
         <div className="shrink-0 bg-white px-4 pb-6 pt-2">
           <div className="max-w-3xl mx-auto w-full">
-            <QuickReplies onSelect={handleSend} lastIntent={currentResponse?.intent} />
+            <QuickReplies onSelect={handleSend} lastIntent={currentResponse?.intent}  disabled={!selectedContextId} />
             <div className="mt-3">
               <ChatInput onSend={handleSend} isLoading={loading} disabled={!selectedContextId} />
             </div>

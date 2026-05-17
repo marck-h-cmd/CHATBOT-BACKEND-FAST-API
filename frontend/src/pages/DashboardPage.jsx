@@ -106,7 +106,7 @@ const DashboardPage = () => {
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-indigo-600" />
-              Cursos Actuales
+              Mis Cursos
             </h3>
             <Link to="/mis-cursos" className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
               Ver todos

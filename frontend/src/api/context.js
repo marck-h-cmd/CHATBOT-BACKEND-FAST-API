@@ -14,3 +14,9 @@ export const getMyCourses = async () => {
   const response = await apiClient.get('/contexto/mis-cursos');
   return response.data;
 };
+
+// Actualizar notas de un contexto
+export const updateGrades = async (id_contexto, notas) => {
+  const response = await apiClient.put(`/contexto/${id_contexto}/notas`, notas);
+  return response.data;
+};

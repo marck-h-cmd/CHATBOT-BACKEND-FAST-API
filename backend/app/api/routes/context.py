@@ -15,6 +15,12 @@ class InscribirCurso(BaseModel):
     id_curso: int
     id_periodo: Optional[int] = None # Si es None, usar el actual
 
+class ActualizarNotas(BaseModel):
+    pu1: Optional[float] = None
+    pu2: Optional[float] = None
+    pu3: Optional[float] = None
+    nota_final: Optional[float] = None
+
 @router.post("/inscribir")
 async def inscribir_curso(
     data: InscribirCurso,
@@ -86,6 +92,50 @@ async def listar_mis_cursos(
             "codigo": ctx.curso.codigo_curso,
             "periodo": ctx.periodo.nombre,
             "silabo_validado": ctx.estado_verificacion in [EstadoVerificacion.APROBADO, EstadoVerificacion.OFICIAL],
-            "id_silabo": ctx.id_silabo_asignado
+            "id_silabo": ctx.id_silabo_asignado,
+            "notas": {
+                "pu1": ctx.pu1,
+                "pu2": ctx.pu2,
+                "pu3": ctx.pu3,
+                "nota_final": ctx.nota_final
+            }
         })
     return result
+
+@router.put("/{id_contexto}/notas")
+async def actualizar_notas(
+    id_contexto: int,
+    data: ActualizarNotas,
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    contexto = db.query(ContextoCursoUsuario).filter(
+        ContextoCursoUsuario.id_contexto == id_contexto,
+        ContextoCursoUsuario.id_usuario == current_user.id
+    ).first()
+    
+    if not contexto:
+        raise HTTPException(status_code=404, detail="Curso no encontrado para este usuario")
+        
+    if data.pu1 is not None:
+        contexto.pu1 = data.pu1
+    if data.pu2 is not None:
+        contexto.pu2 = data.pu2
+    if data.pu3 is not None:
+        contexto.pu3 = data.pu3
+    if data.nota_final is not None:
+        contexto.nota_final = data.nota_final
+        
+    db.commit()
+    db.refresh(contexto)
+    
+    return {
+        "success": True,
+        "message": "Notas actualizadas correctamente",
+        "notas": {
+            "pu1": contexto.pu1,
+            "pu2": contexto.pu2,
+            "pu3": contexto.pu3,
+            "nota_final": contexto.nota_final
+        }
+    }
