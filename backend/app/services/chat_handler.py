@@ -87,6 +87,10 @@ class ChatHandler:
         elif intent == "saludar":
             respuesta = "¡Hola! Soy Sylia, tu Asistente Académico. Estoy aquí para resolver tus dudas sobre el sílabo, fechas y simular tus promedios. ¿En qué te ayudo hoy?"
             
+        elif intent == "sugerir_tiempo":
+            from app.services.sugerencia_estudio_service import SugerenciaEstudioService
+            respuesta = SugerenciaEstudioService.responder_consulta_tiempo(db, id_usuario, id_contexto, pregunta)
+            
         else:
             # FLUJO AGENTIC RAG
             from app.services.ai_parser import _init_gemini
@@ -138,8 +142,9 @@ class ChatHandler:
 USA OBLIGATORIAMENTE LAS FÓRMULAS: {formulas}. Realiza el cálculo paso a paso. Nota mínima: {nota_min}.
 """
 
-                prompt = f"""Eres un asesor académico universitario de alto nivel (Sylia).
-Responde de forma amigable usando EXCLUSIVAMENTE esta información:
+                prompt = f"""Eres Sylia, una asistente académica y asesora amigable, empática y natural.
+Tu objetivo es ayudar al estudiante a entender su curso, planificar su estudio y responder sus dudas, pero hazlo como si fueras un tutor humano de confianza: sé flexible, no repitas siempre las mismas frases, y siéntete libre de dar consejos breves y proactivos cuando lo veas conveniente.
+Usa la siguiente información como base para tus respuestas, pero puedes adaptarla para que suene más conversacional:
 
 [CURSO] {nombre_curso} ({nombre_periodo})
 {info_estructurada}

@@ -101,6 +101,24 @@ class AccionRevision(str, enum.Enum):
     MARCAR_OFICIAL = "MARCAR_OFICIAL"
 
 
+class TipoSugerencia(str, enum.Enum):
+    POR_PESO = "POR_PESO"
+    POR_FECHA = "POR_FECHA"  
+    POR_RIESGO = "POR_RIESGO"
+    POR_COMPARACION = "POR_COMPARACION"
+
+
+class EstadoSugerencia(str, enum.Enum):
+    PENDIENTE = "PENDIENTE"
+    ACEPTADA = "ACEPTADA"
+    IGNORADA = "IGNORADA"
+
+class EstadoNotificacion(str, enum.Enum):
+    PENDIENTE = "PENDIENTE"
+    ENVIADO = "ENVIADO"
+    FALLIDO = "FALLIDO"
+
+
 # ============================================
 # TABLAS
 # ============================================
@@ -143,6 +161,8 @@ class Usuario(Base):
     incidentes_academicos = relationship("IncidenteAcademico", back_populates="usuario")
     incidentes_servicio = relationship("IncidenteServicio", back_populates="usuario")
     revisiones = relationship("RevisionSilabo", back_populates="admin")
+    sugerencias_estudio = relationship("SugerenciaEstudio", back_populates="usuario", cascade="all, delete-orphan")
+    notificaciones_programadas = relationship("NotificacionProgramada", back_populates="usuario", cascade="all, delete-orphan")
 
 
 class SesionUsuario(Base):
@@ -237,6 +257,7 @@ class ContextoCursoUsuario(Base):
     sesiones_chat = relationship("SesionChat", back_populates="contexto")
     solicitudes = relationship("SolicitudServicio", back_populates="contexto")
     incidentes_academicos = relationship("IncidenteAcademico", back_populates="contexto")
+    sugerencias_estudio = relationship("SugerenciaEstudio", back_populates="contexto")
 
 
 class Silabo(Base):
@@ -280,6 +301,7 @@ class Silabo(Base):
     incidentes_servicio = relationship("IncidenteServicio", back_populates="silabo")
     revisiones = relationship("RevisionSilabo", back_populates="silabo", cascade="all, delete-orphan")
     logs_ingestion = relationship("LogIngestion", back_populates="silabo")
+    sugerencias_estudio = relationship("SugerenciaEstudio", back_populates="silabo")
 
 
 class SilaboChunk(Base):
@@ -471,3 +493,53 @@ class MetricaDiaria(Base):
     usuarios_activos_dia = Column(Integer, default=0)
     
     fecha_actualizacion = Column(DateTime, default=func.now(), onupdate=func.now())
+
+
+class SugerenciaEstudio(Base):
+    __tablename__ = "sugerencia_estudio"
+    
+    id_sugerencia = Column(Integer, primary_key=True, index=True)
+    id_usuario = Column(Integer, ForeignKey("usuario.id", ondelete="CASCADE"), nullable=False)
+    id_contexto = Column(Integer, ForeignKey("contexto_curso_usuario.id_contexto", ondelete="CASCADE"), nullable=False)
+    id_silabo = Column(Integer, ForeignKey("silabo.id_silabo", ondelete="SET NULL"), nullable=True)
+    
+    tipo_sugerencia = Column(Enum(TipoSugerencia), nullable=False)
+    tema_o_evidencia = Column(String(100), nullable=False)
+    unidad_asociada = Column(Integer, nullable=True)
+    horas_sugeridas = Column(Float, nullable=False)
+    distribucion_sugerida = Column(JSON, nullable=True)
+    justificacion = Column(Text, nullable=False)
+    prioridad = Column(Integer, default=1)
+    
+    estado = Column(Enum(EstadoSugerencia), default=EstadoSugerencia.PENDIENTE)
+    
+    fecha_generacion = Column(DateTime, default=func.now())
+    fecha_expiracion = Column(DateTime, nullable=True)
+    fecha_respuesta = Column(DateTime, nullable=True)
+    
+    # Relaciones
+    usuario = relationship("Usuario", back_populates="sugerencias_estudio")
+    contexto = relationship("ContextoCursoUsuario", back_populates="sugerencias_estudio")
+    silabo = relationship("Silabo", back_populates="sugerencias_estudio")
+    notificaciones = relationship("NotificacionProgramada", back_populates="sugerencia", cascade="all, delete-orphan")
+
+
+class NotificacionProgramada(Base):
+    __tablename__ = "notificacion_programada"
+    
+    id_notificacion = Column(Integer, primary_key=True, index=True)
+    id_sugerencia = Column(Integer, ForeignKey("sugerencia_estudio.id_sugerencia", ondelete="CASCADE"), nullable=False)
+    id_usuario = Column(Integer, ForeignKey("usuario.id", ondelete="CASCADE"), nullable=False)
+    
+    destinatario = Column(String(100), nullable=False)
+    asunto = Column(String(255), nullable=False)
+    contenido = Column(Text, nullable=False)
+    
+    fecha_programada = Column(DateTime, nullable=False)
+    fecha_envio = Column(DateTime, nullable=True)
+    
+    estado = Column(Enum(EstadoNotificacion), default=EstadoNotificacion.PENDIENTE)
+    
+    # Relaciones
+    sugerencia = relationship("SugerenciaEstudio", back_populates="notificaciones")
+    usuario = relationship("Usuario", back_populates="notificaciones_programadas")

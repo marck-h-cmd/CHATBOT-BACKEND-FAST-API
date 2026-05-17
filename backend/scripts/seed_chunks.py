@@ -55,20 +55,30 @@ def seed_chunks():
             return
         
         # Eliminar chunks existentes
-        db.query(SilaboChunk).filter(SilaboChunk.id_silabo == silabo.id).delete()
+        db.query(SilaboChunk).filter(SilaboChunk.id_silabo == silabo.id_silabo).delete()
         
         # Crear nuevos chunks
         chunks = ChunkerService.crear_chunks(SILABO_OFICIAL_TEXTO, {"nombre_curso": "GESTION DE SERVICIOS DE TIC"})
         
         for i, chunk in enumerate(chunks):
             embedding = embedding_service.generar_embedding(chunk["texto"])
+            
+            # Map the string to Enum if needed
+            tipo_sec_str = chunk["metadata"].get("tipo_seccion", "CONTENIDOS").upper()
+            from app.database.models import TipoSeccionChunk
+            try:
+                tipo_seccion = TipoSeccionChunk[tipo_sec_str]
+            except KeyError:
+                tipo_seccion = TipoSeccionChunk.CONTENIDOS
+                
             chunk_db = SilaboChunk(
-                id_silabo=silabo.id,
-                chunk_texto=chunk["texto"],
-                tipo_seccion=chunk["metadata"].get("tipo_seccion", "general"),
-                unidad=chunk["metadata"].get("unidad", "GENERAL"),
+                id_silabo=silabo.id_silabo,
+                contenido=chunk["texto"],
+                tipo_seccion=tipo_seccion,
+                titulo=chunk["metadata"].get("unidad", "GENERAL"),
                 embedding=embedding,
-                metadata_json=chunk["metadata"]
+                metadata_json=chunk["metadata"],
+                orden=i
             )
             db.add(chunk_db)
         

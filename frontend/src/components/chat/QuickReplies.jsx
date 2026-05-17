@@ -4,13 +4,12 @@ import { Lightbulb, Calculator, HelpCircle } from 'lucide-react';
 
 const SUGGESTIONS = {
   general: [
-    { text: '¿Cómo se llama el curso?', icon: <HelpCircle className="w-3.5 h-3.5" /> },
-    { text: '¿Cuál es la nota mínima aprobatoria?', icon: <Lightbulb className="w-3.5 h-3.5" /> },
+    { text: '¿Cuánto tiempo debería estudiar para el ELD?', icon: <Lightbulb className="w-3.5 h-3.5" /> },
     { text: 'Simular promedio con 14 en todo', icon: <Calculator className="w-3.5 h-3.5" /> }
   ],
   simulation: [
     { text: '¿Qué nota necesito en la siguiente unidad?', icon: <Calculator className="w-3.5 h-3.5" /> },
-    { text: '¿Cómo se calcula el promedio final?', icon: <HelpCircle className="w-3.5 h-3.5" /> }
+    { text: '¿Cómo distribuyo mi tiempo para aprobar?', icon: <Lightbulb className="w-3.5 h-3.5" /> }
   ]
 };
 

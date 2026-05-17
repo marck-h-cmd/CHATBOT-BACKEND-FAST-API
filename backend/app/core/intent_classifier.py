@@ -34,8 +34,13 @@ class IntentClassifier:
         ],
         "saludar": [
             r"(hola|buenos días|buenas tardes|hey|saludos)"
+        ],
+        "sugerir_tiempo": [
+            r"(cuánto tiempo|cuántas horas|cómo distribuyo|qué priorizo).*?(estudiar|tiempo|semana|eld|tad|pfd|unidad)",
+            r"(sugerencia de estudio|horas de estudio|recomendación de tiempo)"
         ]
     }
+
     
     @classmethod
     def clasificar(cls, pregunta: str) -> Tuple[str, Dict]:

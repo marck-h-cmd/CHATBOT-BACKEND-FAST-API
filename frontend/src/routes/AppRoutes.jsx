@@ -23,6 +23,7 @@ import CourseListPage from '../pages/CourseListPage';
 import EnrollmentPage from '../pages/EnrollmentPage';
 import EnrollmentSuccessPage from '../pages/EnrollmentSuccessPage';
 import MyCoursesPage from '../pages/MyCoursesPage';
+import SugerenciasPage from '../pages/SugerenciasPage';
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
 import AdminSummaryPage from '../pages/admin/AdminSummaryPage';
 import CourseManagementPage from '../pages/admin/CourseManagementPage';
@@ -132,6 +133,13 @@ const AppRoutes = () => {
                     <PrivateRoute>
                       <AppLayout>
                         <MyCoursesPage />
+                      </AppLayout>
+                    </PrivateRoute>
+                  } />
+                  <Route path="/sugerencias" element={
+                    <PrivateRoute>
+                      <AppLayout>
+                        <SugerenciasPage />
                       </AppLayout>
                     </PrivateRoute>
                   } />

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../ui/Button';
-import { Bot, LogOut, Menu, X, LayoutDashboard, MessageSquare, BookMarked, BarChart3, User as UserIcon } from 'lucide-react';
+import { Bot, LogOut, Menu, X, LayoutDashboard, MessageSquare, BookMarked, BookOpen, BarChart3, User as UserIcon } from 'lucide-react';
 
 const Navbar = () => {
   const { user, logout, isAuthenticated } = useAuth();
@@ -72,6 +72,7 @@ const Navbar = () => {
               <NavItem to="/dashboard" icon={LayoutDashboard} label="Panel" />
               <NavItem to="/chat" icon={MessageSquare} label="Asistente" />
               <NavItem to="/cursos" icon={BookMarked} label="Cursos" />
+              <NavItem to="/sugerencias" icon={BookOpen} label="Sugerencias" />
               {user?.rol === 'admin' && (
                 <NavItem to="/metrics" icon={BarChart3} label="Métricas" />
               )}
@@ -128,6 +129,7 @@ const Navbar = () => {
           <MobileNavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" onClick={() => setMenuOpen(false)} />
           <MobileNavItem to="/chat" icon={MessageSquare} label="Sylia" onClick={() => setMenuOpen(false)} />
           <MobileNavItem to="/cursos" icon={BookMarked} label="Cursos y Matrícula" onClick={() => setMenuOpen(false)} />
+          <MobileNavItem to="/sugerencias" icon={BookOpen} label="Sugerencias" onClick={() => setMenuOpen(false)} />
           {user?.rol === 'admin' && (
             <MobileNavItem to="/metrics" icon={BarChart3} label="Métricas ITIL" onClick={() => setMenuOpen(false)} />
           )}

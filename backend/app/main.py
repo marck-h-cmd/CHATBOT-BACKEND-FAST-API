@@ -125,6 +125,8 @@ app.include_router(context.router)
 app.include_router(chunks.router)
 app.include_router(services.router)
 app.include_router(logs.router)
+from app.api.routes import sugerencias
+app.include_router(sugerencias.router)
 
 
 @app.get("/")
@@ -146,6 +148,30 @@ async def root():
         ]
     }
 
+
+import asyncio
+from app.database.connection import SessionLocal
+from app.services.notificacion_service import NotificacionService
+
+async def procesar_notificaciones_job():
+    while True:
+        try:
+            db = SessionLocal()
+            try:
+                enviados = await NotificacionService.procesar_pendientes(db)
+                if enviados > 0:
+                    print(f"📧 [Job] {enviados} notificaciones enviadas.")
+            finally:
+                db.close()
+        except Exception as e:
+            print(f"❌ [Job] Error procesando notificaciones: {e}")
+            
+        # Esperar 60 segundos antes de volver a revisar (en prod podría ser 1h)
+        await asyncio.sleep(60)
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(procesar_notificaciones_job())
 
 @app.get("/health")
 async def health_check():
