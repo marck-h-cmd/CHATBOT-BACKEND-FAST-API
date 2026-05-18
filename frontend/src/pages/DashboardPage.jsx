@@ -23,8 +23,8 @@ const DashboardPage = () => {
     }
   }, [incidents]);
 
-  const QuickLink = ({ to, icon: Icon, title, description }) => (
-    <Link to={to} className="group block h-full">
+  const QuickLink = ({ to, icon: Icon, title, description, tourId = null }) => (
+    <Link to={to} className="group block h-full" data-tour={tourId || undefined}>
       <div className="h-full p-4 rounded-xl border border-slate-200 bg-white hover:border-indigo-500 hover:shadow-md transition-all duration-200 flex items-start gap-4">
         <div className="p-2 bg-indigo-50 rounded-lg group-hover:bg-indigo-100 transition-colors">
           <Icon className="w-5 h-5 text-indigo-600" />
@@ -82,7 +82,7 @@ const DashboardPage = () => {
       </header>
       
       {/* Tarjeta de bienvenida minimalista */}
-      <div className="mb-8 p-6 lg:p-8 bg-indigo-50 border border-indigo-100/50 rounded-2xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div data-tour="student-welcome" className="mb-8 p-6 lg:p-8 bg-indigo-50 border border-indigo-100/50 rounded-2xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">
             ¡Hola, {user?.nombres || 'Estudiante'}!
@@ -181,11 +181,11 @@ const DashboardPage = () => {
         </div>
 
         {/* Columna Derecha: Accesos */}
-        <div className="lg:col-span-4">
+        <div className="lg:col-span-4" data-tour="student-tools">
           <h3 className="text-xl font-bold text-slate-800 mb-6">Herramientas</h3>
           <div className="grid grid-cols-1 gap-3">
             <QuickLink to="/chat" icon={MessageSquare} title="Sylia" description="Resuelve tus dudas del sílabo" />
-            <QuickLink to="/cursos" icon={BookMarked} title="Catálogo" description="Inscríbete en nuevos cursos" />
+            <QuickLink to="/cursos" icon={BookMarked} title="Catálogo" description="Inscríbete en nuevos cursos" tourId="student-catalog-option" />
             <QuickLink to="/syllabus" icon={Layers} title="Mis Sílabos" description="Gestionar archivos PDF" />
             <QuickLink to="/profile" icon={Settings} title="Configuración" description="Perfil y cuenta" />
           </div>

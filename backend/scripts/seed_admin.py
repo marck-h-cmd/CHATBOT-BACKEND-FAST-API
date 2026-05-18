@@ -38,7 +38,9 @@ def seed_admin():
             return
         
         # Crear nuevo admin
-        hashed_password = pwd_context.hash(ADMIN_USER["password"])
+        # Truncar contraseña a 72 bytes (límite bcrypt)
+        password = ADMIN_USER["password"][:72]
+        hashed_password = pwd_context.hash(password)
         new_admin = Usuario(
             nombres=ADMIN_USER["nombres"],
             apellidos=ADMIN_USER["apellidos"],

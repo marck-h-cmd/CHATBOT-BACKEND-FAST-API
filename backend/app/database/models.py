@@ -137,6 +137,11 @@ class Usuario(Base):
     email_verificado = Column(Boolean, default=False)
     ultimo_login = Column(DateTime, nullable=True)
     fecha_registro = Column(DateTime, default=func.now())
+    # Onboarding server-side persistence
+    onboarding_completed = Column(Boolean, default=False)
+    onboarding_skipped = Column(Boolean, default=False)
+    onboarding_version = Column(Integer, default=1)
+    onboarding_updated_at = Column(DateTime, nullable=True)
     
     def to_dict(self):
         return {
@@ -149,7 +154,11 @@ class Usuario(Base):
             'es_activo': self.es_activo,
             'email_verificado': self.email_verificado,
             'ultimo_login': self.ultimo_login.isoformat() if self.ultimo_login else None,
-            'fecha_registro': self.fecha_registro.isoformat() if self.fecha_registro else None
+            'fecha_registro': self.fecha_registro.isoformat() if self.fecha_registro else None,
+            'onboarding_completed': bool(self.onboarding_completed),
+            'onboarding_skipped': bool(self.onboarding_skipped),
+            'onboarding_version': int(self.onboarding_version) if self.onboarding_version is not None else 1,
+            'onboarding_updated_at': self.onboarding_updated_at.isoformat() if self.onboarding_updated_at else None
         }
     
     # Relationships

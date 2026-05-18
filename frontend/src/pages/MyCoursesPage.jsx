@@ -56,7 +56,7 @@ const MyCoursesPage = () => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10" data-tour="student-mycourses">
       <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Mis Cursos</h1>

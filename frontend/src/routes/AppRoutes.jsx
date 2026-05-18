@@ -5,6 +5,8 @@ import { SyllabusProvider } from '../contexts/SyllabusContext';
 import { ChatProvider } from '../contexts/ChatContext';
 import { CourseProvider } from '../contexts/CourseContext';
 import { ServiceDeskProvider } from '../contexts/ServiceDeskContext';
+import { OnboardingProvider } from '../contexts/OnboardingContext';
+import OnboardingOverlay from '../components/onboarding/OnboardingOverlay';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import PrivateRoute from './PrivateRoute';
@@ -73,7 +75,8 @@ const AppRoutes = () => {
           <ServiceDeskProvider>
             <SyllabusProvider>
               <ChatProvider>
-                <Routes>
+                <OnboardingProvider>
+                  <Routes>
                   {/* Rutas públicas (sin layout Navbar/Footer) */}
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/register" element={<RegisterPage />} />
@@ -179,7 +182,9 @@ const AppRoutes = () => {
 
                   {/* Ruta 404 */}
                   <Route path="*" element={<NotFoundPage />} />
-                </Routes>
+                  </Routes>
+                  <OnboardingOverlay />
+                </OnboardingProvider>
               </ChatProvider>
             </SyllabusProvider>
           </ServiceDeskProvider>

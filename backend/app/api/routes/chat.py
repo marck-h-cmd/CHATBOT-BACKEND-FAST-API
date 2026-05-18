@@ -85,7 +85,7 @@ async def get_history(
     ).first()
     
     if not sesion:
-        raise HTTPException(status_code=404, detail="Sesión no encontrada")
+        raise HTTPException(status_code=403, detail="No tienes acceso a esta sesión de chat")
         
     mensajes = db.query(MensajeChat).filter(
         MensajeChat.id_sesion == id_sesion
@@ -98,4 +98,4 @@ async def get_history(
             "intent": m.tipo_consulta,
             "timestamp": m.fecha_envio.isoformat()
         } for m in mensajes
-    ]
+    ]

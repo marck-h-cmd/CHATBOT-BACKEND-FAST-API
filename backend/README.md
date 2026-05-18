@@ -114,3 +114,19 @@ NOTA_APROBACION=14
 2. Instalar dependencias: `pip install -r requirements.txt`
 3. Ejecutar servidor: `uvicorn app.main:app --reload`
 4. Documentación interactiva: `http://localhost:8000/docs`
+
+## 🔔 Nueva: Persistencia de Onboarding (V1)
+
+Se añadió persistencia server-side para el recorrido de onboarding del estudiante.
+
+- Script de migración (agrega columnas a la tabla `usuario` si no existen):
+
+    ```bash
+    python scripts/add_onboarding_fields.py
+    ```
+
+- Endpoints:
+    - `GET /onboarding/status` — devuelve `{ completed, skipped, version, updated_at }` para el usuario autenticado.
+    - `PATCH /onboarding/status` — actualiza campos `completed`, `skipped`, `version`.
+
+Nota: El frontend mantiene `localStorage` como fallback; la V1 intenta sincronizar con el servidor para que el control sea por usuario real y no por navegador.

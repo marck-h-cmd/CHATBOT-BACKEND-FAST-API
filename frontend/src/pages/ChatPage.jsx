@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useChat } from '../contexts/ChatContext';
 import { useCourse } from '../contexts/CourseContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useOnboarding } from '../contexts/OnboardingContext';
 import ChatMessage from '../components/chat/ChatMessage';
 import ChatInput from '../components/chat/ChatInput';
 import TypingIndicator from '../components/chat/TypingIndicator';
@@ -13,6 +14,7 @@ const ChatPage = () => {
   const { messages, loading, sendMessage, currentResponse, loadHistory } = useChat();
   const { enrollments } = useCourse();
   const { isAuthenticated } = useAuth();
+  const { running, currentStep } = useOnboarding();
   const messagesEndRef = useRef(null);
   
   const [selectedContextId, setSelectedContextId] = useState(null);
@@ -23,6 +25,33 @@ const ChatPage = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    if (!running || !currentStep?.id || window.innerWidth >= 1024) {
+      return;
+    }
+
+    let resizeTimer;
+
+    if (currentStep.id === 'chat-context') {
+      setSidebarOpen(true);
+      // Force spotlight recalculation after drawer transition.
+      resizeTimer = setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+      }, 350);
+    }
+
+    if (currentStep.id === 'chat-input') {
+      setSidebarOpen(false);
+      resizeTimer = setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+      }, 350);
+    }
+
+    return () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+    };
+  }, [running, currentStep?.id]);
 
   const handleSend = async (text) => {
     if (!selectedContextId) {
@@ -87,11 +116,14 @@ const ChatPage = () => {
       )}
 
       {/* Sidebar (Desktop & Mobile Drawer) */}
-      <div className={`
+      <div
+        data-tour="student-chat-sidebar"
+        className={`
         fixed inset-y-0 left-0 z-50 w-[280px] bg-[#f9fafb] border-r border-slate-200 transform transition-transform duration-300 ease-in-out
         lg:relative lg:translate-x-0 shrink-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
+      `}
+      >
         {/* Mobile close button inside drawer */}
         <div className="absolute top-3 right-3 lg:hidden z-10">
           <button onClick={() => setSidebarOpen(false)} className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 rounded-lg transition-colors">
@@ -262,7 +294,7 @@ const ChatPage = () => {
         </div>
 
         {/* Input Footer */}
-        <div className="shrink-0 bg-white px-4 pb-6 pt-2">
+        <div className="shrink-0 bg-white px-4 pb-6 pt-2" data-tour="student-chat-input">
           <div className="max-w-3xl mx-auto w-full">
             <QuickReplies onSelect={handleSend} lastIntent={currentResponse?.intent}  disabled={!selectedContextId} />
             <div className="mt-3">

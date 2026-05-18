@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOnboarding } from '../../contexts/OnboardingContext';
 import Button from '../ui/Button';
-import { Bot, LogOut, Menu, X, LayoutDashboard, MessageSquare, BookMarked, BookOpen, BarChart3, User as UserIcon } from 'lucide-react';
+import { LogOut, Menu, X, LayoutDashboard, MessageSquare, BookMarked, BookOpen, BarChart3, User as UserIcon, Compass } from 'lucide-react';
 
 const Navbar = () => {
   const { user, logout, isAuthenticated } = useAuth();
+  const { canStartOnboarding, startOnboarding } = useOnboarding();
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -15,11 +17,12 @@ const Navbar = () => {
     navigate('/login');
   };
 
-  const NavItem = ({ to, icon: Icon, label }) => {
+  const NavItem = ({ to, icon: Icon, label, tourId = null }) => {
     const isActive = location.pathname === to || location.pathname.startsWith(to + '/');
     return (
       <Link 
         to={to} 
+        data-tour={tourId || undefined}
         className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
           isActive 
             ? 'bg-indigo-50 text-indigo-700' 
@@ -32,12 +35,13 @@ const Navbar = () => {
     );
   };
 
-  const MobileNavItem = ({ to, icon: Icon, label, onClick }) => {
+  const MobileNavItem = ({ to, icon: Icon, label, onClick, tourId = null }) => {
     const isActive = location.pathname === to || location.pathname.startsWith(to + '/');
     return (
       <Link 
         to={to} 
         onClick={onClick}
+        data-tour={tourId || undefined}
         className={`flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-colors ${
           isActive 
             ? 'bg-indigo-50 text-indigo-700' 
@@ -69,9 +73,9 @@ const Navbar = () => {
           {/* Menú de escritorio */}
           {isAuthenticated && (
             <div className="hidden md:flex items-center gap-1 ml-6 flex-1">
-              <NavItem to="/dashboard" icon={LayoutDashboard} label="Panel" />
-              <NavItem to="/chat" icon={MessageSquare} label="Asistente" />
-              <NavItem to="/cursos" icon={BookMarked} label="Cursos" />
+              <NavItem to="/dashboard" icon={LayoutDashboard} label="Panel" tourId="student-nav-dashboard" />
+              <NavItem to="/chat" icon={MessageSquare} label="Asistente" tourId="student-nav-chat" />
+              <NavItem to="/cursos" icon={BookMarked} label="Cursos" tourId="student-nav-courses" />
               <NavItem to="/sugerencias" icon={BookOpen} label="Sugerencias" />
               {user?.rol === 'admin' && (
                 <NavItem to="/metrics" icon={BarChart3} label="Métricas" />
@@ -83,6 +87,15 @@ const Navbar = () => {
           <div className="hidden md:flex items-center gap-4">
             {isAuthenticated ? (
               <div className="flex items-center gap-4">
+                {canStartOnboarding && user?.rol === 'estudiante' && (
+                  <button
+                    onClick={() => startOnboarding(0)}
+                    className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-1.5"
+                    data-tour="student-reopen-onboarding"
+                  >
+                    <Compass className="w-4 h-4" /> Guia
+                  </button>
+                )}
                 <Link to="/profile" className="flex items-center gap-2 hover:bg-slate-50 px-2 py-1.5 rounded-lg transition-colors group">
                   <div className="w-7 h-7 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-xs">
                     {user?.nombres?.charAt(0) || 'U'}
@@ -126,12 +139,21 @@ const Navbar = () => {
       {/* Menú móvil desplegable */}
       {menuOpen && isAuthenticated && (
         <div className="md:hidden bg-white border-t border-slate-100 px-4 py-4 space-y-1 shadow-lg absolute w-full">
-          <MobileNavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" onClick={() => setMenuOpen(false)} />
-          <MobileNavItem to="/chat" icon={MessageSquare} label="Sylia" onClick={() => setMenuOpen(false)} />
-          <MobileNavItem to="/cursos" icon={BookMarked} label="Cursos y Matrícula" onClick={() => setMenuOpen(false)} />
+          <MobileNavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" onClick={() => setMenuOpen(false)} tourId="student-nav-dashboard" />
+          <MobileNavItem to="/chat" icon={MessageSquare} label="Sylia" onClick={() => setMenuOpen(false)} tourId="student-nav-chat" />
+          <MobileNavItem to="/cursos" icon={BookMarked} label="Cursos y Matrícula" onClick={() => setMenuOpen(false)} tourId="student-nav-courses" />
           <MobileNavItem to="/sugerencias" icon={BookOpen} label="Sugerencias" onClick={() => setMenuOpen(false)} />
           {user?.rol === 'admin' && (
             <MobileNavItem to="/metrics" icon={BarChart3} label="Métricas ITIL" onClick={() => setMenuOpen(false)} />
+          )}
+          {canStartOnboarding && user?.rol === 'estudiante' && (
+            <button
+              onClick={() => { setMenuOpen(false); startOnboarding(0); }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-indigo-600 hover:bg-indigo-50 rounded-xl text-base font-medium transition-colors"
+              data-tour="student-reopen-onboarding"
+            >
+              <Compass className="w-5 h-5" /> Ver guia interactiva
+            </button>
           )}
           <div className="h-px bg-slate-100 my-2"></div>
           <MobileNavItem to="/profile" icon={UserIcon} label="Mi Perfil" onClick={() => setMenuOpen(false)} />

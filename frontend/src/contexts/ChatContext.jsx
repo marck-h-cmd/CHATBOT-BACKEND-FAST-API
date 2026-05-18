@@ -1,6 +1,7 @@
-import React, { createContext, useState, useContext, useCallback } from 'react';
+import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
 import * as chatAPI from '../api/chat';
 import { handleApiError } from '../utils/errorHandler';
+import { useAuth } from './AuthContext';
 
 const ChatContext = createContext();
 
@@ -11,6 +12,19 @@ export const ChatProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [currentResponse, setCurrentResponse] = useState(null);
   const [currentSessionId, setCurrentSessionId] = useState(null);
+  
+  const { user } = useAuth();
+
+  const clearMessages = () => {
+    setMessages([]);
+    setCurrentResponse(null);
+    setCurrentSessionId(null);
+  };
+  
+  // Limpiar estado de chat cuando cambia el usuario (logout/login)
+  useEffect(() => {
+    clearMessages();
+  }, [user?.id]);
 
   const loadHistory = useCallback(async (idContexto) => {
     setLoading(true);
@@ -82,12 +96,6 @@ export const ChatProvider = ({ children }) => {
     }
   };
 
-  const clearMessages = () => {
-    setMessages([]);
-    setCurrentResponse(null);
-    setCurrentSessionId(null);
-  };
-
   const value = {
     messages,
     loading,
@@ -99,4 +107,4 @@ export const ChatProvider = ({ children }) => {
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
-};
+};
