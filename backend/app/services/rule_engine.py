@@ -114,7 +114,8 @@ class RuleEngine:
                 "nivel": "BLOQUEADO",
                 "color": "🔒",
                 "mensaje": "La evaluación de riesgo está deshabilitada hasta que el sílabo sea validado.",
-                "recomendacion": "Espera la validación administrativa o usa un sílabo oficial."
+                "recomendacion": "Espera la validación administrativa o usa un sílabo oficial.",
+                "pp_proyectado": 0.0
             }
 
         # Caso 1: Solo PU1
@@ -124,55 +125,63 @@ class RuleEngine:
                     "nivel": "ALTO",
                     "color": "🔴",
                     "mensaje": f"PU1 = {pu1} está muy bajo",
-                    "recomendacion": "Asiste a tutoría inmediatamente. Revisa los TAD que tienen mayor peso."
+                    "recomendacion": "Asiste a tutoría inmediatamente. Revisa los TAD que tienen mayor peso.",
+                    "pp_proyectado": pu1
                 }
             elif pu1 < Config.UMBRAL_RIESGO_MEDIO:
                 return {
                     "nivel": "MEDIO",
                     "color": "🟡",
                     "mensaje": f"PU1 = {pu1} necesita mejora",
-                    "recomendacion": "Enfócate en U2 donde TAD pesa 2."
+                    "recomendacion": "Enfócate en U2 donde TAD pesa 2.",
+                    "pp_proyectado": pu1
                 }
             else:
                 return {
                     "nivel": "BAJO",
                     "color": "🟢",
                     "mensaje": f"PU1 = {pu1} es buen inicio",
-                    "recomendacion": "Mantén el ritmo."
+                    "recomendacion": "Mantén el ritmo.",
+                    "pp_proyectado": pu1
                 }
         
         # Caso 2: PU1 y PU2 conocidos
-        if pu1 is not None and pu2 is None and pu3 is None:
+        if pu1 is not None and pu2 is not None and pu3 is None:
             necesidad = RuleEngine.calcular_nota_necesaria(pu1, pu2)
             necesita = necesidad["necesita_en_pu3"]
+            pp_est = round((pu1 + pu2) / 2, 2)
             
             if necesita > 20:
                 return {
                     "nivel": "MUY ALTO",
                     "color": "🔴🔴",
                     "mensaje": f"Necesitas {necesita} en PU3 - IMPOSIBLE",
-                    "recomendacion": f"Considera aplazados. Tutoría: {Config.TUTORIA_DIA} {Config.TUTORIA_HORARIO}"
+                    "recomendacion": f"Considera aplazados. Tutoría: {Config.TUTORIA_DIA} {Config.TUTORIA_HORARIO}",
+                    "pp_proyectado": pp_est
                 }
             elif necesita > 15:
                 return {
                     "nivel": "ALTO",
                     "color": "🔴",
                     "mensaje": f"Necesitas {necesita} en PU3",
-                    "recomendacion": "Esfuérzate en U3. TAD y ELD tienen peso 2."
+                    "recomendacion": "Esfuérzate en U3. TAD y ELD tienen peso 2.",
+                    "pp_proyectado": pp_est
                 }
             elif necesita > 11:
                 return {
                     "nivel": "MEDIO",
                     "color": "🟡",
                     "mensaje": f"Necesitas {necesita} en PU3",
-                    "recomendacion": "Concéntrate en evidencias de mayor peso."
+                    "recomendacion": "Concéntrate en evidencias de mayor peso.",
+                    "pp_proyectado": pp_est
                 }
             else:
                 return {
                     "nivel": "BAJO",
                     "color": "🟢",
                     "mensaje": f"Solo necesitas {necesita} en PU3",
-                    "recomendacion": "Sigue así. Revisa la fórmula."
+                    "recomendacion": "Sigue así. Revisa la fórmula.",
+                    "pp_proyectado": pp_est
                 }
         
         # Caso 3: Todas las notas
@@ -185,21 +194,24 @@ class RuleEngine:
                     "nivel": "APROBADO",
                     "color": "✅",
                     "mensaje": f"Promedio final = {pp}",
-                    "recomendacion": "¡Felicidades! No olvides asistencia >70%"
+                    "recomendacion": "¡Felicidades! No olvides asistencia >70%",
+                    "pp_proyectado": pp
                 }
             else:
                 return {
                     "nivel": "DESAPRUEBA",
                     "color": "❌",
                     "mensaje": f"Promedio final = {pp} (mínimo {Config.NOTA_APROBACION})",
-                    "recomendacion": f"Revisa opción de aplazados. Tutoría: {Config.TUTORIA_EMAIL}"
+                    "recomendacion": f"Revisa opción de aplazados. Tutoría: {Config.TUTORIA_EMAIL}",
+                    "pp_proyectado": pp
                 }
         
         return {
             "nivel": "INCOMPLETO",
             "color": "❓",
             "mensaje": "Faltan notas para evaluar",
-            "recomendacion": "Ingresa tus notas de PU1, PU2 y/o PU3"
+            "recomendacion": "Ingresa tus notas de PU1, PU2 y/o PU3",
+            "pp_proyectado": 0.0
         }
     
     @staticmethod

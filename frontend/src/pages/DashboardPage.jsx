@@ -163,18 +163,71 @@ const DashboardPage = () => {
             <div className="pt-6">
               <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2 mb-4">
                 <AlertTriangle className="w-5 h-5 text-amber-500" />
-                Alertas Académicas
+                Alertas Académicas y Recomendaciones
               </h3>
               <div className="space-y-3">
-                {recentIncidents.map(inc => (
-                  <div key={inc.id} className="p-4 border border-amber-200/60 bg-amber-50/50 rounded-xl flex gap-3">
-                    <AlertTriangle className={`w-5 h-5 shrink-0 ${inc.severidad === 'ALTA' ? 'text-red-500' : 'text-amber-500'}`} />
-                    <div>
-                      <h5 className="font-semibold text-slate-800 text-sm">Nivel de Riesgo: {inc.severidad}</h5>
-                      <p className="text-sm text-slate-600 mt-0.5">{inc.recomendacion}</p>
+                {recentIncidents.map(inc => {
+                  const isResuelto = inc.estado === 'RESUELTO';
+                  return (
+                    <div 
+                      key={inc.id} 
+                      className={`p-4 border rounded-xl transition-all shadow-xs flex flex-col gap-2.5 ${
+                        isResuelto 
+                          ? 'bg-emerald-50/60 border-emerald-200 text-slate-800' 
+                          : inc.severidad === 'ALTA'
+                            ? 'bg-rose-50 border-rose-200 text-slate-800'
+                            : 'bg-amber-50 border-amber-200 text-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2.5">
+                          {isResuelto ? (
+                            <div className="p-1.5 bg-emerald-100 text-emerald-700 rounded-lg shrink-0">
+                              <CheckCircle2 className="w-4 h-4" />
+                            </div>
+                          ) : (
+                            <div className={`p-1.5 rounded-lg shrink-0 ${inc.severidad === 'ALTA' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>
+                              <AlertTriangle className="w-4 h-4" />
+                            </div>
+                          )}
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h5 className="font-bold text-sm text-slate-900 leading-none">
+                                {isResuelto ? 'Intervención Atendida' : `Alerta: Riesgo ${inc.severidad === 'ALTA' ? 'Crítico' : 'Moderado'}`}
+                              </h5>
+                              <span className="text-[10px] bg-white/80 px-1.5 py-0.5 rounded border border-slate-200 font-mono text-slate-500 font-semibold">INC-{String(inc.id).padStart(4, '0')}</span>
+                            </div>
+                            {inc.promedio_actual !== null && (
+                              <p className="text-xs text-slate-600 mt-1">
+                                Promedio Proyectado: <span className="font-mono font-bold text-slate-900">{inc.promedio_actual} / 20.0</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        {isResuelto ? (
+                          <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-lg border border-emerald-300 flex items-center gap-1 shadow-2xs">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Resuelto
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 bg-amber-100 text-amber-800 text-[11px] font-bold rounded-lg border border-amber-300 flex items-center gap-1 animate-pulse shadow-2xs">
+                            <CircleDashed className="w-3.5 h-3.5" /> Pendiente
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="text-xs text-slate-700 leading-relaxed bg-white/80 p-3 rounded-lg border border-slate-200/60 shadow-2xs">
+                        <span className="font-bold text-slate-900 block text-[10px] mb-1 uppercase tracking-wider text-indigo-600">Plan de Acción / Recomendación:</span>
+                        <p className="line-clamp-3">{inc.recomendacion || 'Rendimiento por debajo del umbral aprobatorio. Se recomienda asistir a las sesiones de tutoría académica.'}</p>
+                      </div>
+
+                      {isResuelto && inc.fecha_cierre && (
+                        <div className="text-[10px] text-slate-500 text-right font-semibold">
+                          Atendido el: {new Date(inc.fecha_cierre).toLocaleDateString('es-ES', { dateStyle: 'medium' })}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

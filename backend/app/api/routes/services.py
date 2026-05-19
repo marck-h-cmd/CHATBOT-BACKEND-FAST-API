@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Any, cast
 import datetime
 from app.database.connection import get_db
-from app.database.models import Usuario, SolicitudServicio, IncidenteAcademico, Silabo
+from app.database.models import Usuario, SolicitudServicio, IncidenteAcademico, Silabo, ContextoCursoUsuario, EstadoIncidente
 from app.api.dependencies import get_current_user_from_token
 
 router = APIRouter(prefix="/services", tags=["Services"])
@@ -44,8 +44,8 @@ def _format_incidente(incidente: IncidenteAcademico) -> dict:
         "codigo_universitario": incidente.usuario.codigo_universitario if incidente.usuario else "N/A",
         "id_silabo": cast(Optional[int], incidente.id_silabo),
         "severidad": cast(Optional[str], incidente.severidad),
-        "promedio_actual": cast(Optional[float], incidente.promedio_actual),
-        "nota_necesaria": cast(Optional[float], incidente.nota_necesaria),
+        "promedio_actual": cast(Optional[float], incidente.pp_proyectado),
+        "nota_necesaria": 14.0,
         "recomendacion": cast(Optional[str], incidente.recomendacion),
         "estado": cast(str, incidente.estado),
         "escalada": _to_bool(incidente.escalado_a_tutoria),
@@ -79,6 +79,7 @@ class SolicitudServicioUpdate(BaseModel):
 
 class IncidenteAcademicoCreate(BaseModel):
     id_silabo: Optional[int] = None
+    id_contexto: Optional[int] = None
     severidad: Optional[str] = None
     promedio_actual: Optional[float] = None
     nota_necesaria: Optional[float] = None
@@ -257,13 +258,28 @@ async def crear_incidente(
     db: Session = Depends(get_db)
 ):
     payload = incidente_data.model_dump(exclude_unset=True)
+    id_contexto = payload.get("id_contexto")
+    if not id_contexto:
+        contexto = db.query(ContextoCursoUsuario).filter(
+            ContextoCursoUsuario.id_usuario == current_user.id,
+            ContextoCursoUsuario.id_silabo_asignado == payload.get("id_silabo")
+        ).first()
+        if not contexto:
+            contexto = db.query(ContextoCursoUsuario).filter(
+                ContextoCursoUsuario.id_usuario == current_user.id
+            ).first()
+        if contexto:
+            id_contexto = contexto.id_contexto
+        else:
+            raise HTTPException(status_code=400, detail="No se encontró un contexto de curso válido para el usuario")
+
     incidente = IncidenteAcademico(
         id_usuario=cast(int, current_user.id),
+        id_contexto=id_contexto,
         id_silabo=payload.get("id_silabo"),
         severidad=payload.get("severidad") or "MEDIA",
-        descripcion=payload.get("recomendacion") or "",
-        promedio_actual=payload.get("promedio_actual"),
-        nota_necesaria=payload.get("nota_necesaria"),
+        descripcion=payload.get("recomendacion") or "Incidente reportado",
+        pp_proyectado=payload.get("promedio_actual"),
         recomendacion=payload.get("recomendacion"),
         escalado_a_tutoria=payload.get("notificado") or False,
         fecha_cierre=payload.get("fecha_resolucion"),
@@ -290,12 +306,18 @@ async def actualizar_incidente(
         "notificado": "escalado_a_tutoria",
         "resuelto": "estado",
         "fecha_resolucion": "fecha_cierre",
+        "promedio_actual": "pp_proyectado",
     }
     for key, value in update_data.items():
+        if key in ["nota_necesaria"]:
+            continue
+        if key == "resuelto":
+            value = EstadoIncidente.RESUELTO if value else EstadoIncidente.ACTIVO
         setattr(incidente, mapping.get(key, key), value)
     db.commit()
     db.refresh(incidente)
     return _format_incidente(incidente)
+
 
 
 @router.delete("/incidents/{id_incidente}")

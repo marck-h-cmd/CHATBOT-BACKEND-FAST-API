@@ -77,11 +77,13 @@ class ChatHandler:
             riesgo = RuleEngine.evaluar_riesgo(contexto.pu1, contexto.pu2, contexto.pu3, silabo)
             respuesta = f"Tu riesgo actual es: **{riesgo['nivel']}**.\n{riesgo['recomendacion']}"
             
-            if riesgo["nivel"] == "ALTA":
+            print("Riesgo: ", riesgo)
+            if riesgo["nivel"] == "DESAPRUEBA":
                 ITILServiceDesk.registrar_incidente_academico(
                     db, id_usuario, id_contexto, silabo.id_silabo if silabo else None,
                     "ALTA", "Riesgo académico detectado por sistema", 
-                    pp_proyectado=0 
+                    pp_proyectado=riesgo.get("pp_proyectado", 0.0),
+                    recomendacion=riesgo.get("recomendacion", "Asistir a tutoría académica.")
                 )
                 
         elif intent == "saludar":
