@@ -33,11 +33,11 @@ const ChatInput = ({ onSend, isLoading, disabled = false, placeholder = "Envía 
 
   return (
     <form onSubmit={handleSubmit} className="relative group w-full">
-      <div 
-        className={`flex items-end bg-[#F4F4F5] border border-transparent rounded-[24px] overflow-hidden transition-all duration-300 ${
-          disabled 
-            ? 'opacity-60 cursor-not-allowed' 
-            : 'focus-within:bg-white focus-within:border-slate-300 focus-within:shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] hover:border-slate-300'
+      <div
+        className={`flex items-end bg-slate-100 border border-transparent rounded-3xl overflow-hidden transition-all duration-200 ${
+          disabled
+            ? 'opacity-60 cursor-not-allowed'
+            : 'focus-within:bg-white focus-within:border-slate-300 focus-within:shadow-sm hover:border-slate-200'
         }`}
       >
         <textarea
@@ -48,17 +48,17 @@ const ChatInput = ({ onSend, isLoading, disabled = false, placeholder = "Envía 
           placeholder={disabled ? "Selecciona un curso en la barra lateral para empezar" : placeholder}
           disabled={isLoading || disabled}
           rows={1}
-          className="flex-1 max-h-[150px] resize-none bg-transparent pl-5 pr-3 py-3.5 focus:outline-none text-[15px] text-slate-800 placeholder-slate-400 disabled:cursor-not-allowed leading-relaxed no-scrollbar"
+          className="flex-1 max-h-[150px] resize-none bg-transparent pl-5 pr-3 py-3.5 focus:outline-none text-[15px] text-slate-800 placeholder:text-slate-400 disabled:cursor-not-allowed leading-relaxed no-scrollbar"
         />
-        
+
         <div className="p-2 shrink-0 self-end mb-0.5 mr-0.5">
           <button
             type="submit"
             disabled={!input.trim() || isLoading || disabled}
-            className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 ${
+            className={`flex items-center justify-center w-9 h-9 rounded-full transition-all duration-200 ${
               !input.trim() || isLoading || disabled
-                ? 'bg-[#E4E4E7] text-white cursor-not-allowed'
-                : 'bg-black text-white hover:bg-slate-800 hover:scale-105 active:scale-95 shadow-sm'
+                ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                : 'bg-slate-900 text-white hover:bg-slate-800 active:scale-95'
             }`}
           >
             {isLoading ? (

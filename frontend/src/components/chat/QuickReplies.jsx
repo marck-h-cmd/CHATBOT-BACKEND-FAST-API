@@ -22,14 +22,14 @@ const QuickReplies = ({ onSelect, lastIntent, disabled = false }) => {
       {replies.map((reply, idx) => (
         <motion.button
           key={idx}
-          initial={{ opacity: 0, y: 10, scale: 0.9 }}
+          initial={{ opacity: 0, y: 8, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.3, delay: idx * 0.1 }}
-          whileHover={{ scale: 1.03, backgroundColor: '#f1f5f9' }}
+          transition={{ duration: 0.25, delay: idx * 0.08 }}
+          whileHover={{ scale: 1.02, backgroundColor: '#f1f5f9' }}
           disabled={disabled}
           whileTap={{ scale: 0.97 }}
           onClick={() => onSelect(reply.text)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-xs font-medium rounded-full shadow-sm hover:text-indigo-600 hover:border-indigo-200 transition-colors"
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-2xl shadow-sm hover:text-slate-900 hover:border-slate-300 transition-colors"
         >
           {reply.icon}
           {reply.text}

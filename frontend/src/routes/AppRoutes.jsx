@@ -16,6 +16,7 @@ import { Navigate } from 'react-router-dom';
 // Importar páginas
 import LoginPage from '../pages/Auth/LoginPage';
 import RegisterPage from '../pages/Auth/RegisterPage';
+import VerifyEmailPage from '../pages/Auth/VerifyEmailPage';
 import DashboardPage from '../pages/DashboardPage';
 import ChatPage from '../pages/ChatPage';
 import SyllabusManagerPage from '../pages/SyllabusManagerPage';
@@ -42,9 +43,9 @@ import NotFoundPage from '../pages/NotFoundPage';
 
 // Layout wrapper para páginas con navegación (todas excepto auth)
 const AppLayout = ({ children }) => (
-  <div className="min-h-screen flex flex-col bg-gray-50">
+  <div className="min-h-screen flex flex-col bg-[#FAF9F6] font-['Plus_Jakarta_Sans',sans-serif]">
     <Navbar />
-    <main className="flex-1">
+    <main className="flex-1 relative">
       {children}
     </main>
     <Footer />
@@ -52,7 +53,7 @@ const AppLayout = ({ children }) => (
 );
 
 const ChatLayout = ({ children }) => (
-  <div className="h-[100dvh] flex flex-col bg-gray-50 overflow-hidden">
+  <div className="h-[100dvh] flex flex-col bg-[#FAF9F6] overflow-hidden font-['Plus_Jakarta_Sans',sans-serif]">
     <Navbar />
     <main className="flex-1 min-h-0 overflow-hidden">
       {children}
@@ -80,6 +81,7 @@ const AppRoutes = () => {
                   {/* Rutas públicas (sin layout Navbar/Footer) */}
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/verify-email" element={<VerifyEmailPage />} />
 
                   {/* Rutas protegidas (con layout Navbar/Footer) */}
                   <Route path="/" element={
