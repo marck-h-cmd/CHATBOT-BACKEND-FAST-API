@@ -1,69 +1,130 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+# ============================================
+# DEPENDENCIAS
+# ============================================
+
 venv/
-.venv/
 env/
 ENV/
+env.bak/
+venv.bak/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib64/
+lib/
 
-# Node.js
-node_modules/
+# ============================================
+# BASE DE DATOS
+# ============================================
+*.db
+*.sqlite
+*.sqlite3
+*.pgsql
+postgres_data/
+pg-data/
+*.dump
+
+# ============================================
+# LOGS
+# ============================================
+logs/
+*.log
+*.log.*
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
 
-# Vite / React
-frontend/dist/
-frontend/.env.local
+# ============================================
+# ENTORNO Y CONFIGURACIÓN
+# ============================================
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+!.env.example
+.venv
 
-# FastAPI / Python backend
-backend/venv/
-backend/.env
-backend/tmp_wheels/
-backend/debug_*.py
-backend/test_*.py
-backend/find_*.py
-backend/fix_*.py
-backend/inspect_*.py
-backend/report_*.py
-backend/package-lock.json
-
-# Docker
-*.dockerignore
-
-# IDEs
+# ============================================
+# EDITORES E IDE
+# ============================================
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-
-# History
+.~*
+.project
+.classpath
+.settings/
+*.sublime-*
 .history/
-.history-memo/
+.DS_Store
+
+# ============================================
+# ARCHIVOS DE PYTHON
+# ============================================
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# ============================================
+# ARCHIVOS SUBIDOS
+# ============================================
+uploads/
+downloads/
+*.pdf
+!README.pdf
+!docs/**/*.pdf
+temp_uploads/
+
+# ============================================
+# ARCHIVOS DE RESPALDO
+# ============================================
+*.bak
+*.backup
+*.old
+*.orig
+*.tmp
+*.temp
+*.cache
+
+# ============================================
+# DOCKER
+# ============================================
+docker-compose.override.yml
+docker-compose.*.yml
+!.docker-compose.yml
+.dockerignore
+
+# ============================================
+# OTROS
+# ============================================
+*.pid
+*.seed
+*.pid.lock
+*.tgz
+*.tar.gz
+*.rar
+*.zip
+.terraform/

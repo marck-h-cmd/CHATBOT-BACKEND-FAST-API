@@ -51,3 +51,17 @@ export const changePassword = async (currentPassword, newPassword) => {
   });
   return response.data;
 };
+
+export const verifyOTP = async (email, otpCode) => {
+  const response = await apiClient.post('/auth/verificar-otp', { email, otp_code: otpCode });
+  if (response.data.access_token) {
+    localStorage.setItem('access_token', response.data.access_token);
+    localStorage.setItem('refresh_token', response.data.refresh_token);
+  }
+  return response.data;
+};
+
+export const resendOTP = async (email) => {
+  const response = await apiClient.post('/auth/reenviar-otp', { email });
+  return response.data;
+};

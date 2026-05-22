@@ -49,3 +49,11 @@ class Config:
     # Tamaño máximo de archivos
     MAX_PDF_SIZE_MB = 10
     MAX_PDF_SIZE_BYTES = MAX_PDF_SIZE_MB * 1024 * 1024
+    
+    # Configuración SMTP para envío de correos (OTP, notificaciones)
+    SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER = os.getenv("SMTP_USER", "")
+    SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+    SMTP_FROM = os.getenv("SMTP_FROM", "")
+    SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() == "true"

@@ -1,18 +1,17 @@
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 import re
+import random
 
 from app.config import Config
 from app.database.connection import get_db
 from app.database.models import Usuario, SesionUsuario, TokenBlacklist
-
-# Configuración de encriptación
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from app.services.email_service import EmailService
 
 # Esquema de seguridad
 security = HTTPBearer()
@@ -32,13 +31,16 @@ class SecurityService:
     
     @staticmethod
     def hash_password(password: str) -> str:
-        """Hashea una contraseña"""
-        return pwd_context.hash(password)
-    
+        """Hashea una contraseña con bcrypt (truncado a 72 bytes según estándar bcrypt)."""
+        password_bytes = password.encode('utf-8')[:72]
+        return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode('utf-8')
+
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
-        """Verifica una contraseña"""
-        return pwd_context.verify(plain_password, hashed_password)
+        """Verifica una contraseña contra su hash bcrypt."""
+        password_bytes = plain_password.encode('utf-8')[:72]
+        hashed_bytes = hashed_password.encode('utf-8')
+        return bcrypt.checkpw(password_bytes, hashed_bytes)
     
     @staticmethod
     def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
@@ -143,7 +145,12 @@ class SecurityService:
 class AuthService:
     
     @staticmethod
-    def registrar_usuario(
+    def _generar_otp() -> str:
+        """Genera un código OTP numérico de 6 dígitos."""
+        return ''.join([str(random.randint(0, 9)) for _ in range(6)])
+
+    @staticmethod
+    async def registrar_usuario(
         db: Session,
         codigo_universitario: str,
         email: str,
@@ -151,43 +158,163 @@ class AuthService:
         apellidos: str,
         password: str
     ) -> Usuario:
-        """Registra un nuevo usuario"""
-        
+        """Registra un nuevo usuario con estado inactivo y envía OTP por email."""
+
         # Validar dominio del email
         if not SecurityService.verificar_dominio_unitru(email):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="El email debe ser institucional (@unitru.edu.pe)"
             )
-        
-        # Verificar si ya existe
+
+        # Verificar si ya existe un usuario activo o verificado con ese email/código
         existing_user = db.query(Usuario).filter(
             (Usuario.email == email) | (Usuario.codigo_universitario == codigo_universitario)
         ).first()
-        
-        if existing_user:
+
+        if existing_user and existing_user.email_verificado:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Ya existe un usuario con ese email o código universitario"
             )
-        
-        # Crear usuario
+
+        # Si existe pero no está verificado, reutilizar el registro (sobreescribir datos)
         hashed_password = SecurityService.hash_password(password)
-        usuario = Usuario(
-            codigo_universitario=codigo_universitario,
-            email=email,
+        otp_code = AuthService._generar_otp()
+        otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
+
+        if existing_user and not existing_user.email_verificado:
+            usuario = existing_user
+            usuario.codigo_universitario = codigo_universitario
+            usuario.nombres = nombres
+            usuario.apellidos = apellidos
+            usuario.hashed_password = hashed_password
+            usuario.otp_code = otp_code
+            usuario.otp_expires_at = otp_expires_at
+            db.commit()
+            db.refresh(usuario)
+        else:
+            # Crear usuario nuevo (inactivo hasta verificar OTP)
+            usuario = Usuario(
+                codigo_universitario=codigo_universitario,
+                email=email,
+                nombres=nombres,
+                apellidos=apellidos,
+                hashed_password=hashed_password,
+                es_activo=False,
+                email_verificado=False,
+                otp_code=otp_code,
+                otp_expires_at=otp_expires_at
+            )
+            db.add(usuario)
+            db.commit()
+            db.refresh(usuario)
+
+        # Enviar email con OTP (asíncrono, no bloquea el registro)
+        await EmailService.enviar_email_verificacion_otp(
+            destinatario=email,
             nombres=nombres,
-            apellidos=apellidos,
-            hashed_password=hashed_password,
-            es_activo=True,
-            email_verificado=True  # En producción enviar email de verificación
+            codigo_otp=otp_code
         )
-        
-        db.add(usuario)
+
+        return usuario
+
+    @staticmethod
+    def verificar_otp(db: Session, email: str, otp_code: str) -> Dict[str, Any]:
+        """Verifica el código OTP y activa la cuenta del usuario."""
+
+        usuario = db.query(Usuario).filter(Usuario.email == email).first()
+        if not usuario:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuario no encontrado"
+            )
+
+        if usuario.email_verificado:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La cuenta ya ha sido verificada"
+            )
+
+        if not usuario.otp_code or not usuario.otp_expires_at:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No hay un código de verificación pendiente"
+            )
+
+        if datetime.utcnow() > usuario.otp_expires_at:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El código de verificación ha expirado. Solicita uno nuevo."
+            )
+
+        if usuario.otp_code != otp_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Código de verificación incorrecto"
+            )
+
+        # Activar cuenta
+        usuario.email_verificado = True
+        usuario.es_activo = True
+        usuario.otp_code = None
+        usuario.otp_expires_at = None
         db.commit()
         db.refresh(usuario)
-        
-        return usuario
+
+        # Crear tokens y sesión
+        token_data = {"sub": str(usuario.id), "email": usuario.email, "rol": usuario.rol}
+        access_token = SecurityService.create_access_token(token_data)
+        refresh_token = SecurityService.create_refresh_token(token_data)
+        fecha_expiracion = datetime.utcnow() + timedelta(minutes=SecurityService.ACCESS_TOKEN_EXPIRE_MINUTES)
+
+        sesion = SesionUsuario(
+            id_usuario=usuario.id,
+            token=access_token,
+            refresh_token=refresh_token,
+            fecha_expiracion=fecha_expiracion
+        )
+        db.add(sesion)
+        usuario.ultimo_login = datetime.utcnow()
+        db.commit()
+
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "expires_in": SecurityService.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            "usuario": usuario.to_dict()
+        }
+
+    @staticmethod
+    async def reenviar_otp(db: Session, email: str) -> bool:
+        """Genera un nuevo OTP y lo reenvía por email."""
+
+        usuario = db.query(Usuario).filter(Usuario.email == email).first()
+        if not usuario:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuario no encontrado"
+            )
+
+        if usuario.email_verificado:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La cuenta ya ha sido verificada"
+            )
+
+        otp_code = AuthService._generar_otp()
+        usuario.otp_code = otp_code
+        usuario.otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
+        db.commit()
+
+        await EmailService.enviar_email_verificacion_otp(
+            destinatario=email,
+            nombres=usuario.nombres,
+            codigo_otp=otp_code
+        )
+
+        return True
     
     @staticmethod
     def login(
@@ -198,21 +325,35 @@ class AuthService:
         user_agent: str = None
     ) -> Dict[str, Any]:
         """Autentica un usuario y crea sesión"""
-        
-        # Buscar usuario por email
-        usuario = db.query(Usuario).filter(Usuario.email == email, Usuario.es_activo == True).first()
-        
+
+        # Buscar usuario por email (sin filtrar por es_activo para poder validar verificación)
+        usuario = db.query(Usuario).filter(Usuario.email == email).first()
+
         if not usuario:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Credenciales incorrectas"
             )
-        
+
         # Verificar contraseña
         if not SecurityService.verify_password(password, usuario.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Credenciales incorrectas"
+            )
+
+        # Validar que la cuenta esté verificada
+        if not usuario.email_verificado:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cuenta no verificada. Revisa tu correo institucional e ingresa el código de verificación."
+            )
+
+        # Validar que la cuenta esté activa
+        if not usuario.es_activo:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cuenta inactiva. Contacta al administrador."
             )
         
         # Crear tokens

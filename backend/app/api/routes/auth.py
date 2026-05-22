@@ -7,9 +7,9 @@ from app.database.connection import get_db
 from app.core.security import AuthService, SecurityService
 from app.api.dependencies import get_current_user, get_current_active_user
 from app.schemas.auth import (
-    UsuarioRegistro, UsuarioLogin, TokenResponse, 
+    UsuarioRegistro, UsuarioLogin, TokenResponse,
     RefreshTokenRequest, ChangePasswordRequest, ApiResponse,
-    UsuarioResponse
+    UsuarioResponse, VerificarOTPRequest, ReenviarOTPRequest
 )
 from app.database.models import Usuario, SesionUsuario, TokenBlacklist
 
@@ -22,9 +22,9 @@ async def registrar_usuario(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """Registra un nuevo usuario con email @unitru.edu.pe"""
-    
-    usuario = AuthService.registrar_usuario(
+    """Registra un nuevo usuario con email @unitru.edu.pe y envía OTP de verificación."""
+
+    usuario = await AuthService.registrar_usuario(
         db=db,
         codigo_universitario=user_data.codigo_universitario,
         email=user_data.email,
@@ -32,11 +32,45 @@ async def registrar_usuario(
         apellidos=user_data.apellidos,
         password=user_data.password
     )
-    
+
     return ApiResponse(
         success=True,
-        message="Usuario registrado correctamente",
-        data={"usuario": usuario.to_dict()}
+        message="Registro exitoso. Revisa tu correo institucional e ingresa el código de verificación de 6 dígitos.",
+        data={"email": usuario.email, "nombres": usuario.nombres}
+    )
+
+
+@router.post("/verificar-otp", response_model=TokenResponse)
+async def verificar_otp(
+    otp_data: VerificarOTPRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Verifica el código OTP y activa la cuenta, devolviendo tokens JWT."""
+
+    result = AuthService.verificar_otp(
+        db=db,
+        email=otp_data.email,
+        otp_code=otp_data.otp_code
+    )
+
+    return TokenResponse(**result)
+
+
+@router.post("/reenviar-otp", response_model=ApiResponse)
+async def reenviar_otp(
+    otp_data: ReenviarOTPRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Genera un nuevo código OTP y lo reenvía al correo institucional."""
+
+    await AuthService.reenviar_otp(db=db, email=otp_data.email)
+
+    return ApiResponse(
+        success=True,
+        message="Se ha enviado un nuevo código de verificación a tu correo institucional.",
+        data={"email": otp_data.email}
     )
 
 

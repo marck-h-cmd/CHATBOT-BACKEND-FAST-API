@@ -142,6 +142,9 @@ class Usuario(Base):
     onboarding_skipped = Column(Boolean, default=False)
     onboarding_version = Column(Integer, default=1)
     onboarding_updated_at = Column(DateTime, nullable=True)
+    # Campos OTP para verificación de email (doble opt-in)
+    otp_code = Column(String(6), nullable=True)
+    otp_expires_at = Column(DateTime, nullable=True)
     
     def to_dict(self):
         return {

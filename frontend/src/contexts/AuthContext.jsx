@@ -100,11 +100,37 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const verifyOTP = async (email, otpCode) => {
+    try {
+      const data = await authAPI.verifyOTP(email, otpCode);
+      const userData = data.usuario || {};
+      const normalized = { ...userData, rol: userData?.rol ? String(userData.rol).toLowerCase() : userData?.rol };
+      setUser(normalized);
+      storage.saveUser(normalized);
+      return { success: true, user: normalized };
+    } catch (error) {
+      const errorInfo = handleApiError(error);
+      return { success: false, error: errorInfo };
+    }
+  };
+
+  const resendOTP = async (email) => {
+    try {
+      await authAPI.resendOTP(email);
+      return { success: true };
+    } catch (error) {
+      const errorInfo = handleApiError(error);
+      return { success: false, error: errorInfo };
+    }
+  };
+
   const value = {
     user,
     loading,
     login,
     register,
+    verifyOTP,
+    resendOTP,
     logout,
     sessions,
     loadSessions,

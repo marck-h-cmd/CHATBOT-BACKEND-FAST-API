@@ -66,3 +66,24 @@ class ApiResponse(BaseModel):
     success: bool
     message: str
     data: Optional[dict] = None
+
+
+class VerificarOTPRequest(BaseModel):
+    email: EmailStr
+    otp_code: str = Field(..., min_length=6, max_length=6)
+
+    @validator('email')
+    def validar_dominio_unitru(cls, v):
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@unitru\.edu\.pe$', v):
+            raise ValueError('El email debe ser institucional (@unitru.edu.pe)')
+        return v
+
+
+class ReenviarOTPRequest(BaseModel):
+    email: EmailStr
+
+    @validator('email')
+    def validar_dominio_unitru(cls, v):
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@unitru\.edu\.pe$', v):
+            raise ValueError('El email debe ser institucional (@unitru.edu.pe)')
+        return v

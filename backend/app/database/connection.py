@@ -1,7 +1,24 @@
+import os
+
+# Sanitize environment variables to avoid encoding errors in psycopg2 (Windows)
+for k, v in list(os.environ.items()):
+    try:
+        v.encode('ascii')
+    except UnicodeEncodeError:
+        try:
+            # Try to decode from system encoding (cp1252 or utf-8) and keep it clean
+            clean_val = v.encode('utf-8', errors='ignore').decode('utf-8', errors='ignore')
+            # If it still contains non-ascii, force pure ascii
+            clean_val.encode('ascii')
+            os.environ[k] = clean_val
+        except Exception:
+            os.environ[k] = v.encode('ascii', errors='ignore').decode('ascii')
+
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from app.config import Config
+
 
 # Crear engine con configuración optimizada
 engine = create_engine(
