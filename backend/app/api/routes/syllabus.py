@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, Any, List
@@ -7,11 +8,13 @@ import os
 import uuid
 from app.database.connection import get_db
 from app.database.models import (
-    Usuario, Silabo, Curso, PeriodoAcademico, 
-    EstadoVerificacion, AmbitoUso, TipoSilabo, 
+    Usuario, Silabo, Curso, PeriodoAcademico, SilaboChunk,
+    EstadoVerificacion, AmbitoUso, TipoSilabo,
     TipoIncidenteServicio, RolUsuario, CoincidenciaPeriodo,
-    ContextoCursoUsuario, OrigenContexto, IncidenteServicio, EstadoIncidente
+    ContextoCursoUsuario, OrigenContexto, IncidenteServicio, EstadoIncidente,
+    LogIngestion, TipoSeccionChunk
 )
+from app.services.chunker import ChunkerService
 from app.services.pdf_parser import PDFParserService
 from app.services.ai_parser import gemini_parser
 from app.services.itil_desk import ITILServiceDesk
@@ -22,6 +25,45 @@ router = APIRouter(prefix="/silabo", tags=["Gestión de Sílabos"])
 class RevisionRequest(BaseModel):
     comentario: Optional[str] = None
     id_periodo_nuevo: Optional[int] = None
+
+
+def _mapear_tipo_chunk(tipo_raw: str) -> TipoSeccionChunk:
+    """Mapea tipos de sección del chunker al enum de la base de datos."""
+    mapping = {
+        "general": TipoSeccionChunk.SUMILLA,
+        "competencias": TipoSeccionChunk.COMPETENCIAS,
+        "evaluacion": TipoSeccionChunk.EVALUACION,
+        "aplazados_susti": TipoSeccionChunk.CRITERIOS,
+        "contenidos": TipoSeccionChunk.CONTENIDOS,
+        "metodologia": TipoSeccionChunk.CONTENIDOS,
+        "tutoria": TipoSeccionChunk.TUTORIA,
+        "capacidades": TipoSeccionChunk.COMPETENCIAS,
+        "resultados": TipoSeccionChunk.COMPETENCIAS,
+    }
+    return mapping.get(tipo_raw.lower(), TipoSeccionChunk.SUMILLA)
+
+
+def _generar_y_guardar_chunks(db: Session, silabo_id: int, texto: str, metadata_base: dict) -> int:
+    """Genera chunks del texto y los guarda en silabo_chunk."""
+    # Eliminar chunks previos para evitar duplicados
+    db.query(SilaboChunk).filter(SilaboChunk.id_silabo == silabo_id).delete(synchronize_session=False)
+
+    chunks = ChunkerService.crear_chunks(texto, metadata_base)
+    for chunk in chunks:
+        tipo_raw = chunk.get("metadata", {}).get("tipo_seccion", "general")
+        tipo_enum = _mapear_tipo_chunk(tipo_raw)
+        meta = chunk.get("metadata") or {}
+        meta.pop("unidad", None)
+        db.add(SilaboChunk(
+            id_silabo=silabo_id,
+            tipo_seccion=tipo_enum,
+            titulo=tipo_raw[:200],
+            contenido=chunk["texto"],
+            metadata_json=meta,
+        ))
+    db.commit()
+    return len(chunks)
+
 
 @router.post("/upload")
 async def subir_silabo(
@@ -113,7 +155,7 @@ async def subir_silabo(
         id_usuario_subida=current_user.id,
         nombre_archivo=archivo.filename,
         ruta_pdf=relative_path,
-        texto_extraido=texto[:15000],
+        texto_extraido=texto,
         tipo_silabo=TipoSilabo.SUBIDO_USUARIO,
         ambito_uso=ambito,
         estado_validacion=estado,
@@ -125,7 +167,13 @@ async def subir_silabo(
     db.add(nuevo_silabo)
     db.commit()
     db.refresh(nuevo_silabo)
-    
+
+    # Generar chunks para RAG
+    _generar_y_guardar_chunks(
+        db, nuevo_silabo.id_silabo, texto,
+        {"nombre_curso": curso.nombre_curso, "codigo_curso": curso.codigo_curso}
+    )
+
     # Actualizar el contexto del estudiante que acaba de subir el sílabo
     contexto_usuario = db.query(ContextoCursoUsuario).filter(
         ContextoCursoUsuario.id_usuario == current_user.id,
@@ -170,7 +218,17 @@ async def subir_silabo(
         "ambito": ambito,
         "mensaje": f"Sílabo procesado con {score}% de confianza.",
         "nombre_curso": curso.nombre_curso,
-        "codigo_curso": curso.codigo_curso
+        "codigo_curso": curso.codigo_curso,
+        "datos_extraidos": {
+            "unidades": parsing_data.get("unidades", []),
+            "formulas": parsing_data.get("formulas", {}),
+            "evidencias": parsing_data.get("evidencias", {}),
+            "capacidades": parsing_data.get("capacidades", []),
+            "resultados_aprendizaje": parsing_data.get("resultados_aprendizaje", []),
+            "metodologia": parsing_data.get("metodologia", []),
+            "niveles_logro": parsing_data.get("niveles_logro", []),
+            "tutoria": parsing_data.get("tutoria", {}),
+        }
     }
 
 @router.get("/revisar", response_model=List[dict])
@@ -275,6 +333,13 @@ async def aprobar_silabo(
         contexto.puntaje_confianza = silabo.puntaje_confianza or contexto.puntaje_confianza
 
     db.commit()
+
+    # Generar chunks para RAG (si no existían)
+    if silabo.texto_extraido:
+        curso = db.query(Curso).filter(Curso.id_curso == silabo.id_curso).first()
+        metadata = {"nombre_curso": curso.nombre_curso, "codigo_curso": curso.codigo_curso} if curso else {}
+        _generar_y_guardar_chunks(db, silabo.id_silabo, silabo.texto_extraido, metadata)
+
     return {
         "message": f"Sílabo aprobado y publicado. Se actualizaron {len(contextos_actualizados)} contextos.",
         "periodo_corregido": request.id_periodo_nuevo is not None,
@@ -310,130 +375,151 @@ async def rechazar_silabo(
 
 # ==================== ADMIN: GESTIÓN OFICIAL DE SÍLABOS ====================
 
+@router.get("/test-cors")
+async def test_cors():
+    """Endpoint de prueba para verificar CORS"""
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        content={"message": "CORS test successful"},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*"
+        }
+    )
+
+@router.post("/test-formdata")
+async def test_formdata(
+    id_curso: str = Form(None),
+    id_periodo: str = Form(None),
+    archivo: UploadFile = File(None)
+):
+    """Endpoint de prueba para verificar FormData"""
+    print(f"TEST: id_curso={id_curso}, id_periodo={id_periodo}, archivo={archivo.filename if archivo else None}")
+    return {
+        "id_curso": id_curso,
+        "id_periodo": id_periodo,
+        "archivo": archivo.filename if archivo else None,
+        "archivo_size": archivo.size if archivo else None
+    }
+
+@router.post("/upload-simple")
+async def upload_simple(request: Request):
+    """Endpoint ultra simple para probar upload"""
+    print("UPLOAD SIMPLE: Iniciando")
+    try:
+        form = await request.form()
+        print(f"UPLOAD SIMPLE: Form recibido con {len(form)} campos")
+        for key, value in form.items():
+            print(f"  {key}: {value}")
+        return {"status": "ok", "fields": len(form)}
+    except Exception as e:
+        print(f"UPLOAD SIMPLE ERROR: {e}")
+        return {"status": "error", "message": str(e)}
+
+@router.options("/upload-oficial")
+async def options_upload_oficial():
+    """Manejo manual de OPTIONS para CORS"""
+    from fastapi.responses import Response
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "3600"
+        }
+    )
+
 @router.post("/upload-oficial")
-async def subir_silabo_oficial(
-    id_curso: int = Form(...),
-    id_periodo: int = Form(...),
-    archivo: UploadFile = File(...),
+async def subir_silabo_oficial(request: Request):
+    """Endpoint simplificado para pruebas"""
+    print("UPLOAD OFICIAL: Iniciando")
+    try:
+        form = await request.form()
+        print(f"UPLOAD OFICIAL: Form recibido con {len(form)} campos")
+        for key, value in form.items():
+            print(f"  {key}: {value}")
+        return {"status": "ok", "fields": len(form)}
+    except Exception as e:
+        print(f"UPLOAD OFICIAL ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
+
+@router.post("/upload-syllabus-test")
+async def upload_syllabus_test(request: Request):
+    """Endpoint de prueba con nombre completamente diferente"""
+    print("UPLOAD TEST: Iniciando")
+    try:
+        form = await request.form()
+        print(f"UPLOAD TEST: Form recibido con {len(form)} campos")
+        for key, value in form.items():
+            print(f"  {key}: {value}")
+        return {"status": "ok", "fields": len(form)}
+    except Exception as e:
+        print(f"UPLOAD TEST ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
+
+@router.delete("/oficial/{id_silabo}")
+async def eliminar_silabo_oficial(
+    id_silabo: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user_from_token)
 ):
-    """Endpoint para que ADMIN cargue sílabos oficiales directamente"""
-    
+    """Endpoint para que ADMIN elimine un sílabo oficial existente"""
+
     # 1. Validar que sea ADMIN
     if current_user.rol != RolUsuario.ADMIN:
-        raise HTTPException(status_code=403, detail="Solo administradores pueden subir sílabos oficiales")
-    
-    # 2. Validar que no exista sílabo oficial publicado para este curso/periodo
-    oficial_existente = db.query(Silabo).filter(
-        Silabo.id_curso == id_curso,
-        Silabo.id_periodo == id_periodo,
-        Silabo.tipo_silabo == TipoSilabo.OFICIAL,
-        Silabo.ambito_uso == AmbitoUso.PUBLICADO
-    ).first()
-    
-    if oficial_existente:
-        raise HTTPException(status_code=400, detail="Ya existe un sílabo oficial publicado para este curso y período")
+        raise HTTPException(status_code=403, detail="Solo administradores pueden eliminar sílabos oficiales")
 
-    # 3. Procesar PDF
-    contenido = await archivo.read()
-    
-    # 3.1 Guardar archivo físico
-    filename = f"{uuid.uuid4()}_{archivo.filename}"
-    filepath = os.path.join("app", "static", "uploads", "syllabi", filename)
-    with open(filepath, "wb") as f:
-        f.write(contenido)
-    
-    relative_path = f"/static/uploads/syllabi/{filename}"
-    texto = PDFParserService.extraer_texto(contenido)
-    
-    # 4. Obtener referencias
-    curso = db.query(Curso).filter(Curso.id_curso == id_curso).first()
-    periodo = db.query(PeriodoAcademico).filter(PeriodoAcademico.id_periodo == id_periodo).first()
-    
-    if not curso or not periodo:
-        raise HTTPException(status_code=404, detail="Curso o Período no encontrado")
+    # 2. Buscar el sílabo
+    silabo = db.query(Silabo).filter(Silabo.id_silabo == id_silabo).first()
+    if not silabo:
+        raise HTTPException(status_code=404, detail="Sílabo no encontrado")
 
-    # 5. Parsing con Gemini (para extracción de contenido)
-    parsing_data = gemini_parser.extraer_estructura_completa(
-        texto, curso.nombre_curso, periodo.nombre
-    )
-    
-    score = parsing_data["puntaje_confianza"]
-    
-    # 5.1 Validar fórmulas y evidencias
-    errores_formulas = ITILServiceDesk.validar_formulas_evidencias(parsing_data)
-    
-    # 6. Los sílabos oficiales se aprueban directamente SOLO si no tienen errores en fórmulas
-    if errores_formulas:
-        estado = EstadoVerificacion.PENDIENTE_CONFIRMACION
-        ambito = AmbitoUso.PRIVADO
-    else:
-        estado = EstadoVerificacion.APROBADO
-        ambito = AmbitoUso.PUBLICADO
-    
-    # 7. Crear Sílabo Oficial (Guardamos parsing_data completo)
-    nuevo_silabo = Silabo(
-        id_curso=id_curso,
-        id_periodo=id_periodo,
-        id_usuario_subida=current_user.id,
-        nombre_archivo=archivo.filename,
-        ruta_pdf=relative_path,
-        texto_extraido=texto[:15000],
-        tipo_silabo=TipoSilabo.OFICIAL,
-        ambito_uso=ambito,
-        estado_validacion=estado,
-        puntaje_confianza=score,
-        coincidencia_periodo=parsing_data["coincidencias"].get("periodo", False),
-        reglas_json=parsing_data
-    )
-    
-    db.add(nuevo_silabo)
+    if silabo.tipo_silabo != TipoSilabo.OFICIAL:
+        raise HTTPException(status_code=400, detail="Solo se pueden eliminar sílabos oficiales")
+
+    # 3. Desvincular contextos de estudiantes que usan este sílabo
+    contextos = db.query(ContextoCursoUsuario).filter(
+        ContextoCursoUsuario.id_silabo_asignado == id_silabo
+    ).all()
+    for ctx in contextos:
+        ctx.id_silabo_asignado = None
+        ctx.origen_contexto = OrigenContexto.SIN_SILABO
+        ctx.estado_verificacion = EstadoVerificacion.PENDIENTE_CONFIRMACION
+
+    # 4. Eliminar chunks relacionados
+    db.query(SilaboChunk).filter(SilaboChunk.id_silabo == id_silabo).delete(synchronize_session=False)
+
+    # 5. Eliminar registros que dependen del sílabo con FK NOT NULL y sin CASCADE
+    db.query(IncidenteServicio).filter(IncidenteServicio.id_silabo == id_silabo).delete(synchronize_session=False)
+    db.query(LogIngestion).filter(LogIngestion.id_silabo == id_silabo).delete(synchronize_session=False)
+
+    # 6. Guardar ruta del PDF antes de eliminar
+    ruta_pdf = silabo.ruta_pdf
+
+    # 6. Eliminar el sílabo de la base de datos
+    db.delete(silabo)
     db.commit()
-    db.refresh(nuevo_silabo)
-    
-    # 8. Registrar incidente de servicio si hay errores en fórmulas
-    if errores_formulas:
-        desc_errores = "; ".join(errores_formulas)
-        ITILServiceDesk.registrar_incidente_servicio(
-            db, nuevo_silabo.id_silabo, 
-            TipoIncidenteServicio.FORMULA_AMBIGUA,
-            f"Sílabo Oficial con inconsistencia en fórmulas: {desc_errores}",
-            id_usuario=current_user.id
-        )
-    else:
-        # Sincronizar automáticamente con contextos de estudiantes SOLO si fue aprobado
-        contextos = db.query(ContextoCursoUsuario).filter(
-            ContextoCursoUsuario.id_curso == id_curso,
-            ContextoCursoUsuario.id_periodo == id_periodo
-        ).all()
 
-        for contexto in contextos:
-            contexto.id_silabo_asignado = nuevo_silabo.id_silabo
-            contexto.origen_contexto = OrigenContexto.OFICIAL
-            contexto.estado_verificacion = EstadoVerificacion.OFICIAL
-            contexto.puntaje_confianza = score
+    # 7. Eliminar archivo físico si existe
+    if ruta_pdf:
+        filepath = os.path.join("app", ruta_pdf.lstrip("/").replace("/", os.sep))
+        try:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        except OSError:
+            pass  # No crítico si el archivo no se puede eliminar
 
-        db.commit()
-    
-    # 9. Procesar agrupamiento
-    ITILServiceDesk.procesar_agrupamiento_conocimiento(db, id_curso, id_periodo)
-    
     return {
-        "success": not bool(errores_formulas),
-        "id_silabo": nuevo_silabo.id_silabo,
-        "id_curso": id_curso,
-        "id_periodo": id_periodo,
-        "nombre_archivo": archivo.filename,
-        "nombre_curso": curso.nombre_curso,
-        "codigo_curso": curso.codigo_curso,
-        "periodo": periodo.nombre,
-        "score": score,
-        "estado": estado,
-        "ambito": ambito,
-        "contextos_sincronizados": len(contextos) if not errores_formulas else 0,
-        "mensaje": "Sílabo oficial cargado exitosamente." if not errores_formulas else f"Sílabo cargado con errores en fórmulas. Revisar Incidencias de Servicio.",
-        "errores": errores_formulas
+        "success": True,
+        "id_silabo": id_silabo,
+        "mensaje": "Sílabo oficial eliminado exitosamente",
+        "contextos_desvinculados": len(contextos)
     }
 
 @router.get("/list-oficial")
@@ -443,14 +529,13 @@ async def listar_silabos_oficiales(
     current_user: Usuario = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
-    """Lista todos los sílabos oficiales publicados (admin only)"""
+    """Lista todos los sílabos oficiales (admin only) - incluye pendientes, aprobados y rechazados"""
     
     if current_user.rol != RolUsuario.ADMIN:
         raise HTTPException(status_code=403, detail="Solo administradores pueden listar sílabos oficiales")
     
     query = db.query(Silabo).filter(
-        Silabo.tipo_silabo == TipoSilabo.OFICIAL,
-        Silabo.ambito_uso == AmbitoUso.PUBLICADO
+        Silabo.tipo_silabo == TipoSilabo.OFICIAL
     )
     
     if id_curso:
@@ -466,11 +551,13 @@ async def listar_silabos_oficiales(
             "id_curso": s.id_curso,
             "id_periodo": s.id_periodo,
             "nombre_archivo": s.nombre_archivo,
-            "nombre_curso": s.curso.nombre_curso,
-            "codigo_curso": s.curso.codigo_curso,
-            "periodo": s.periodo.nombre,
+            "nombre_curso": s.curso.nombre_curso if s.curso else "Curso Desconocido",
+            "codigo_curso": s.curso.codigo_curso if s.curso else "N/A",
+            "escuela": s.curso.escuela if s.curso else "N/A",
+            "periodo": s.periodo.nombre if s.periodo else "N/A",
             "score": s.puntaje_confianza,
             "estado": s.estado_validacion,
+            "ambito_uso": s.ambito_uso,
             "fecha_subida": s.fecha_subida.isoformat() if s.fecha_subida else None,
             "subido_por": s.usuario_subida.email if s.usuario_subida else "Sistema"
         } for s in silabos

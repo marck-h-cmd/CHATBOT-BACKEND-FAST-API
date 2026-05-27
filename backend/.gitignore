@@ -1,0 +1,20 @@
+.aider*
+
+# Environment and secrets
+.env
+.env.*
+*.env
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Keep templates/examples versioned
+!.env.example
+
+# Python virtual envs
+venv/
+.venv/
+
+# Node modules
+node_modules/
