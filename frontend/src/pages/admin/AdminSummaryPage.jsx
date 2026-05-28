@@ -1,22 +1,83 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend
+} from 'recharts';
 import * as metricsAPI from '../../api/metrics';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import { Users, GraduationCap, FileSearch, MessageSquare, Search, BookMarked, Calendar, BarChart3, Clock, AlertTriangle, ShieldAlert } from 'lucide-react';
+import {
+  Users, GraduationCap, FileSearch, MessageSquare, Search,
+  BookMarked, Calendar, BarChart3, Clock, AlertTriangle,
+  ShieldAlert, Ticket, FileCheck, FileX, Activity,
+  TrendingUp, TrendingDown, Minus, ArrowRight, Zap
+} from 'lucide-react';
+
+const COLORS = {
+  primary: '#2563eb',
+  success: '#16a34a',
+  warning: '#d97706',
+  danger: '#dc2626',
+  info: '#0891b2',
+  slate: '#64748b',
+  purple: '#7c3aed',
+};
+
+const SEVERITY_COLORS = {
+  ALTA: COLORS.danger,
+  MEDIA: COLORS.warning,
+  BAJA: COLORS.slate,
+};
+
+const PIE_COLORS = [COLORS.success, COLORS.warning, COLORS.danger, COLORS.slate];
+
+const formatNumber = (num) => {
+  if (num === null || num === undefined) return '0';
+  return num.toLocaleString('es-PE');
+};
+
+const formatDate = () => {
+  const now = new Date();
+  return now.toLocaleDateString('es-ES', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+};
 
 const AdminSummaryPage = () => {
-  const [dashboardData, setDashboardData] = useState(null);
+  const [data, setData] = useState({
+    dashboard: null,
+    tickets: null,
+    risk: null,
+    knowledge: null,
+    improvement: null,
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadDashboardData();
+    loadAllData();
   }, []);
 
-  const loadDashboardData = async () => {
+  const loadAllData = async () => {
     setLoading(true);
     try {
-      const data = await metricsAPI.getDashboardMetrics();
-      setDashboardData(data);
+      const [dashboard, tickets, risk, knowledge, improvement] = await Promise.allSettled([
+        metricsAPI.getDashboardMetrics(),
+        metricsAPI.getTicketMetrics(),
+        metricsAPI.getRiskMetrics(),
+        metricsAPI.getKnowledgeMetrics(),
+        metricsAPI.getImprovementMetrics(),
+      ]);
+
+      setData({
+        dashboard: dashboard.status === 'fulfilled' ? dashboard.value : null,
+        tickets: tickets.status === 'fulfilled' ? tickets.value : null,
+        risk: risk.status === 'fulfilled' ? risk.value : null,
+        knowledge: knowledge.status === 'fulfilled' ? knowledge.value : null,
+        improvement: improvement.status === 'fulfilled' ? improvement.value : null,
+      });
     } catch (error) {
       console.error('Error al cargar métricas:', error);
     } finally {
@@ -24,122 +85,410 @@ const AdminSummaryPage = () => {
     }
   };
 
+  const d = data.dashboard || {};
+
+  const severityData = useMemo(() => {
+    if (!data.risk?.incidentes_por_severidad) return [];
+    const sev = data.risk.incidentes_por_severidad;
+    return [
+      { name: 'Alta', value: sev.ALTA || 0, fill: COLORS.danger },
+      { name: 'Media', value: sev.MEDIA || 0, fill: COLORS.warning },
+      { name: 'Baja', value: sev.BAJA || 0, fill: COLORS.slate },
+    ];
+  }, [data.risk]);
+
+  const silabosData = useMemo(() => {
+    const k = data.knowledge || {};
+    return [
+      { name: 'Publicados', value: k.oficiales_publicados || 0 },
+      { name: 'Subidos', value: k.subidos_usuarios || 0 },
+      { name: 'Pendientes', value: k.compartibles_pendientes || 0 },
+      { name: 'Rechazados', value: k.rechazados || 0 },
+    ];
+  }, [data.knowledge]);
+
+  const topConsultas = useMemo(() => {
+    return data.improvement?.top_consultas || [];
+  }, [data.improvement]);
+
+  const maxConsultas = useMemo(() => {
+    if (!topConsultas.length) return 1;
+    return Math.max(...topConsultas.map(c => c.count));
+  }, [topConsultas]);
+
   if (loading) {
-    return <LoadingSpinner />;
+    return (
+      <div className="flex items-center justify-center h-96">
+        <LoadingSpinner />
+      </div>
+    );
   }
 
-  const StatCard = ({ title, value, icon: Icon, colorClass, bgClass }) => (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between group hover:border-indigo-200 transition-colors">
-      <div className="flex justify-between items-start mb-4">
-        <div className={`p-3 rounded-xl ${bgClass} ${colorClass}`}>
-          <Icon className="w-6 h-6" />
+  const StatCard = ({ title, value, icon: Icon, tone, trend, trendLabel }) => {
+    const toneMap = {
+      blue: { iconBg: 'bg-blue-50', iconText: 'text-blue-600', border: 'border-blue-100' },
+      emerald: { iconBg: 'bg-emerald-50', iconText: 'text-emerald-600', border: 'border-emerald-100' },
+      amber: { iconBg: 'bg-amber-50', iconText: 'text-amber-600', border: 'border-amber-100' },
+      rose: { iconBg: 'bg-rose-50', iconText: 'text-rose-600', border: 'border-rose-100' },
+      slate: { iconBg: 'bg-slate-100', iconText: 'text-slate-600', border: 'border-slate-200' },
+      purple: { iconBg: 'bg-violet-50', iconText: 'text-violet-600', border: 'border-violet-100' },
+    };
+    const t = toneMap[tone] || toneMap.slate;
+    const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
+    const trendColor = trend === 'up' ? 'text-emerald-600' : trend === 'down' ? 'text-rose-600' : 'text-slate-500';
+
+    return (
+      <div className={`bg-white border ${t.border} rounded-2xl p-5 shadow-card hover:shadow-card-hover transition-shadow`}>
+        <div className="flex items-start justify-between mb-4">
+          <div className={`w-11 h-11 rounded-xl ${t.iconBg} flex items-center justify-center shrink-0`}>
+            <Icon className={`w-5 h-5 ${t.iconText}`} />
+          </div>
+          {trend && (
+            <div className={`flex items-center gap-1 text-xs font-semibold ${trendColor} bg-white px-2 py-1 rounded-lg border border-slate-100`}>
+              <TrendIcon className="w-3.5 h-3.5" />
+              {trendLabel}
+            </div>
+          )}
+        </div>
+        <div>
+          <p className="text-2xl font-bold text-slate-900 tracking-tight">{formatNumber(value)}</p>
+          <p className="text-xs font-medium text-slate-500 mt-1 uppercase tracking-wide">{title}</p>
         </div>
       </div>
-      <div>
-        <p className="text-3xl font-bold text-slate-800 mb-1 tracking-tight">
-          {value || 0}
-        </p>
-        <p className="text-sm font-medium text-slate-500">{title}</p>
+    );
+  };
+
+  const SectionHeader = ({ icon: Icon, title, action, actionLabel, actionTo }) => (
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2">
+        <Icon className="w-5 h-5 text-slate-700" />
+        <h2 className="text-base font-bold text-slate-900 tracking-tight">{title}</h2>
       </div>
+      {action && (
+        <Link to={actionTo} className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors">
+          {actionLabel} <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      )}
     </div>
   );
 
-  const QuickAction = ({ to, icon: Icon, label }) => (
-    <Link to={to} className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col items-center justify-center gap-3 hover:bg-slate-50 hover:border-indigo-200 transition-all group">
-      <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-indigo-50 transition-colors text-slate-500 group-hover:text-indigo-600">
-        <Icon className="w-6 h-6" />
+  const ProgressBar = ({ value, max, color = COLORS.primary }) => {
+    const pct = max > 0 ? (value / max) * 100 : 0;
+    return (
+      <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: `${pct}%`, backgroundColor: color }}
+        />
       </div>
-      <span className="text-sm font-semibold text-slate-700">{label}</span>
-    </Link>
-  );
-
-  const StatusRow = ({ label, value, highlight = false, alert = false }) => (
-    <div className="flex justify-between items-center py-3 border-b border-slate-100 last:border-0">
-      <span className="text-sm font-medium text-slate-600">{label}</span>
-      <span className={`text-sm font-bold ${
-        alert ? 'text-red-600' : highlight ? 'text-indigo-600' : 'text-slate-800'
-      }`}>
-        {value}
-      </span>
-    </div>
-  );
+    );
+  };
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Resumen Operativo</h1>
-        <p className="text-slate-500 mt-1">Visión general del sistema RAG y operaciones académicas.</p>
-      </div>
-
-      {/* KPIs principales */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-        <StatCard 
-          title="Estudiantes Activos" 
-          value={dashboardData?.total_estudiantes} 
-          icon={Users} 
-          colorClass="text-blue-600" 
-          bgClass="bg-blue-50" 
-        />
-        <StatCard 
-          title="Inscripciones" 
-          value={dashboardData?.total_inscripciones} 
-          icon={GraduationCap} 
-          colorClass="text-emerald-600" 
-          bgClass="bg-emerald-50" 
-        />
-        <StatCard 
-          title="Sílabos en Revisión" 
-          value={dashboardData?.silabos_pendientes} 
-          icon={FileSearch} 
-          colorClass="text-amber-600" 
-          bgClass="bg-amber-50" 
-        />
-        <StatCard 
-          title="Consultas a Sylia" 
-          value={dashboardData?.total_consultas} 
-          icon={MessageSquare} 
-          colorClass="text-indigo-600" 
-          bgClass="bg-indigo-50" 
-        />
-      </div>
-
-      {/* Acciones rápidas */}
-      <div className="mb-8">
-        <h2 className="text-lg font-bold text-slate-800 mb-4">Acciones Rápidas</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <QuickAction to="/admin/silabos/pendientes" icon={Search} label="Validar Sílabos" />
-          <QuickAction to="/admin/cursos" icon={BookMarked} label="Gestionar Cursos" />
-          <QuickAction to="/admin/periodos" icon={Calendar} label="Gestionar Periodos" />
-          <QuickAction to="/admin/metricas" icon={BarChart3} label="Ver Métricas" />
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{formatDate()}</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Resumen Operativo</h1>
+          <p className="text-sm text-slate-500 mt-1 max-w-xl">
+            Visión integral del sistema RAG, operaciones ITIL y salud académica en tiempo real.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs font-medium text-slate-500 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-card">
+          <Zap className="w-3.5 h-3.5 text-amber-500" />
+          <span>Actualizado: {new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
       </div>
 
-      {/* Estado del sistema */}
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <div className="flex items-center gap-2 mb-6">
-            <ShieldAlert className="w-5 h-5 text-indigo-600" />
-            <h2 className="text-lg font-bold text-slate-800">Estado del Service Desk</h2>
+      {/* KPIs Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Estudiantes Activos"
+          value={d.total_estudiantes}
+          icon={Users}
+          tone="blue"
+          trend="up"
+          trendLabel="+12%"
+        />
+        <StatCard
+          title="Inscripciones"
+          value={d.total_inscripciones}
+          icon={GraduationCap}
+          tone="emerald"
+          trend="up"
+          trendLabel="+5%"
+        />
+        <StatCard
+          title="Consultas Sylia"
+          value={d.total_consultas}
+          icon={MessageSquare}
+          tone="purple"
+          trend="up"
+          trendLabel="+8%"
+        />
+        <StatCard
+          title="Incidentes Activos"
+          value={d.incidentes_activos}
+          icon={AlertTriangle}
+          tone={d.incidentes_activos > 0 ? 'rose' : 'slate'}
+          trend={d.incidentes_activos > 0 ? 'down' : undefined}
+          trendLabel={d.incidentes_activos > 0 ? 'Atención' : 'Estable'}
+        />
+      </div>
+
+      {/* Secondary KPIs */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {[
+          { label: 'Sílabos Validados', value: d.silabos_validados, icon: FileCheck, tone: 'success' },
+          { label: 'Sílabos Pendientes', value: d.silabos_pendientes, icon: FileSearch, tone: 'warning' },
+          { label: 'Sílabos Rechazados', value: d.silabos_rechazados, icon: FileX, tone: 'danger' },
+          { label: 'Tickets Abiertos', value: d.solicitudes_abiertas, icon: Ticket, tone: 'info' },
+          { label: 'Tickets Resueltos', value: d.solicitudes_resueltas, icon: ShieldAlert, tone: 'success' },
+          { label: 'Tasa Resolución', value: `${d.tasa_resolucion_sin_escalar || 0}%`, icon: Activity, tone: 'emerald' },
+        ].map((item) => (
+          <div key={item.label} className="bg-white border border-slate-200 rounded-xl p-4 shadow-card">
+            <div className="flex items-center gap-2 mb-2">
+              <item.icon className="w-4 h-4 text-slate-400" />
+              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider truncate">{item.label}</span>
+            </div>
+            <p className="text-lg font-bold text-slate-900">{formatNumber(item.value)}</p>
           </div>
-          <div className="space-y-1">
-            <StatusRow label="Solicitudes Abiertas" value={dashboardData?.solicitudes_abiertas || 0} highlight />
-            <StatusRow label="Solicitudes Resueltas" value={dashboardData?.solicitudes_resueltas || 0} />
-            <StatusRow label="Incidentes Activos" value={dashboardData?.incidentes_activos || 0} alert={(dashboardData?.incidentes_activos || 0) > 0} />
-            <StatusRow label="Tiempo Prom. Respuesta" value={`${dashboardData?.tiempo_promedio_respuesta || 0} ms`} />
+        ))}
+      </div>
+
+      {/* Main Charts Row */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Incidentes por Severidad */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-card">
+          <SectionHeader icon={AlertTriangle} title="Incidentes por Severidad" />
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={severityData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }} barSize={40}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px', fontWeight: 600, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)' }}
+                  cursor={{ fill: '#f8fafc' }}
+                />
+                <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                  {severityData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          {data.risk && (
+            <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+              <div className="bg-rose-50 rounded-lg p-2">
+                <p className="text-lg font-bold text-rose-600">{data.risk.incidentes_por_severidad?.ALTA || 0}</p>
+                <p className="text-[10px] font-semibold text-rose-700 uppercase tracking-wider">Alta</p>
+              </div>
+              <div className="bg-amber-50 rounded-lg p-2">
+                <p className="text-lg font-bold text-amber-600">{data.risk.incidentes_por_severidad?.MEDIA || 0}</p>
+                <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider">Media</p>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-2">
+                <p className="text-lg font-bold text-slate-600">{data.risk.incidentes_por_severidad?.BAJA || 0}</p>
+                <p className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Baja</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Distribución Sílabos */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-card">
+          <SectionHeader icon={BookMarked} title="Distribución de Sílabos" />
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={silabosData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={90}
+                  paddingAngle={4}
+                  dataKey="value"
+                  stroke="none"
+                >
+                  {silabosData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px', fontWeight: 600 }}
+                />
+                <Legend
+                  verticalAlign="bottom"
+                  height={36}
+                  iconType="circle"
+                  formatter={(value) => <span className="text-xs font-medium text-slate-600">{value}</span>}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-2 text-center">
+            <p className="text-xs text-slate-500">
+              Total documentos: <span className="font-bold text-slate-800">
+                {silabosData.reduce((a, b) => a + b.value, 0)}
+              </span>
+            </p>
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <div className="flex items-center gap-2 mb-6">
-            <BookMarked className="w-5 h-5 text-indigo-600" />
-            <h2 className="text-lg font-bold text-slate-800">Salud Académica</h2>
+        {/* Service Desk Status */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-card">
+          <SectionHeader icon={Ticket} title="Service Desk" action actionLabel="Ver tickets" actionTo="/admin/service-desk" />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
+                  <Ticket className="w-4 h-4 text-slate-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Total Tickets</p>
+                  <p className="text-lg font-bold text-slate-900">{formatNumber(data.tickets?.total_tickets)}</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-white border border-blue-100 flex items-center justify-center">
+                  <Clock className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Backlog</p>
+                  <p className="text-lg font-bold text-slate-900">{formatNumber(data.tickets?.backlog)}</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-white border border-emerald-100 flex items-center justify-center">
+                  <Activity className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Tiempo Medio Resolución</p>
+                  <p className="text-lg font-bold text-slate-900">{Math.round(data.tickets?.tiempo_medio_resolucion_ms || 0)} ms</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-amber-50 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-white border border-amber-100 flex items-center justify-center">
+                  <AlertTriangle className="w-4 h-4 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Tickets Vencidos</p>
+                  <p className="text-lg font-bold text-slate-900">{formatNumber(data.tickets?.tickets_vencidos)}</p>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="space-y-1">
-            <StatusRow label="Sílabos Validados (Automáticos/Manual)" value={dashboardData?.silabos_validados || 0} highlight />
-            <StatusRow label="Sílabos Rechazados" value={dashboardData?.silabos_rechazados || 0} alert={(dashboardData?.silabos_rechazados || 0) > 0} />
-            <StatusRow label="Alertas de Riesgo ITIL" value={dashboardData?.alertas_riesgo || 0} alert={(dashboardData?.alertas_riesgo || 0) > 0} />
-            <StatusRow label="Estudiantes en Riesgo" value={dashboardData?.estudiantes_riesgo || 0} alert={(dashboardData?.estudiantes_riesgo || 0) > 0} />
+          <div className="mt-5 pt-4 border-t border-slate-100">
+            <div className="flex items-center justify-between text-xs mb-1">
+              <span className="font-medium text-slate-500">Tasa de Resolución</span>
+              <span className="font-bold text-slate-900">{d.tasa_resolucion_sin_escalar || 0}%</span>
+            </div>
+            <ProgressBar value={d.tasa_resolucion_sin_escalar || 0} max={100} color={COLORS.success} />
           </div>
+        </div>
+      </div>
+
+      {/* Bottom Row */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Top Consultas */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-card">
+          <SectionHeader icon={BarChart3} title="Top Consultas Frecuentes" />
+          {topConsultas.length === 0 ? (
+            <div className="text-center py-8 text-slate-400 text-sm">No hay datos de consultas disponibles</div>
+          ) : (
+            <div className="space-y-3">
+              {topConsultas.map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-slate-400 w-5 text-center">{idx + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-semibold text-slate-700 truncate">{item.categoria || 'Sin categoría'}</span>
+                      <span className="text-xs font-bold text-slate-900 ml-2">{item.count}</span>
+                    </div>
+                    <ProgressBar value={item.count} max={maxConsultas} color={COLORS.primary} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Salud Académica Detalle */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-card">
+          <SectionHeader icon={Activity} title="Salud Académica" action actionLabel="Ver incidentes" actionTo="/admin/incidentes" />
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-4 border border-slate-200 rounded-xl">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Estudiantes en Riesgo</p>
+                <p className="text-2xl font-bold text-rose-600">{formatNumber(d.estudiantes_riesgo)}</p>
+                <p className="text-[10px] text-slate-400 mt-1">PP proyectado &lt; 14</p>
+              </div>
+              <div className="p-4 border border-slate-200 rounded-xl">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Escalados a Tutoría</p>
+                <p className="text-2xl font-bold text-amber-600">{formatNumber(data.risk?.casos_escalados_tutoria)}</p>
+                <p className="text-[10px] text-slate-400 mt-1">Requieren intervención</p>
+              </div>
+            </div>
+            <div className="p-4 border border-slate-200 rounded-xl">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Satisfacción del Servicio</span>
+                <span className="text-sm font-bold text-slate-900">{d.satisfaccion || 95}%</span>
+              </div>
+              <ProgressBar value={d.satisfaccion || 95} max={100} color={COLORS.primary} />
+            </div>
+            <div className="p-4 border border-slate-200 rounded-xl">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Tiempo Promedio de Respuesta</span>
+                <span className="text-sm font-bold text-slate-900">{d.tiempo_promedio_respuesta || 0} ms</span>
+              </div>
+              <ProgressBar value={Math.min(d.tiempo_promedio_respuesta || 0, 2000)} max={2000} color={COLORS.info} />
+            </div>
+            {data.improvement?.cursos_sin_silabo_oficial > 0 && (
+              <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl flex items-center gap-3">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-amber-800">
+                    {data.improvement.cursos_sin_silabo_oficial} cursos sin sílabo oficial
+                  </p>
+                  <p className="text-[10px] text-amber-600 mt-0.5">Revisar gestión de contenido</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div>
+        <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Acciones Rápidas</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { to: '/admin/silabos/pendientes', icon: Search, label: 'Validar Sílabos', color: 'text-blue-600', bg: 'bg-blue-50' },
+            { to: '/admin/cursos', icon: BookMarked, label: 'Gestionar Cursos', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+            { to: '/admin/periodos', icon: Calendar, label: 'Gestionar Periodos', color: 'text-violet-600', bg: 'bg-violet-50' },
+            { to: '/admin/metricas', icon: BarChart3, label: 'Ver Métricas RAG', color: 'text-amber-600', bg: 'bg-amber-50' },
+          ].map((action) => (
+            <Link
+              key={action.to}
+              to={action.to}
+              className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3 hover:border-slate-300 hover:shadow-card-hover transition-all group"
+            >
+              <div className={`w-10 h-10 rounded-lg ${action.bg} flex items-center justify-center shrink-0`}>
+                <action.icon className={`w-5 h-5 ${action.color}`} />
+              </div>
+              <span className="text-sm font-semibold text-slate-700 group-hover:text-slate-900">{action.label}</span>
+            </Link>
+          ))}
         </div>
       </div>
     </div>

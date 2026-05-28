@@ -1,7 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSyllabus } from '../../contexts/SyllabusContext';
 import { useCourse } from '../../contexts/CourseContext';
+import SearchableSelect from '../../components/ui/SearchableSelect';
+import {
+  Upload, FileText, ArrowLeft, BookOpen, Calendar, FileUp,
+  CheckCircle2, AlertCircle, X, Loader2, FileCheck,
+  Layers, Clock, GraduationCap
+} from 'lucide-react';
+
+const STEPS = [
+  { id: 1, label: 'Curso y periodo', icon: BookOpen },
+  { id: 2, label: 'Archivo PDF', icon: FileUp },
+  { id: 3, label: 'Confirmar', icon: FileCheck },
+];
 
 export default function SyllabusUploadPage() {
   const navigate = useNavigate();
@@ -15,86 +27,81 @@ export default function SyllabusUploadPage() {
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [validationError, setValidationError] = useState('');
+  const [currentStep, setCurrentStep] = useState(1);
 
-  const ciclos = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'Electivo'];
+  const ciclos = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 
-  const filteredCourses = selectedCiclo 
+  const filteredCourses = selectedCiclo
     ? courses?.filter(c => c.ciclo_referencial === selectedCiclo || c.ciclo_referencial?.toUpperCase() === selectedCiclo.toUpperCase())
     : courses;
 
-  const handleCicloChange = (e) => {
-    setSelectedCiclo(e.target.value);
+  const courseOptions = useMemo(() => {
+    const list = filteredCourses?.map(c => ({
+      value: c.id_curso,
+      label: `${c.codigo_curso} — ${c.nombre_curso}`,
+    })) || [];
+    return [{ value: '', label: 'Seleccionar curso...' }, ...list];
+  }, [filteredCourses]);
+
+  const periodOptions = useMemo(() => {
+    const list = periods?.map(p => ({
+      value: p.id_periodo,
+      label: p.nombre,
+    })) || [];
+    return [{ value: '', label: 'Seleccionar periodo...' }, ...list];
+  }, [periods]);
+
+  const selectedCourseObj = courses?.find(c => String(c.id_curso) === selectedCourse);
+  const selectedPeriodObj = periods?.find(p => String(p.id_periodo) === selectedPeriod);
+
+  // Auto-advance step
+  useEffect(() => {
+    if (selectedCourse && selectedPeriod) setCurrentStep(2);
+    if (selectedFile && selectedCourse && selectedPeriod) setCurrentStep(3);
+  }, [selectedCourse, selectedPeriod, selectedFile]);
+
+  const handleCicloChange = (val) => {
+    setSelectedCiclo(val);
     setSelectedCourse('');
   };
 
-  // Cargar cursos y periodos
-  useEffect(() => {
-    // Los cursos ya están cargados desde el contexto
-  }, []);
-
   const validateFile = (file) => {
-    const maxSize = 20 * 1024 * 1024; // 20MB
+    const maxSize = 20 * 1024 * 1024;
     const validTypes = ['application/pdf'];
-
     if (!validTypes.includes(file.type)) {
       setValidationError('Solo se permiten archivos PDF');
       return false;
     }
-
     if (file.size > maxSize) {
       setValidationError('El archivo no debe exceder 20MB');
       return false;
     }
-
     setValidationError('');
     return true;
   };
 
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
-    if (file && validateFile(file)) {
-      setSelectedFile(file);
-    }
+    if (file && validateFile(file)) setSelectedFile(file);
   };
 
   const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
+    e.preventDefault(); e.stopPropagation();
+    setDragActive(e.type === 'dragenter' || e.type === 'dragover');
   };
 
   const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     setDragActive(false);
-
     const file = e.dataTransfer.files?.[0];
-    if (file && validateFile(file)) {
-      setSelectedFile(file);
-    }
+    if (file && validateFile(file)) setSelectedFile(file);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!selectedFile) {
-      setValidationError('Selecciona un archivo');
-      return;
-    }
-
-    if (!selectedCourse) {
-      setValidationError('Selecciona un curso');
-      return;
-    }
-
-    if (!selectedPeriod) {
-      setValidationError('Selecciona un período');
-      return;
-    }
+    if (!selectedFile) { setValidationError('Selecciona un archivo'); return; }
+    if (!selectedCourse) { setValidationError('Selecciona un curso'); return; }
+    if (!selectedPeriod) { setValidationError('Selecciona un período'); return; }
 
     setUploading(true);
     const result = await uploadOfficialSyllabus(
@@ -104,232 +111,321 @@ export default function SyllabusUploadPage() {
     );
 
     if (result.success) {
-      // Limpiar formulario
-      setSelectedFile(null);
-      setSelectedCourse('');
-      setSelectedPeriod('');
-      setSelectedCiclo('');
-      // Mantener el mensaje de éxito visible por unos segundos
       setTimeout(() => {
         clearUploadStatus();
         navigate('/admin/silabos');
-      }, 2000);
+      }, 2500);
     }
     setUploading(false);
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-2xl mx-auto">
-        {/* Encabezado */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Subir Sílabo Oficial</h1>
-          <p className="text-gray-600 mt-2">
-            Carga el documento oficial del sílabo. Una vez subido, se sincronizará automáticamente con los estudiantes.
-          </p>
+  const StepIndicator = () => (
+    <div className="flex items-center gap-2 mb-6">
+      {STEPS.map((step, idx) => (
+        <React.Fragment key={step.id}>
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+            currentStep >= step.id
+              ? 'bg-blue-50 text-blue-700 border border-blue-200'
+              : 'bg-slate-100 text-slate-400 border border-slate-200'
+          }`}>
+            <step.icon className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{step.label}</span>
+          </div>
+          {idx < STEPS.length - 1 && (
+            <div className={`w-6 h-px transition-colors ${currentStep > step.id ? 'bg-blue-300' : 'bg-slate-200'}`} />
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+
+  const SummaryCard = () => (
+    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+      <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-2">Resumen</p>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <BookOpen className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+          <span className="text-sm text-slate-700">
+            <span className="font-semibold text-slate-900">{selectedCourseObj?.codigo_curso}</span> — {selectedCourseObj?.nombre_curso}
+          </span>
         </div>
+        <div className="flex items-center gap-2">
+          <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+          <span className="text-sm text-slate-700">{selectedPeriodObj?.nombre}</span>
+        </div>
+        {selectedFile && (
+          <div className="flex items-center gap-2">
+            <FileText className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+            <span className="text-sm text-slate-700 truncate">{selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
-        {/* Tarjeta principal */}
-        <div className="bg-white rounded-lg shadow-md p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Selección de Ciclo (Filtro) */}
-            <div>
-              <label htmlFor="ciclo" className="block text-sm font-medium text-gray-900 mb-2">
-                Filtrar por Ciclo (Opcional)
-              </label>
-              <select
-                id="ciclo"
-                value={selectedCiclo}
-                onChange={handleCicloChange}
-                disabled={courseLoading}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-              >
-                <option value="">Todos los ciclos</option>
-                {ciclos.map((ciclo) => (
-                  <option key={ciclo} value={ciclo}>
-                    Ciclo {ciclo}
-                  </option>
-                ))}
-              </select>
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <button
+          onClick={() => navigate('/admin/silabos')}
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors mb-3"
+        >
+          <ArrowLeft className="w-4 h-4" /> Volver a sílabos
+        </button>
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+          <Upload className="w-7 h-7 text-blue-600" />
+          Subir Sílabo Oficial
+        </h1>
+        <p className="text-sm text-slate-500 mt-1.5">
+          Carga el documento oficial del sílabo para sincronizar con estudiantes.
+        </p>
+      </div>
+
+      {/* Step indicator */}
+      <StepIndicator />
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Step 1: Course & Period */}
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-card">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center">
+              <BookOpen className="w-4 h-4 text-blue-600" />
             </div>
+            <h2 className="text-sm font-bold text-slate-900">1. Curso y periodo académico</h2>
+          </div>
 
-            {/* Selección de Curso */}
+          <div className="space-y-4">
+            {/* Ciclo filter */}
             <div>
-              <label htmlFor="course" className="block text-sm font-medium text-gray-900 mb-2">
-                Curso <span className="text-red-500">*</span>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                Filtrar por ciclo
               </label>
-              <select
-                id="course"
-                value={selectedCourse}
-                onChange={(e) => setSelectedCourse(e.target.value)}
-                disabled={courseLoading}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-              >
-                <option value="">
-                  {courseLoading ? 'Cargando cursos...' : 'Selecciona un curso'}
-                </option>
-                {filteredCourses?.map((course) => (
-                  <option key={course.id_curso} value={course.id_curso}>
-                    {course.ciclo_referencial ? `[Ciclo ${course.ciclo_referencial}] ` : ''}{course.codigo_curso} - {course.nombre_curso}
-                  </option>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleCicloChange('')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                    !selectedCiclo
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  Todos
+                </button>
+                {ciclos.map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => handleCicloChange(c)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                      selectedCiclo === c
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    {c}
+                  </button>
                 ))}
-              </select>
-            </div>
-
-            {/* Selección de Período */}
-            <div>
-              <label htmlFor="period" className="block text-sm font-medium text-gray-900 mb-2">
-                Período Académico <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="period"
-                value={selectedPeriod}
-                onChange={(e) => setSelectedPeriod(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Selecciona un período</option>
-                {periods?.map((period) => (
-                  <option key={period.id_periodo} value={period.id_periodo}>
-                    {period.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Carga de archivo */}
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Archivo PDF <span className="text-red-500">*</span>
-              </label>
-
-              <div
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-                  dragActive
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-300 bg-gray-50'
-                } ${selectedFile ? 'bg-blue-50 border-blue-300' : ''}`}
-              >
-                <input
-                  type="file"
-                  id="file-input"
-                  onChange={handleFileSelect}
-                  accept=".pdf"
-                  className="hidden"
-                  disabled={uploading}
-                />
-
-                {selectedFile ? (
-                  <div>
-                    <div className="text-4xl mb-2">✓</div>
-                    <p className="text-green-600 font-medium">{selectedFile.name}</p>
-                    <p className="text-gray-600 text-sm mt-1">
-                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedFile(null)}
-                      disabled={uploading}
-                      className="text-blue-500 text-sm mt-2 hover:underline disabled:opacity-50"
-                    >
-                      Cambiar archivo
-                    </button>
-                  </div>
-                ) : (
-                  <label htmlFor="file-input" className="cursor-pointer">
-                    <div className="text-4xl mb-2">📄</div>
-                    <p className="text-gray-900 font-medium">
-                      Arrastra aquí o haz clic para seleccionar
-                    </p>
-                    <p className="text-gray-600 text-sm mt-1">
-                      Máximo 20MB • Solo PDF
-                    </p>
-                  </label>
-                )}
               </div>
             </div>
 
-            {/* Errores de validación */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <SearchableSelect
+                label="Curso *"
+                placeholder="Seleccionar curso..."
+                searchPlaceholder="Buscar curso..."
+                value={selectedCourse}
+                onChange={setSelectedCourse}
+                options={courseOptions}
+                disabled={courseLoading}
+              />
+              <SearchableSelect
+                label="Periodo académico *"
+                placeholder="Seleccionar periodo..."
+                searchPlaceholder="Buscar periodo..."
+                value={selectedPeriod}
+                onChange={setSelectedPeriod}
+                options={periodOptions}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Step 2: File Upload */}
+        <div className={`bg-white border rounded-xl p-5 shadow-card transition-all ${
+          selectedCourse && selectedPeriod ? 'border-slate-200' : 'border-slate-200 opacity-60'
+        }`}>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center">
+              <FileUp className="w-4 h-4 text-blue-600" />
+            </div>
+            <h2 className="text-sm font-bold text-slate-900">2. Archivo PDF del sílabo</h2>
+          </div>
+
+          <div
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            className={`border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer ${
+              dragActive
+                ? 'border-blue-500 bg-blue-50'
+                : selectedFile
+                  ? 'border-emerald-300 bg-emerald-50'
+                  : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-slate-400'
+            }`}
+          >
+            <input
+              type="file"
+              id="file-input"
+              onChange={handleFileSelect}
+              accept=".pdf"
+              className="hidden"
+              disabled={uploading || !selectedCourse || !selectedPeriod}
+            />
+
+            {selectedFile ? (
+              <div className="flex flex-col items-center">
+                <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center mb-3">
+                  <FileText className="w-6 h-6 text-emerald-600" />
+                </div>
+                <p className="text-sm font-bold text-slate-900 mb-1">{selectedFile.name}</p>
+                <p className="text-xs text-slate-500 mb-3">
+                  {(selectedFile.size / 1024 / 1024).toFixed(2)} MB • PDF
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSelectedFile(null)}
+                  disabled={uploading}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 px-3 py-1.5 rounded-lg border border-red-200 hover:bg-red-50 transition-colors"
+                >
+                  <X className="w-3 h-3" /> Cambiar archivo
+                </button>
+              </div>
+            ) : (
+              <label htmlFor="file-input" className="cursor-pointer flex flex-col items-center">
+                <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mb-3 border border-slate-200">
+                  <Upload className="w-6 h-6 text-slate-400" />
+                </div>
+                <p className="text-sm font-bold text-slate-800 mb-1">
+                  Arrastra aquí o haz clic para seleccionar
+                </p>
+                <p className="text-xs text-slate-500">
+                  Máximo 20MB • Solo archivos PDF
+                </p>
+              </label>
+            )}
+          </div>
+
+          {!selectedCourse && (
+            <p className="text-xs text-slate-400 mt-2 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" /> Selecciona un curso y periodo primero
+            </p>
+          )}
+        </div>
+
+        {/* Summary & Submit */}
+        {selectedCourse && selectedPeriod && selectedFile && (
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-card">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center">
+                <FileCheck className="w-4 h-4 text-blue-600" />
+              </div>
+              <h2 className="text-sm font-bold text-slate-900">3. Confirmar y subir</h2>
+            </div>
+
+            <SummaryCard />
+
+            {/* Validation error */}
             {validationError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-700 text-sm">{validationError}</p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                <p className="text-sm text-red-700">{validationError}</p>
               </div>
             )}
 
-            {/* Estado de carga */}
+            {/* Upload status */}
             {uploadStatus && (
-              <div
-                className={`p-4 rounded-lg ${
-                  uploadStatus.success
-                    ? 'bg-green-50 border border-green-200'
-                    : 'bg-red-50 border border-red-200'
-                }`}
-              >
+              <div className={`rounded-lg p-4 mb-4 border ${
+                uploadStatus.success ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'
+              }`}>
                 {uploadStatus.loading && (
-                  <div className="flex items-center space-x-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
-                    <p className="text-blue-700 text-sm">{uploadStatus.message}</p>
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                    <p className="text-sm text-blue-700 font-medium">{uploadStatus.message}</p>
                   </div>
                 )}
                 {uploadStatus.success && !uploadStatus.loading && (
-                  <div>
-                    <p className="text-green-700 font-medium">✓ {uploadStatus.message}</p>
-                    <p className="text-green-600 text-sm mt-1">
-                      Score de confianza: {uploadStatus.score}%
-                    </p>
-                    <p className="text-green-600 text-sm">
-                      {uploadStatus.contextos_sincronizados} estudiantes sincronizados
-                    </p>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-emerald-800">{uploadStatus.message}</p>
+                      <p className="text-xs text-emerald-700 mt-1">
+                        Score de confianza: <span className="font-bold">{uploadStatus.score}%</span>
+                        {uploadStatus.contextos_sincronizados > 0 && (
+                          <> • {uploadStatus.contextos_sincronizados} estudiantes sincronizados</>
+                        )}
+                      </p>
+                    </div>
                   </div>
                 )}
                 {uploadStatus.error && !uploadStatus.loading && (
-                  <p className="text-red-700 text-sm">{uploadStatus.message}</p>
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                    <p className="text-sm text-red-700">{uploadStatus.message}</p>
+                  </div>
                 )}
               </div>
             )}
 
-            {/* Botones de acción */}
-            <div className="flex gap-4 pt-4">
+            {/* Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
                 onClick={() => navigate('/admin/silabos')}
                 disabled={uploading}
-                className="flex-1 px-6 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                disabled={uploading || !selectedFile}
-                className="flex-1 px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                disabled={uploading}
+                className="flex-1 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 {uploading ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                    Cargando...
+                    <Loader2 className="w-4 h-4 animate-spin" /> Procesando...
                   </>
                 ) : (
                   <>
-                    ⬆ Subir Sílabo
+                    <Upload className="w-4 h-4" /> Subir Sílabo Oficial
                   </>
                 )}
               </button>
             </div>
-          </form>
-
-          {/* Información útil */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <h3 className="font-medium text-gray-900 mb-3">Requisitos:</h3>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li>✓ Formato PDF</li>
-              <li>✓ Máximo 20MB</li>
-              <li>✓ Documento legible y estructurado</li>
-              <li>✓ Contiene información del curso, objetivos y metodología</li>
-            </ul>
           </div>
+        )}
+      </form>
+
+      {/* Info */}
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Requisitos del documento</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {[
+            { icon: FileText, text: 'Formato PDF únicamente' },
+            { icon: Clock, text: 'Máximo 20 MB de tamaño' },
+            { icon: FileCheck, text: 'Documento legible y estructurado' },
+            { icon: GraduationCap, text: 'Contiene objetivos, metodología y evaluación' },
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-2.5">
+              <div className="w-7 h-7 bg-white rounded-lg border border-slate-200 flex items-center justify-center shrink-0">
+                <item.icon className="w-3.5 h-3.5 text-slate-500" />
+              </div>
+              <span className="text-xs text-slate-600 font-medium">{item.text}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

@@ -1,19 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useCourse } from '../../contexts/CourseContext';
 import * as periodAPI from '../../api/periods';
 import Button from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Modal from '../../components/ui/Modal';
-import Pagination from '../../components/ui/Pagination';
-import { CalendarDays, Plus, Edit2, CheckCircle2, PlayCircle } from 'lucide-react';
+import {
+  CalendarDays, Plus, Edit2, CheckCircle2, PlayCircle, AlertCircle,
+  Clock, TrendingUp, Calendar, X, ChevronLeft, ChevronRight
+} from 'lucide-react';
 
 const PeriodManagementPage = () => {
   const { periods, loading, refreshData } = useCourse();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPeriod, setEditingPeriod] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-  
+  const itemsPerPage = 6;
+
   const [formData, setFormData] = useState({
     anio: new Date().getFullYear(),
     termino: '',
@@ -22,6 +24,35 @@ const PeriodManagementPage = () => {
     fecha_inicio: '',
     fecha_fin: ''
   });
+
+  const stats = useMemo(() => {
+    const total = periods.length;
+    const actual = periods.find(p => p.es_actual);
+    const anios = new Set(periods.map(p => p.anio)).size;
+    const abiertos = periods.filter(p => {
+      const fin = new Date(p.fecha_fin);
+      return fin >= new Date();
+    }).length;
+    return { total, actual, anios, abiertos };
+  }, [periods]);
+
+  const sortedPeriods = useMemo(() => {
+    return [...periods].sort((a, b) => {
+      if (a.es_actual && !b.es_actual) return -1;
+      if (!a.es_actual && b.es_actual) return 1;
+      return new Date(b.fecha_inicio) - new Date(a.fecha_inicio);
+    });
+  }, [periods]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedPeriods.length / itemsPerPage));
+  const paginatedPeriods = sortedPeriods.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [periods.length]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -62,7 +93,7 @@ const PeriodManagementPage = () => {
   };
 
   const handleSetCurrent = async (id_periodo) => {
-    if(!confirm("¿Deseas activar este periodo? Todos los demás periodos pasarán a inactivos.")) return;
+    if (!confirm('¿Deseas activar este periodo? Todos los demás periodos pasarán a inactivos.')) return;
     try {
       await periodAPI.updatePeriod(id_periodo, { es_actual: true });
       refreshData();
@@ -88,101 +119,255 @@ const PeriodManagementPage = () => {
     setIsModalOpen(true);
   };
 
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  const StatCard = ({ icon: Icon, value, label, tone }) => {
+    const toneMap = {
+      blue: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-100' },
+      emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100' },
+      violet: { bg: 'bg-violet-50', text: 'text-violet-600', border: 'border-violet-100' },
+      amber: { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-100' },
+    };
+    const t = toneMap[tone] || toneMap.blue;
+    return (
+      <div className={`bg-white border ${t.border} rounded-xl p-4 flex items-center gap-3`}>
+        <div className={`w-10 h-10 rounded-lg ${t.bg} flex items-center justify-center shrink-0`}>
+          <Icon className={`w-5 h-5 ${t.text}`} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xl font-bold text-slate-900 truncate">{value}</p>
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{label}</p>
+        </div>
+      </div>
+    );
+  };
+
+  const PeriodCard = ({ period }) => {
+    const isCurrent = period.es_actual;
+    const isPast = new Date(period.fecha_fin) < new Date();
+    const durationDays = Math.ceil(
+      (new Date(period.fecha_fin) - new Date(period.fecha_inicio)) / (1000 * 60 * 60 * 24)
+    );
+
+    return (
+      <div className={`bg-white border rounded-xl p-5 transition-all hover:shadow-card-hover ${
+        isCurrent ? 'border-blue-300 ring-1 ring-blue-100' : 'border-slate-200 hover:border-slate-300'
+      }`}>
+        {/* Header */}
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md border ${
+              isCurrent
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : isPast
+                  ? 'bg-slate-100 text-slate-500 border-slate-200'
+                  : 'bg-blue-50 text-blue-700 border-blue-100'
+            }`}>
+              {isCurrent && <CheckCircle2 className="w-3 h-3" />}
+              {isCurrent ? 'En curso' : isPast ? 'Finalizado' : 'Próximo'}
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            {!isCurrent && (
+              <button
+                onClick={() => handleSetCurrent(period.id_periodo)}
+                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                title="Activar como periodo actual"
+              >
+                <PlayCircle className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <button
+              onClick={() => handleEdit(period)}
+              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              title="Editar"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <h3 className="text-base font-bold text-slate-900 mb-1">{period.nombre}</h3>
+        <p className="text-xs text-slate-500 mb-4">
+          Año {period.anio} · Término {period.termino}
+        </p>
+
+        {/* Dates */}
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center gap-2 text-xs">
+            <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <span className="text-slate-600">Inicio: <span className="font-medium text-slate-800">{formatDate(period.fecha_inicio)}</span></span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <span className="text-slate-600">Fin: <span className="font-medium text-slate-800">{formatDate(period.fecha_fin)}</span></span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <TrendingUp className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <span className="text-slate-600">Duración: <span className="font-medium text-slate-800">{durationDays} días</span></span>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        {isCurrent && (
+          <div className="mt-auto">
+            <div className="flex items-center justify-between text-[10px] mb-1">
+              <span className="font-semibold text-slate-500">Progreso del periodo</span>
+              <span className="font-bold text-blue-600">
+                {Math.min(100, Math.round(
+                  ((new Date() - new Date(period.fecha_inicio)) /
+                   (new Date(period.fecha_fin) - new Date(period.fecha_inicio))) * 100
+                ))}%
+              </span>
+            </div>
+            <div className="w-full bg-slate-100 rounded-full h-1.5">
+              <div
+                className="bg-blue-600 h-1.5 rounded-full transition-all"
+                style={{
+                  width: `${Math.min(100, Math.round(
+                    ((new Date() - new Date(period.fecha_inicio)) /
+                     (new Date(period.fecha_fin) - new Date(period.fecha_inicio))) * 100
+                  ))}%`
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (loading) {
-    return <LoadingSpinner fullScreen />;
+    return (
+      <div className="flex items-center justify-center h-96">
+        <LoadingSpinner />
+      </div>
+    );
   }
 
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedPeriods = periods.slice(startIndex, startIndex + itemsPerPage);
-
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-8">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <CalendarDays className="w-6 h-6 text-indigo-600" /> Gestión de Periodos
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+            <CalendarDays className="w-7 h-7 text-blue-600" />
+            Gestión de Periodos
           </h1>
-          <p className="text-slate-500 mt-1">Administra los ciclos académicos y controla el periodo activo vigente.</p>
+          <p className="text-sm text-slate-500 mt-1.5 max-w-lg">
+            Administra los ciclos académicos, controla vigencias y establece el periodo activo del sistema.
+          </p>
         </div>
-        <Button onClick={openCreateModal} className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2 px-4">
+        <Button
+          onClick={openCreateModal}
+          className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm shrink-0"
+        >
           <Plus className="w-4 h-4" /> Nuevo Periodo
         </Button>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        {/* Data Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider font-semibold text-slate-500">
-                <th className="px-6 py-4 whitespace-nowrap">Periodo Académico</th>
-                <th className="px-6 py-4 whitespace-nowrap">Año</th>
-                <th className="px-6 py-4 whitespace-nowrap">Término</th>
-                <th className="px-6 py-4 whitespace-nowrap">Vigencia</th>
-                <th className="px-6 py-4 whitespace-nowrap">Estado del Sistema</th>
-                <th className="px-6 py-4 text-right whitespace-nowrap">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {paginatedPeriods.map((period) => (
-                <tr key={period.id_periodo} className={`hover:bg-slate-50/80 transition-colors ${period.es_actual ? 'bg-indigo-50/30' : ''}`}>
-                  <td className="px-6 py-4">
-                    <p className="font-bold text-slate-800 text-sm">{period.nombre}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm font-medium text-slate-600">{period.anio}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm font-medium text-slate-600">{period.termino}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-xs text-slate-500 block">Del: {new Date(period.fecha_inicio).toLocaleDateString()}</span>
-                    <span className="text-xs text-slate-500 block">Al: {new Date(period.fecha_fin).toLocaleDateString()}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    {period.es_actual ? (
-                      <span className="px-2.5 py-1 inline-flex items-center gap-1.5 text-xs leading-5 font-semibold rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> En Curso
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border bg-slate-50 text-slate-600 border-slate-200">
-                        Cerrado
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
-                    {!period.es_actual && (
-                      <button 
-                        onClick={() => handleSetCurrent(period.id_periodo)}
-                        className="px-3 py-1.5 text-xs font-medium bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors inline-flex items-center gap-1.5"
-                      >
-                        <PlayCircle className="w-3.5 h-3.5" /> Activar
-                      </button>
-                    )}
-                    <button 
-                      onClick={() => handleEdit(period)}
-                      className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors inline-flex align-middle"
-                      title="Editar"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        
-        {periods.length > 0 && (
-          <Pagination
-            currentPage={currentPage}
-            totalItems={periods.length}
-            itemsPerPage={itemsPerPage}
-            onPageChange={setCurrentPage}
-          />
-        )}
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard icon={Calendar} value={stats.total} label="Periodos" tone="blue" />
+        <StatCard icon={CheckCircle2} value={stats.actual?.nombre || 'Ninguno'} label="Periodo actual" tone="emerald" />
+        <StatCard icon={TrendingUp} value={stats.anios} label="Años cubiertos" tone="violet" />
+        <StatCard icon={Clock} value={stats.abiertos} label="Periodos abiertos" tone="amber" />
       </div>
 
+      {/* Current Period Banner */}
+      {stats.actual && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-emerald-900">Periodo actual activo</p>
+              <p className="text-xs text-emerald-700">
+                {stats.actual.nombre} · {formatDate(stats.actual.fecha_inicio)} — {formatDate(stats.actual.fecha_fin)}
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-md border border-emerald-200 self-start sm:self-center">
+            EN CURSO
+          </span>
+        </div>
+      )}
+
+      {/* Results count */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-500">
+          Mostrando <span className="font-bold text-slate-900">{paginatedPeriods.length}</span> de{' '}
+          <span className="font-bold text-slate-900">{sortedPeriods.length}</span> periodos
+        </p>
+      </div>
+
+      {/* Cards Grid */}
+      {sortedPeriods.length === 0 ? (
+        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
+          <div className="w-14 h-14 bg-slate-50 rounded-xl flex items-center justify-center mx-auto mb-4 border border-slate-100">
+            <AlertCircle className="w-6 h-6 text-slate-400" />
+          </div>
+          <h3 className="text-base font-bold text-slate-800 mb-1">No hay periodos registrados</h3>
+          <p className="text-sm text-slate-500 mb-4 max-w-sm mx-auto">
+            Comienza aperturando el primer periodo académico para el sistema.
+          </p>
+          <Button onClick={openCreateModal} className="bg-blue-600 hover:bg-blue-700 text-white text-sm">
+            <Plus className="w-4 h-4 mr-1.5" /> Aperturar periodo
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {paginatedPeriods.map(period => (
+            <PeriodCard key={period.id_periodo} period={period} />
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-slate-500">
+            Página {currentPage} de {totalPages}
+          </p>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`w-9 h-9 rounded-lg text-sm font-semibold transition-colors ${
+                  currentPage === page
+                    ? 'bg-blue-600 text-white'
+                    : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingPeriod ? 'Editar Periodo' : 'Aperturar Nuevo Periodo'}>
         <form onSubmit={editingPeriod ? handleUpdate : handleCreate} className="space-y-5">
           <div>
@@ -191,8 +376,8 @@ const PeriodManagementPage = () => {
               type="text"
               value={formData.nombre}
               onChange={(e) => setFormData({...formData, nombre: e.target.value})}
-              className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm font-medium"
-              placeholder="Ej. Semestre 2024-I"
+              className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium bg-white"
+              placeholder="Ej. 2026-I"
               required
             />
           </div>
@@ -205,20 +390,23 @@ const PeriodManagementPage = () => {
                 max="2050"
                 value={formData.anio}
                 onChange={(e) => setFormData({...formData, anio: parseInt(e.target.value)})}
-                className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm"
+                className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Término (Ciclo)</label>
-              <input
-                type="text"
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Término</label>
+              <select
                 value={formData.termino}
                 onChange={(e) => setFormData({...formData, termino: e.target.value})}
-                className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm"
-                placeholder="Ej. I, II, 0"
+                className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white appearance-none"
                 required
-              />
+              >
+                <option value="">Seleccionar...</option>
+                <option value="I">I</option>
+                <option value="II">II</option>
+                <option value="Verano">Verano</option>
+              </select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -228,7 +416,7 @@ const PeriodManagementPage = () => {
                 type="date"
                 value={formData.fecha_inicio}
                 onChange={(e) => setFormData({...formData, fecha_inicio: e.target.value})}
-                className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm text-slate-700"
+                className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white text-slate-700"
                 required
               />
             </div>
@@ -238,29 +426,29 @@ const PeriodManagementPage = () => {
                 type="date"
                 value={formData.fecha_fin}
                 onChange={(e) => setFormData({...formData, fecha_fin: e.target.value})}
-                className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm text-slate-700"
+                className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white text-slate-700"
                 required
               />
             </div>
           </div>
-          <div className="flex items-center gap-3 pt-2">
+          <div className="flex items-center gap-3 pt-1">
             <label className="relative inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                className="sr-only peer" 
+              <input
+                type="checkbox"
+                className="sr-only peer"
                 checked={formData.es_actual}
                 onChange={(e) => setFormData({...formData, es_actual: e.target.checked})}
               />
-              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-              <span className="ml-3 text-sm font-medium text-slate-700">Forzar como Periodo Actual de Inmediato</span>
+              <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              <span className="ml-3 text-sm font-medium text-slate-700">Forzar como periodo actual</span>
             </label>
           </div>
-          
-          <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 mt-6">
-            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+
+          <div className="flex justify-end gap-3 pt-5 border-t border-slate-100">
+            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} className="text-sm">
               Cancelar
             </Button>
-            <Button type="submit" className="bg-indigo-600 text-white hover:bg-indigo-700">
+            <Button type="submit" className="bg-blue-600 text-white hover:bg-blue-700 text-sm px-5">
               {editingPeriod ? 'Guardar Cambios' : 'Aperturar Periodo'}
             </Button>
           </div>

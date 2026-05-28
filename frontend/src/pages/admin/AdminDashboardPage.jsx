@@ -42,7 +42,7 @@ const AdminDashboardPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex bg-[#FAF9F6] relative overflow-hidden font-['Plus_Jakarta_Sans',sans-serif]">
+    <div className="min-h-screen flex bg-slate-50 relative overflow-hidden font-sans">
 
       {/* Mobile Backdrop */}
       {sidebarOpen && (
@@ -136,14 +136,14 @@ const AdminDashboardPage = () => {
                 Administrador
               </span>
             </div>
-            <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-700 text-white rounded-full flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
+            <div className="w-9 h-9 bg-primary-600 text-white rounded-full flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
               {user?.nombres?.charAt(0) || 'A'}
             </div>
           </div>
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 bg-[#FAF9F6] relative">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 bg-slate-50 relative">
           <div className="max-w-7xl mx-auto w-full">
             <Outlet />
           </div>

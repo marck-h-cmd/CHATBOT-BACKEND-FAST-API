@@ -28,31 +28,13 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # Montar archivos estáticos
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-# CORS - Configuración segura
-allowed_origins = [
-    "http://localhost:5173",      # Vite dev server
-    "http://localhost:5174",      # Vite dev server (alternate port)
-    "http://localhost:3000",      # Alternative frontend
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5174",      # Alternate port
-    "http://127.0.0.1:3000"
-]
-
-# En producción, agregar los dominios reales
-if Config.ENVIRONMENT == "production":
-    allowed_origins.extend([
-        "https://yourdomain.com",
-        "https://www.yourdomain.com"
-    ])
-
+# CORS - Configuración muy permisiva para desarrollo
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["Content-Type", "Authorization"],
-    max_age=3600,
-    expose_headers=["Content-Length", "X-Total-Count"]
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Manejadores globales de excepciones
@@ -72,6 +54,11 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    print(f"VALIDATION ERROR: {exc.errors()}")
+    print(f"REQUEST URL: {request.url}")
+    print(f"REQUEST METHOD: {request.method}")
+    print(f"REQUEST HEADERS: {dict(request.headers)}")
+    
     errors = []
     for error in exc.errors():
         errors.append({

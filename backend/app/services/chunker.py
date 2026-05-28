@@ -51,7 +51,8 @@ class ChunkerService:
             "aplazados_susti": r"(EXÁ?MENES SUSTITUTORIOS|EXAMEN DE APLAZADOS)[\s\S]*?(?=(?:\n\s*(?:VI\.?|VII\.?|BIBLIOGRAFÍA|ANEXOS)|$))",
             "contenidos": r"(CONTENIDOS|PROGRAMACIÓN ACADÉMICA|UNIDADES)[\s\S]*?(?=(?:\n\s*(?:EVALUACIÓN|IV\.?)|$))",
             "metodologia": r"(METODOLOGÍA|ESTRATEGIAS DIDÁCTICAS)[\s\S]*?(?=(?:\n\s*(?:EVALUACIÓN|V\.?)|$))",
-            "tutoria": r"(CONSEJERÍA ACADÉMICA|TUTORÍA)[\s\S]*?(?=(?:\n\s*(?:VI\.?)|$))"
+            "tutoria": r"(CONSEJERÍA ACADÉMICA|TUTORÍA)[\s\S]*?(?=(?:\n\s*(?:VI\.?)|$))",
+            "capacidades": r"(CAPACIDADES|RESULTADOS DE APRENDIZAJE)[\s\S]*?(?=(?:\n\s*(?:CONTENIDOS|ESTRATEGIAS|IV\.?)|$))",
         }
         
         for nombre, patron in patrones.items():

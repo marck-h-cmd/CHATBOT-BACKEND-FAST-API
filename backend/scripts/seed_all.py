@@ -1,45 +1,48 @@
 import subprocess
 import sys
 import os
-import time
 
 def run_script(script_path):
     script_name = os.path.basename(script_path)
-    print(f"\n--- Ejecutando {script_name} ---")
-    
-    # Asegurarnos de que el script se ejecute con el mismo intérprete de python
+    print(f"\n{'='*50}")
+    print(f"  Ejecutando: {script_name}")
+    print(f"{'='*50}")
+
     result = subprocess.run([sys.executable, script_path], capture_output=False)
-    
+
     if result.returncode != 0:
-        print(f"❌ Error al ejecutar {script_name}")
+        print(f"  ❌ Error en {script_name}")
         return False
-    
-    print(f"✅ {script_name} completado con éxito")
+
+    print(f"  ✅ {script_name} OK")
     return True
 
 def main():
-    # Obtener el directorio actual de este script
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    
-    # Lista de scripts en orden de ejecución
+
     scripts = [
-        "init_db.py",
-        "seed_periods.py",
-        "seed_courses.py",
-        "seed_official_silabo.py",
-        "seed_admin.py",
-        "seed_chunks.py"
+        "init_db.py",      # Crear tablas
+        "seed_periods.py", # Periodos académicos
+        "seed_courses.py", # Catálogo de cursos
+        "seed_admin.py",   # Usuario administrador
     ]
-    
-    print("🌱 Iniciando proceso de siembra de base de datos (Seeding)...")
-    
+
+    print("🌱 Seed inicial - Solo datos estructurales del sistema")
+    print("   (No incluye: estudiantes, sílabos, inscripciones, incidentes)")
+
     for script in scripts:
         script_full_path = os.path.join(base_dir, script)
         if not run_script(script_full_path):
-            print("\n🚨 Proceso de seeding interrumpido por errores.")
+            print("\n🚨 Seed interrumpido por errores.")
             sys.exit(1)
-            
-    print("\n✨ Proceso de seeding completado exitosamente.")
+
+    print("\n" + "="*50)
+    print("  ✅ Seed completado exitosamente.")
+    print("="*50)
+    print("\n  Credenciales de acceso:")
+    print("    Email:    admin@unitru.edu.pe")
+    print("    Password: admin123")
+    print("\n  Nota: Registra estudiantes manualmente desde el panel.")
 
 if __name__ == "__main__":
     main()

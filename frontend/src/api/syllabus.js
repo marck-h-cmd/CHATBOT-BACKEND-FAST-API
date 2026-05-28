@@ -103,13 +103,22 @@ export const rejectSyllabus = async (id_silabo, comentario = null) => {
 
 // Admin: Subir sílabo oficial
 export const uploadOfficialSyllabus = async (file, id_curso, id_periodo) => {
+  console.log('DEBUG FRONTEND: id_curso=', id_curso, 'tipo=', typeof id_curso);
+  console.log('DEBUG FRONTEND: id_periodo=', id_periodo, 'tipo=', typeof id_periodo);
+  console.log('DEBUG FRONTEND: archivo=', file.name);
+  
   const formData = new FormData();
   formData.append('id_curso', id_curso);
   formData.append('id_periodo', id_periodo);
   formData.append('archivo', file);
-  const response = await apiClient.post('/silabo/upload-oficial', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  
+  console.log('DEBUG FRONTEND: FormData entries:');
+  for (let [key, value] of formData.entries()) {
+    console.log(`  ${key}:`, value, typeof value);
+  }
+  
+  // TEMPORAL: Usar endpoint de prueba con nombre diferente
+  const response = await apiClient.post('/silabo/upload-syllabus-test', formData);
   return response.data;
 };
 
@@ -121,6 +130,12 @@ export const getOfficialSyllabi = async (id_curso = null, id_periodo = null) => 
   
   const url = `/silabo/list-oficial${params.toString() ? '?' + params.toString() : ''}`;
   const response = await apiClient.get(url);
+  return response.data;
+};
+
+// Admin: Eliminar sílabo oficial
+export const deleteOfficialSyllabus = async (id_silabo) => {
+  const response = await apiClient.delete(`/silabo/oficial/${id_silabo}`);
   return response.data;
 };
 
