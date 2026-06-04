@@ -28,14 +28,54 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # Montar archivos estáticos
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-# CORS - Configuración muy permisiva para desarrollo
+# CORS - Configuración segura
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=Config.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# InMemory Rate Limiter para mitigar fuerza bruta en autenticación y OTP
+import time
+from collections import defaultdict
+
+class InMemoryRateLimiter:
+    def __init__(self, requests_limit: int, window_seconds: int):
+        self.limit = requests_limit
+        self.window = window_seconds
+        self.history = defaultdict(list)
+        
+    def is_rate_limited(self, key: str) -> bool:
+        now = time.time()
+        self.history[key] = [t for t in self.history[key] if now - t < self.window]
+        if len(self.history[key]) >= self.limit:
+            return True
+        self.history[key].append(now)
+        return False
+
+auth_rate_limiter = InMemoryRateLimiter(requests_limit=5, window_seconds=60)
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    path = request.url.path
+    if path in ["/auth/login", "/auth/registro", "/auth/verificar-otp", "/auth/reenviar-otp"]:
+        client_ip = request.client.host if request.client else "unknown"
+        key = f"{client_ip}:{path}"
+        if auth_rate_limiter.is_rate_limited(key):
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "success": False,
+                    "status": 429,
+                    "message": "Demasiadas peticiones. Por favor intenta de nuevo en un minuto.",
+                    "data": None,
+                    "errors": ["Rate limit exceeded"]
+                }
+            )
+    return await call_next(request)
+
 
 # Manejadores globales de excepciones
 
