@@ -3,6 +3,7 @@ import { useSyllabus } from '../../contexts/SyllabusContext';
 import { useCourse } from '../../contexts/CourseContext';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
+import SearchableSelect from '../ui/SearchableSelect';
 
 const SyllabusUploader = () => {
   const { uploadSyllabus, uploadStatus, clearUploadStatus } = useSyllabus();
@@ -12,6 +13,31 @@ const SyllabusUploader = () => {
   const [uploading, setUploading] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState(null);
+  const [selectedCiclo, setSelectedCiclo] = useState('');
+
+  const ciclos = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+
+  const filteredCourses = React.useMemo(() => {
+    if (!selectedCiclo) return courses;
+    return courses?.filter(c => 
+      c.ciclo_referencial === selectedCiclo || 
+      c.ciclo_referencial?.toUpperCase() === selectedCiclo.toUpperCase()
+    );
+  }, [courses, selectedCiclo]);
+
+  const courseOptions = React.useMemo(() => {
+    return filteredCourses?.map(c => ({
+      value: c.id_curso,
+      label: `${c.codigo_curso} — ${c.nombre_curso}`,
+    })) || [];
+  }, [filteredCourses]);
+
+  const periodOptions = React.useMemo(() => {
+    return periods?.map(p => ({
+      value: p.id_periodo,
+      label: `${p.nombre}${p.es_actual ? ' (Actual)' : ''}`,
+    })) || [];
+  }, [periods]);
 
   // Seleccionar periodo actual por defecto
   React.useEffect(() => {
@@ -112,39 +138,59 @@ const SyllabusUploader = () => {
   };
 
   return (
-    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center space-y-4">
+      {/* Filtro por ciclo */}
+      <div className="text-left">
+        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+          Filtrar por ciclo
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => { setSelectedCiclo(''); setSelectedCourse(null); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+              !selectedCiclo
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            Todos
+          </button>
+          {ciclos.map(c => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => { setSelectedCiclo(c); setSelectedCourse(null); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                selectedCiclo === c
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Selectores de curso y periodo */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Curso</label>
-          <select
-            value={selectedCourse || ''}
-            onChange={(e) => setSelectedCourse(parseInt(e.target.value))}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Seleccionar curso...</option>
-            {courses.map((course) => (
-              <option key={course.id_curso} value={course.id_curso}>
-                {course.codigo_curso} - {course.nombre_curso}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Periodo</label>
-          <select
-            value={selectedPeriod || ''}
-            onChange={(e) => setSelectedPeriod(parseInt(e.target.value))}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Seleccionar periodo...</option>
-            {periods.map((period) => (
-              <option key={period.id_periodo} value={period.id_periodo}>
-                {period.nombre} {period.es_actual && '(Actual)'}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-left">
+        <SearchableSelect
+          label="Curso *"
+          placeholder="Seleccionar curso..."
+          searchPlaceholder="Buscar curso..."
+          value={selectedCourse || ''}
+          onChange={(val) => setSelectedCourse(val ? parseInt(val) : null)}
+          options={courseOptions}
+        />
+        <SearchableSelect
+          label="Periodo *"
+          placeholder="Seleccionar periodo..."
+          searchPlaceholder="Buscar periodo..."
+          value={selectedPeriod || ''}
+          onChange={(val) => setSelectedPeriod(val ? parseInt(val) : null)}
+          options={periodOptions}
+        />
       </div>
 
       <input
