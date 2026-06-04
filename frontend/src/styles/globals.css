@@ -4,14 +4,29 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --chart-grid: #f1f5f9;
+  --chart-text: #94a3b8;
+  --chart-tooltip-bg: #ffffff;
+  --chart-tooltip-border: #e2e8f0;
+  --chart-bar: #334155;
+}
+
+.dark {
+  --chart-grid: #1e293b;
+  --chart-text: #64748b;
+  --chart-tooltip-bg: #131A2C;
+  --chart-tooltip-border: #1e293b;
+  --chart-bar: #3b82f6;
+}
+
 @layer base {
   html {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
   body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background-color: #f1f5f9;
-    color: #0f172a;
+    @apply bg-slate-50 text-slate-900 dark:bg-[#0B0F19] dark:text-slate-100 transition-colors duration-200;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -19,10 +34,7 @@
 
 @layer utilities {
   .glass {
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(226, 232, 240, 0.8);
+    @apply bg-white/85 dark:bg-[#131A2C]/85 border-slate-200/80 dark:border-slate-800/80 backdrop-blur-md;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   }
 
@@ -33,4 +45,23 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+}
+
+/* Custom Autofill Styles for Dark/Light Mode */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+  -webkit-text-fill-color: #0F172A !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover, 
+.dark input:-webkit-autofill:focus, 
+.dark input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #0f172a inset !important;
+  -webkit-text-fill-color: #F1F5F9 !important;
+  transition: background-color 5000s ease-in-out 0s;
 }

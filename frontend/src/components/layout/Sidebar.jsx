@@ -26,10 +26,10 @@ const Sidebar = () => {
   const navItems = isAdmin ? adminNavItems : studentNavItems;
 
   return (
-    <aside className="w-64 bg-white border-r border-slate-100 h-[calc(100vh-64px)] sticky top-16 overflow-y-auto flex flex-col justify-between hidden md:flex">
+    <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800/80 h-[calc(100vh-64px)] sticky top-16 overflow-y-auto flex flex-col justify-between hidden md:flex transition-colors duration-200">
       <div className="p-4">
         <div className="mb-4 px-3">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
             {isAdmin ? 'Administración' : 'Estudiante'}
           </p>
         </div>
@@ -41,15 +41,15 @@ const Sidebar = () => {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group ${
                   isActive
-                    ? 'bg-[#0B0F19] text-white shadow-sm'
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-[#0B0F19]'
+                    ? 'bg-[#0B0F19] dark:bg-slate-800 text-white dark:text-slate-100 shadow-sm'
+                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-[#0B0F19] dark:hover:text-white'
                 }`
               }
             >
               {({ isActive }) => (
                 <>
                   <item.icon className={`w-5 h-5 transition-colors ${
-                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700'
+                    isActive ? 'text-white dark:text-slate-100' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300'
                   }`} />
                   <span>{item.label}</span>
                 </>
@@ -60,12 +60,12 @@ const Sidebar = () => {
       </div>
 
       {/* Footer Area of Sidebar */}
-      <div className="p-4 border-t border-slate-100">
-        <div className="bg-[#FAF9F6] rounded-xl p-4 border border-slate-100 flex items-center gap-3">
+      <div className="p-4 border-t border-slate-100 dark:border-slate-800/80">
+        <div className="bg-[#FAF9F6] dark:bg-slate-900/60 rounded-xl p-4 border border-slate-100 dark:border-slate-800 flex items-center gap-3">
           <img src="/logo.png" alt="Sylia AI Logo" className="h-8 w-auto object-contain shrink-0" />
           <div>
-            <p className="text-xs font-bold text-slate-800 tracking-tight">Sylia AI</p>
-            <p className="text-[10px] text-slate-400 font-medium">v1.2.0 • Estable</p>
+            <p className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-tight">Sylia AI</p>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">v1.2.0 • Estable</p>
           </div>
         </div>
       </div>

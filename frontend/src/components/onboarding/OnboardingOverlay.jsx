@@ -125,40 +125,40 @@ const OnboardingOverlay = () => {
       {/* Spotlight */}
       {targetRect && (
         <div
-          className="pointer-events-none absolute rounded-xl border-2 border-indigo-300"
+          className="pointer-events-none absolute rounded-xl border-2 border-indigo-300 dark:border-indigo-500"
           style={{
             top: `${targetRect.top}px`,
             left: `${targetRect.left}px`,
             width: `${targetRect.width}px`,
             height: `${targetRect.height}px`,
-            boxShadow: '0 0 0 9999px rgba(15, 23, 42, 0.45)',
+            boxShadow: '0 0 0 9999px rgba(15, 23, 42, 0.55)',
           }}
         />
       )}
 
       {/* Panel */}
       <div
-        className="absolute bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 sm:p-6 overflow-y-auto"
+        className="absolute bg-white dark:bg-[#131A2C] rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800/80 p-5 sm:p-6 overflow-y-auto"
         style={panelStyle}
       >
         <div className="flex items-center justify-between gap-3 mb-3">
-          <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600">
+          <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
             Guia interactiva
           </span>
-          <span className="text-xs font-medium text-slate-500">
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
             Paso {stepIndex + 1} de {steps.length}
           </span>
         </div>
 
-        <h3 className="text-lg font-bold text-slate-900 mb-2">{currentStep.title}</h3>
-        <p className="text-sm text-slate-600 leading-relaxed">{currentStep.description}</p>
+        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{currentStep.title}</h3>
+        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{currentStep.description}</p>
 
         <div className="mt-5 flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={goToPreviousStep}
             disabled={isFirstStep}
-            className="px-3 py-2 rounded-lg text-sm font-medium border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-3 py-2 rounded-lg text-sm font-medium border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Anterior
           </button>
@@ -174,7 +174,7 @@ const OnboardingOverlay = () => {
           <button
             type="button"
             onClick={skipOnboarding}
-            className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100"
+            className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80"
           >
             Omitir
           </button>
@@ -182,7 +182,7 @@ const OnboardingOverlay = () => {
           <button
             type="button"
             onClick={closeOnboarding}
-            className="ml-auto px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-100"
+            className="ml-auto px-3 py-2 rounded-lg text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80"
           >
             Mas tarde
           </button>

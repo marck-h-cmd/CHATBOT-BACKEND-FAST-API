@@ -72,8 +72,8 @@ const SyllabusSelector = () => {
 
   if (loading) {
     return (
-      <div className="w-full p-3 bg-gray-100 rounded-lg animate-pulse">
-        <div className="h-5 bg-gray-300 rounded w-1/2"></div>
+      <div className="w-full p-3 bg-gray-100 dark:bg-slate-800/60 rounded-lg animate-pulse">
+        <div className="h-5 bg-gray-300 dark:bg-slate-700 rounded w-1/2"></div>
       </div>
     );
   }
@@ -82,7 +82,7 @@ const SyllabusSelector = () => {
     <div className="w-full space-y-4 text-left">
       {/* Filtro por ciclo */}
       <div>
-        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
           Filtrar por ciclo
         </label>
         <div className="flex flex-wrap gap-2">
@@ -92,7 +92,7 @@ const SyllabusSelector = () => {
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
               !selectedCiclo
                 ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
             }`}
           >
             Todos
@@ -105,7 +105,7 @@ const SyllabusSelector = () => {
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
                 selectedCiclo === c
                   ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
               }`}
             >
               {c}
@@ -124,7 +124,7 @@ const SyllabusSelector = () => {
         options={searchableOptions}
       />
       
-      <p className="text-xs text-gray-500 mt-1">
+      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
         El sílabo seleccionado se usará para responder tus preguntas.
       </p>
     </div>

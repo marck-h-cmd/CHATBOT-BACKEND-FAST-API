@@ -25,11 +25,11 @@ const QuickReplies = ({ onSelect, lastIntent, disabled = false }) => {
           initial={{ opacity: 0, y: 8, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.25, delay: idx * 0.08 }}
-          whileHover={{ scale: 1.02, backgroundColor: '#f1f5f9' }}
+          whileHover={{ scale: 1.02 }}
           disabled={disabled}
           whileTap={{ scale: 0.97 }}
           onClick={() => onSelect(reply.text)}
-          className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-2xl shadow-sm hover:text-slate-900 hover:border-slate-300 transition-colors"
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-white dark:bg-[#131A2C] border border-slate-200 dark:border-slate-800/80 text-slate-600 dark:text-slate-350 text-xs font-bold rounded-2xl shadow-sm hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
         >
           {reply.icon}
           {reply.text}

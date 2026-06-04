@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Mail, Lock, AlertCircle, Eye, EyeOff, ArrowRight, BookOpen, Shield, MessageSquare } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Eye, EyeOff, ArrowRight, BookOpen, Shield, MessageSquare, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -11,6 +12,7 @@ const LoginPage = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -35,7 +37,19 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen lg:h-screen w-screen flex bg-[#FAF9F6] font-['Plus_Jakarta_Sans',sans-serif] lg:overflow-hidden select-none">
+    <div className="min-h-screen lg:h-screen w-screen flex bg-[#FAF9F6] dark:bg-[#0B0F19] font-['Plus_Jakarta_Sans',sans-serif] lg:overflow-hidden select-none relative transition-colors duration-200">
+      
+      {/* Theme Toggle Button */}
+      <div className="absolute top-4 right-4 z-50">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-200 shadow-sm"
+          title="Cambiar tema"
+        >
+          {resolvedTheme === 'dark' ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
+        </button>
+      </div>
       
       {/* LEFT PANEL: Classic Deep Slate Split Branding Panel */}
       <div className="hidden lg:flex lg:w-[42%] bg-[#0B0F19] flex-col justify-between p-10 relative overflow-hidden border-r border-[#1E293B]">
@@ -155,7 +169,7 @@ const LoginPage = () => {
       </div>
 
       {/* RIGHT PANEL: Classic Clean White Form Column */}
-      <div className="w-full lg:w-[58%] flex items-center justify-center p-6 sm:p-10 relative bg-white overflow-y-auto no-scrollbar">
+      <div className="w-full lg:w-[58%] flex items-center justify-center p-6 sm:p-10 relative bg-white dark:bg-[#0B0F19] overflow-y-auto no-scrollbar transition-colors duration-200">
         
         {/* Centered Minimalist Form Container */}
         <motion.div 
@@ -167,15 +181,15 @@ const LoginPage = () => {
           {/* Mobile Header Logo */}
           <div className="lg:hidden flex items-center gap-2.5 mb-2">
             <img src="/logo.png" alt="Sylia AI Logo" className="h-8 w-auto object-contain" />
-            <span className="text-base font-extrabold text-slate-900 tracking-tight">Sylia AI</span>
+            <span className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">Sylia AI</span>
           </div>
 
           {/* Form Header */}
           <div className="space-y-1.5 text-left">
-            <h2 className="text-2xl lg:text-3xl font-extrabold text-[#0B0F19] tracking-tight">
+            <h2 className="text-2xl lg:text-3xl font-extrabold text-[#0B0F19] dark:text-white tracking-tight">
               Iniciar Sesión
             </h2>
-            <p className="text-slate-500 text-xs font-semibold leading-relaxed">
+            <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold leading-relaxed">
               Ingresa tus credenciales oficiales de la Universidad Nacional de Trujillo
             </p>
           </div>
@@ -190,11 +204,11 @@ const LoginPage = () => {
                 transition={{ type: "spring", stiffness: 350, damping: 30 }}
                 className="overflow-hidden"
               >
-                <div className="p-3.5 rounded-xl bg-red-50/80 border border-red-200 flex items-start gap-2.5">
-                  <AlertCircle className="w-4.5 h-4.5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="p-3.5 rounded-xl bg-red-50/80 dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 flex items-start gap-2.5">
+                  <AlertCircle className="w-4.5 h-4.5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                   <div className="space-y-0.5">
-                    <h4 className="text-[10px] font-bold text-red-950">Acceso Incorrecto</h4>
-                    <p className="text-[10px] text-red-700 font-medium leading-relaxed">{error}</p>
+                    <h4 className="text-[10px] font-bold text-red-950 dark:text-red-200">Acceso Incorrecto</h4>
+                    <p className="text-[10px] text-red-700 dark:text-red-400 font-medium leading-relaxed">{error}</p>
                   </div>
                 </div>
               </motion.div>
@@ -206,7 +220,7 @@ const LoginPage = () => {
             
             {/* Email Input */}
             <div className="space-y-1.5">
-              <label htmlFor="email" className="block text-[13px] font-bold text-slate-700 tracking-tight">
+              <label htmlFor="email" className="block text-[13px] font-bold text-slate-700 dark:text-slate-300 tracking-tight">
                 Correo Institucional
               </label>
               <input
@@ -216,17 +230,17 @@ const LoginPage = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="usuario@unitru.edu.pe"
                 required
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 text-xs font-semibold placeholder-slate-400 transition-all duration-200 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 shadow-sm focus:shadow-sm"
+                className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 text-xs font-semibold placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 dark:focus:border-slate-100 dark:focus:ring-1 dark:focus:ring-slate-100 shadow-sm focus:shadow-sm"
               />
             </div>
 
             {/* Password Input */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
-                <label htmlFor="password" className="block text-[13px] font-bold text-slate-700 tracking-tight">
+                <label htmlFor="password" className="block text-[13px] font-bold text-slate-700 dark:text-slate-300 tracking-tight">
                   Contraseña
                 </label>
-                <a href="#" className="text-[10px] font-bold text-blue-600 hover:text-blue-700 transition-all">
+                <a href="#" className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-all">
                   ¿Olvidaste tu contraseña?
                 </a>
               </div>
@@ -238,12 +252,12 @@ const LoginPage = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full pl-4 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 text-xs font-semibold placeholder-slate-400 transition-all duration-200 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 shadow-sm focus:shadow-sm"
+                  className="w-full pl-4 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 text-xs font-semibold placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 dark:focus:border-slate-100 dark:focus:ring-1 dark:focus:ring-slate-100 shadow-sm focus:shadow-sm"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 dark:text-slate-550 hover:text-slate-600 dark:hover:text-slate-300 transition-colors focus:outline-none"
                 >
                   {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
                 </button>
@@ -253,11 +267,11 @@ const LoginPage = () => {
             {/* Submit Button */}
             <div className="pt-2">
               <motion.button
-                whileHover={{ scale: 1.015, backgroundColor: "#151C2F" }}
+                whileHover={{ scale: 1.015, backgroundColor: resolvedTheme === 'dark' ? '#1e293b' : '#151C2F' }}
                 whileTap={{ scale: 0.985 }}
                 type="submit"
                 disabled={loading}
-                className="relative w-full py-3 bg-[#0B0F19] text-white rounded-xl font-bold text-xs tracking-wide shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center gap-2 group disabled:opacity-75 disabled:cursor-not-allowed overflow-hidden"
+                className="relative w-full py-3 bg-[#0B0F19] dark:bg-slate-800 text-white rounded-xl font-bold text-xs tracking-wide shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center gap-2 group disabled:opacity-75 disabled:cursor-not-allowed overflow-hidden"
               >
                 {loading ? (
                   <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -275,10 +289,10 @@ const LoginPage = () => {
           </form>
 
           {/* Extra Register Redirect */}
-          <div className="text-center pt-2.5 border-t border-slate-100">
-            <p className="text-xs text-slate-500 font-medium">
+          <div className="text-center pt-2.5 border-t border-slate-100 dark:border-slate-800">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
               ¿Aún no tienes una cuenta institucional?{' '}
-              <Link to="/register" className="font-bold text-blue-600 hover:text-blue-700 hover:underline transition-colors ml-0.5">
+              <Link to="/register" className="font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline transition-colors ml-0.5">
                 Regístrate aquí
               </Link>
             </p>

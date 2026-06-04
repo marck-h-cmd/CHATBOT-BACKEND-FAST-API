@@ -37,8 +37,8 @@ const MetricsPage = () => {
   if (!isAdmin) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <Card>
-          <p className="text-red-600">Acceso denegado. Solo administradores pueden ver métricas.</p>
+        <Card className="dark:bg-[#131A2C] dark:border-slate-800 transition-colors duration-200">
+          <p className="text-red-600 dark:text-red-400">Acceso denegado. Solo administradores pueden ver métricas.</p>
         </Card>
       </div>
     );
@@ -48,9 +48,9 @@ const MetricsPage = () => {
   if (error) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <Card>
-          <p className="text-red-600">Error al cargar métricas: {error}</p>
-          <button onClick={loadMetrics} className="mt-2 text-blue-600">Reintentar</button>
+        <Card className="dark:bg-[#131A2C] dark:border-slate-800 transition-colors duration-200">
+          <p className="text-red-600 dark:text-red-400">Error al cargar métricas: {error}</p>
+          <button onClick={loadMetrics} className="mt-2 text-blue-600 dark:text-blue-400 font-semibold hover:underline">Reintentar</button>
         </Card>
       </div>
     );
@@ -58,7 +58,7 @@ const MetricsPage = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Métricas Service Desk ITIL</h1>
+      <h1 className="text-2xl font-bold text-gray-808 dark:text-white mb-6">Métricas Service Desk ITIL</h1>
 
       {/* Alertas de escalamiento */}
       {metrics?.escalados_nivel2 > 0 && (
@@ -85,8 +85,8 @@ const MetricsPage = () => {
 
       {/* Fallos de ingestión adicional */}
       {metrics.fallos_ingestion > 0 && (
-        <Card className="mb-6">
-          <div className="flex items-center gap-2 text-yellow-700">
+        <Card className="mb-6 bg-white dark:bg-[#131A2C] border border-slate-200 dark:border-slate-800 transition-colors duration-200">
+          <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400 font-semibold">
             <span>⚠️</span>
             <span>Fallos de ingestión de sílabos: {metrics.fallos_ingestion}. Revisar logs.</span>
           </div>

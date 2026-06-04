@@ -52,46 +52,46 @@ const ProfilePage = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
       <div className="mb-10">
-        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Configuración de Perfil</h1>
-        <p className="text-slate-500 mt-2">Gestiona tu información personal, seguridad y sesiones activas.</p>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Configuración de Perfil</h1>
+        <p className="text-slate-500 dark:text-slate-400 mt-2">Gestiona tu información personal, seguridad y sesiones activas.</p>
       </div>
 
       <div className="space-y-8">
         
         {/* Información Personal */}
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col md:flex-row">
-          <div className="p-8 md:w-1/3 bg-slate-50 border-r border-slate-100 flex flex-col items-center justify-center text-center">
-            <div className="w-24 h-24 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
-              <span className="text-3xl font-bold text-indigo-600">
+        <div className="bg-white dark:bg-[#131A2C] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden flex flex-col md:flex-row">
+          <div className="p-8 md:w-1/3 bg-slate-50 dark:bg-slate-900/60 border-r border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center text-center">
+            <div className="w-24 h-24 bg-indigo-100 dark:bg-indigo-950/40 rounded-full flex items-center justify-center mb-4">
+              <span className="text-3xl font-bold text-indigo-650 dark:text-indigo-400">
                 {user?.nombres?.charAt(0) || 'U'}
               </span>
             </div>
-            <h2 className="text-xl font-bold text-slate-800">{user?.nombres}</h2>
-            <p className="text-sm text-slate-500 font-medium">{user?.apellidos}</p>
-            <span className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 bg-slate-200 text-slate-700 rounded-full text-xs font-semibold capitalize">
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">{user?.nombres}</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{user?.apellidos}</p>
+            <span className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full text-xs font-semibold capitalize">
               <Shield className="w-3.5 h-3.5" /> Rol: {user?.rol}
             </span>
           </div>
           
           <div className="p-8 md:w-2/3">
-            <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-4">
-              <User className="w-5 h-5 text-indigo-600" /> Datos de la Cuenta
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <User className="w-5 h-5 text-indigo-600 dark:text-indigo-400" /> Datos de la Cuenta
             </h3>
             
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
               <div>
-                <dt className="text-sm font-medium text-slate-500 mb-1 flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-slate-400" /> Código Universitario
+                <dt className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-slate-450 dark:text-slate-500" /> Código Universitario
                 </dt>
-                <dd className="font-semibold text-slate-800 font-mono bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+                <dd className="font-semibold text-slate-800 dark:text-slate-200 font-mono bg-slate-50 dark:bg-slate-900/60 px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-800">
                   {user?.codigo_universitario}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500 mb-1 flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-slate-400" /> Correo Electrónico
+                <dt className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-slate-450 dark:text-slate-500" /> Correo Electrónico
                 </dt>
-                <dd className="font-semibold text-slate-800 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100 truncate">
+                <dd className="font-semibold text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-900/60 px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-800 truncate">
                   {user?.email}
                 </dd>
               </div>
@@ -100,10 +100,10 @@ const ProfilePage = () => {
         </div>
 
         {/* Seguridad */}
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-[#131A2C] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden">
           <div className="p-6 md:p-8">
-            <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b border-slate-100 pb-4">
-              <Lock className="w-5 h-5 text-indigo-600" /> Seguridad
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <Lock className="w-5 h-5 text-indigo-600 dark:text-indigo-400" /> Seguridad
             </h3>
 
             <div className="max-w-md">
@@ -131,12 +131,12 @@ const ProfilePage = () => {
                 />
                 
                 {passwordError && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm font-medium text-red-700 flex gap-2 items-center">
+                  <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-xl text-sm font-medium text-red-700 dark:text-red-300 flex gap-2 items-center">
                     <AlertCircle className="w-4 h-4 shrink-0" /> {passwordError}
                   </div>
                 )}
                 {passwordSuccess && (
-                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm font-medium text-emerald-700 flex gap-2 items-center">
+                  <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 rounded-xl text-sm font-medium text-emerald-700 dark:text-emerald-300 flex gap-2 items-center">
                     <CheckCircle2 className="w-4 h-4 shrink-0" /> {passwordSuccess}
                   </div>
                 )}
@@ -152,45 +152,45 @@ const ProfilePage = () => {
         </div>
 
         {/* Sesiones */}
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-[#131A2C] border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden">
           <div className="p-6 md:p-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 border-b border-slate-100 pb-4 gap-4">
-              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <Smartphone className="w-5 h-5 text-indigo-600" /> Sesiones Activas
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 border-b border-slate-100 dark:border-slate-800 pb-4 gap-4">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <Smartphone className="w-5 h-5 text-indigo-600 dark:text-indigo-400" /> Sesiones Activas
               </h3>
               {sessions.length > 1 && (
-                <Button variant="outline" size="sm" onClick={closeAllSessions} className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200">
+                <Button variant="outline" size="sm" onClick={closeAllSessions} className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-700 dark:hover:text-red-350 border-red-200 dark:border-red-900/50">
                   <LogOut className="w-4 h-4 mr-2" /> Cerrar demás sesiones
                 </Button>
               )}
             </div>
 
             {sessions.length === 0 ? (
-              <p className="text-slate-500 py-4">No hay información de sesiones.</p>
+              <p className="text-slate-500 dark:text-slate-400 py-4">No hay información de sesiones.</p>
             ) : (
               <div className="space-y-4">
                 {sessions.map(session => (
-                  <div key={session.token} className="flex items-start gap-4 p-4 border border-slate-100 rounded-xl bg-slate-50">
-                    <div className="p-2 bg-white rounded-lg border border-slate-200 text-slate-500 shrink-0 mt-0.5">
+                  <div key={session.token} className="flex items-start gap-4 p-4 border border-slate-100 dark:border-slate-800/80 rounded-xl bg-slate-50 dark:bg-slate-900/60">
+                    <div className="p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 shrink-0 mt-0.5">
                       {getDeviceIcon(session.user_agent)}
                     </div>
                     <div className="flex-1">
                       <div className="flex justify-between items-start">
-                        <p className="font-semibold text-slate-800 leading-tight">
+                        <p className="font-semibold text-slate-800 dark:text-slate-200 leading-tight">
                           {session.user_agent || 'Dispositivo desconocido'}
                         </p>
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-md shrink-0 ml-2 ${
                           session.es_activa 
-                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
-                            : 'bg-slate-200 text-slate-600'
+                            ? 'bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50' 
+                            : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                         }`}>
                           {session.es_activa ? 'Sesión Actual' : 'Inactiva'}
                         </span>
                       </div>
-                      <p className="text-sm text-slate-500 mt-1">
-                        IP: <span className="font-mono bg-white px-1 py-0.5 rounded border border-slate-200">{session.ip_address || 'Desconocida'}</span>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                        IP: <span className="font-mono bg-white dark:bg-slate-900 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">{session.ip_address || 'Desconocida'}</span>
                       </p>
-                      <p className="text-xs text-slate-400 mt-1.5 font-medium">
+                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5 font-medium">
                         Último acceso: {formatDateTime(session.ultimo_activo)}
                       </p>
                     </div>

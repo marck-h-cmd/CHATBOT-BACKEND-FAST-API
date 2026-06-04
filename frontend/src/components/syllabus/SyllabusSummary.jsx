@@ -16,7 +16,7 @@ const SyllabusSummary = () => {
   if (!selectedSyllabus) {
     return (
       <Card title="Resumen del sílabo">
-        <p className="text-gray-500">Selecciona un sílabo para ver su resumen.</p>
+        <p className="text-gray-500 dark:text-slate-400 text-sm">Selecciona un sílabo para ver su resumen.</p>
       </Card>
     );
   }
@@ -35,18 +35,18 @@ const SyllabusSummary = () => {
       <div className="space-y-3">
         {/* Evidencias y pesos */}
         <div>
-          <h4 className="font-semibold text-gray-800">Evidencias de evaluación</h4>
-          <div className="grid grid-cols-3 gap-2 mt-1 text-sm">
-            <div className="bg-blue-50 p-2 rounded"><span className="font-medium">PFD</span><br />Examen unidad + Foros</div>
-            <div className="bg-green-50 p-2 rounded"><span className="font-medium">TAD</span><br />Trabajo aplicación digital</div>
-            <div className="bg-yellow-50 p-2 rounded"><span className="font-medium">ELD</span><br />Examen laboratorio digital</div>
+          <h4 className="font-semibold text-gray-800 dark:text-slate-200 text-sm">Evidencias de evaluación</h4>
+          <div className="grid grid-cols-3 gap-2 mt-1 text-xs">
+            <div className="bg-blue-50 dark:bg-blue-950/20 p-2 rounded text-slate-800 dark:text-slate-350"><span className="font-medium">PFD</span><br />Examen unidad + Foros</div>
+            <div className="bg-green-50 dark:bg-emerald-950/20 p-2 rounded text-slate-800 dark:text-slate-350"><span className="font-medium">TAD</span><br />Trabajo aplicación digital</div>
+            <div className="bg-yellow-50 dark:bg-amber-950/20 p-2 rounded text-slate-800 dark:text-slate-350"><span className="font-medium">ELD</span><br />Examen laboratorio digital</div>
           </div>
         </div>
 
         {/* Fórmulas */}
         <div>
-          <h4 className="font-semibold text-gray-800 mb-1">Fórmulas de cálculo</h4>
-          <ul className="text-sm text-gray-700 space-y-1">
+          <h4 className="font-semibold text-gray-800 dark:text-slate-200 mb-1 text-sm">Fórmulas de cálculo</h4>
+          <ul className="text-sm text-gray-700 dark:text-slate-350 space-y-1">
             {reglas.length > 0 ? (
               reglas.map(reg => (
                 <li key={reg.id}><span className="font-mono">{reg.unidad}:</span> {reg.formula}</li>
@@ -60,22 +60,22 @@ const SyllabusSummary = () => {
               </>
             )}
           </ul>
-          <p className="text-xs text-gray-600 mt-1">Nota aprobatoria: <span className="font-bold">14</span> (medio punto favorece al estudiante)</p>
+          <p className="text-xs text-gray-600 dark:text-slate-400 mt-1">Nota aprobatoria: <span className="font-bold text-slate-800 dark:text-slate-200">14</span> (medio punto favorece al estudiante)</p>
         </div>
 
         {/* Tutoría (colapsable) */}
         <div>
           <button
             onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-medium"
+            className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium"
           >
             {expanded ? '▼' : '▶'} Información de tutoría
           </button>
           {expanded && (
-            <div className="mt-2 p-3 bg-gray-50 rounded text-sm">
+            <div className="mt-2 p-3 bg-gray-50 dark:bg-slate-900/60 border dark:border-slate-800 rounded text-sm text-slate-700 dark:text-slate-350">
               <p><span className="font-medium">Día:</span> {tutorInfo.dia}</p>
               <p><span className="font-medium">Horario:</span> {tutorInfo.horario}</p>
-              <p><span className="font-medium">Email:</span> <a href={`mailto:${tutorInfo.email}`} className="text-blue-600">{tutorInfo.email}</a></p>
+              <p><span className="font-medium">Email:</span> <a href={`mailto:${tutorInfo.email}`} className="text-blue-600 dark:text-blue-400 hover:underline">{tutorInfo.email}</a></p>
               <p><span className="font-medium">Canales:</span> {tutorInfo.canales}</p>
             </div>
           )}
@@ -83,7 +83,7 @@ const SyllabusSummary = () => {
 
         {/* Aviso de fiabilidad si es subido no oficial */}
         {!selectedSyllabus.es_oficial && selectedSyllabus.aviso_fiabilidad && (
-          <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+          <div className="mt-2 p-2 bg-yellow-50 dark:bg-amber-950/15 border border-yellow-200 dark:border-amber-900/50 rounded text-xs text-yellow-800 dark:text-amber-400">
             ⚠️ {selectedSyllabus.aviso_fiabilidad}
           </div>
         )}

@@ -95,17 +95,17 @@ const SyllabusUploader = () => {
   };
 
   const getFiabilidadColor = (fiabilidad) => {
-    if (!fiabilidad) return 'text-gray-600 bg-gray-50';
+    if (!fiabilidad) return 'text-gray-600 bg-gray-50 dark:bg-slate-900/60 dark:text-slate-400';
     const nivel = fiabilidad.toString().toUpperCase();
     switch (nivel) {
       case 'ALTA':
-        return 'text-green-700 bg-green-50 border border-green-200';
+        return 'text-green-700 dark:text-green-400 bg-green-50 dark:bg-emerald-950/20 border border-green-200 dark:border-emerald-900/50';
       case 'MEDIA':
-        return 'text-yellow-700 bg-yellow-50 border border-yellow-200';
+        return 'text-yellow-700 dark:text-amber-400 bg-yellow-50 dark:bg-amber-950/20 border border-yellow-200 dark:border-amber-900/50';
       case 'BAJA':
-        return 'text-red-700 bg-red-50 border border-red-200';
+        return 'text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50';
       default:
-        return 'text-gray-600 bg-gray-50 border border-gray-200';
+        return 'text-gray-600 dark:text-slate-400 bg-gray-50 dark:bg-slate-900/60 border border-gray-200 dark:border-slate-800';
     }
   };
 
@@ -138,10 +138,10 @@ const SyllabusUploader = () => {
   };
 
   return (
-    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center space-y-4">
+    <div className="border-2 border-dashed border-gray-300 dark:border-slate-800 rounded-lg p-6 text-center space-y-4">
       {/* Filtro por ciclo */}
       <div className="text-left">
-        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
           Filtrar por ciclo
         </label>
         <div className="flex flex-wrap gap-2">
@@ -151,7 +151,7 @@ const SyllabusUploader = () => {
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
               !selectedCiclo
                 ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
             }`}
           >
             Todos
@@ -164,7 +164,7 @@ const SyllabusUploader = () => {
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
                 selectedCiclo === c
                   ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
               }`}
             >
               {c}
@@ -202,7 +202,7 @@ const SyllabusUploader = () => {
       />
       <label
         htmlFor="pdf-upload"
-        className="cursor-pointer inline-flex items-center gap-2 text-blue-600 hover:text-blue-800"
+        className="cursor-pointer inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-3-3m3 3l3-3" />
@@ -213,11 +213,11 @@ const SyllabusUploader = () => {
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
-        className="mt-3 p-4 border border-gray-200 rounded bg-gray-50 text-gray-500 text-sm"
+        className="mt-3 p-4 border border-gray-200 dark:border-slate-800 rounded bg-gray-50 dark:bg-slate-900/60 text-gray-500 dark:text-slate-400 text-sm"
       >
         {file ? (
           <div className="flex justify-between items-center">
-            <span>📄 {file.name}</span>
+            <span className="text-slate-800 dark:text-slate-200">📄 {file.name}</span>
             <Button variant="outline" size="sm" onClick={() => setFile(null)}>Quitar</Button>
           </div>
         ) : (
@@ -239,36 +239,36 @@ const SyllabusUploader = () => {
         {uploadStatus?.success ? (
           <div className="space-y-4">
             {/* Mensaje principal */}
-            <p className="text-gray-700">{uploadStatus.message || uploadStatus.aviso || 'Sílabo procesado correctamente'}</p>
+            <p className="text-gray-700 dark:text-slate-200">{uploadStatus.message || uploadStatus.aviso || 'Sílabo procesado correctamente'}</p>
             
             {/* Información del curso */}
             {(uploadStatus.nombre_curso || uploadStatus.curso?.nombre) && (
-              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                <h4 className="font-semibold text-gray-700 mb-2">📚 Información del curso</h4>
+              <div className="bg-gray-50 dark:bg-slate-900/60 rounded-lg p-3 border border-gray-200 dark:border-slate-800">
+                <h4 className="font-semibold text-gray-700 dark:text-slate-250 mb-2">📚 Información del curso</h4>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
-                    <span className="text-gray-500">Curso:</span>
+                    <span className="text-gray-500 dark:text-slate-450">Curso:</span>
                     <p className="font-medium">{uploadStatus.nombre_curso || uploadStatus.curso?.nombre}</p>
                   </div>
                   <div>
-                    <span className="text-gray-500">Código:</span>
+                    <span className="text-gray-500 dark:text-slate-450">Código:</span>
                     <p className="font-medium">{uploadStatus.codigo_curso || uploadStatus.curso?.codigo || 'No especificado'}</p>
                   </div>
                   <div>
-                    <span className="text-gray-500">Ciclo:</span>
+                    <span className="text-gray-500 dark:text-slate-450">Ciclo:</span>
                     <p className="font-medium">{uploadStatus.ciclo || uploadStatus.curso?.ciclo || 'No especificado'}</p>
                   </div>
                   <div>
-                    <span className="text-gray-500">Periodo:</span>
+                    <span className="text-gray-500 dark:text-slate-450">Periodo:</span>
                     <p className="font-medium">{uploadStatus.periodo || uploadStatus.curso?.periodo || 'No especificado'}</p>
                   </div>
                   <div className="col-span-2">
-                    <span className="text-gray-500">Docente:</span>
+                    <span className="text-gray-500 dark:text-slate-450">Docente:</span>
                     <p className="font-medium">{uploadStatus.docente || uploadStatus.curso?.docente || 'No especificado'}</p>
                   </div>
                   {uploadStatus.email_docente && (
                     <div className="col-span-2">
-                      <span className="text-gray-500">Email:</span>
+                      <span className="text-gray-500 dark:text-slate-450">Email:</span>
                       <p className="font-medium text-sm">{uploadStatus.email_docente}</p>
                     </div>
                   )}
@@ -303,18 +303,18 @@ const SyllabusUploader = () => {
             
             {/* Evidencias detectadas */}
             {uploadStatus.evidencias && Object.keys(uploadStatus.evidencias).length > 0 && (
-              <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                <h4 className="font-semibold text-blue-800 mb-2">📊 Sistema de evaluación detectado</h4>
+              <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-900/50">
+                <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">📊 Sistema de evaluación detectado</h4>
                 <div className="grid grid-cols-3 gap-2">
                   {Object.entries(uploadStatus.evidencias).map(([key, value]) => (
-                    <div key={key} className="bg-white rounded p-2 text-center shadow-sm">
-                      <div className="font-bold text-blue-600">{key}</div>
-                      <div className="text-xs text-gray-500 truncate">{value.nombre || key}</div>
+                    <div key={key} className="bg-white dark:bg-[#131A2C] border dark:border-slate-850/80 rounded p-2 text-center shadow-sm">
+                      <div className="font-bold text-blue-600 dark:text-blue-400">{key}</div>
+                      <div className="text-xs text-gray-500 dark:text-slate-400 truncate">{value.nombre || key}</div>
                       <div className="text-sm font-semibold mt-1">Peso: {value.peso}%</div>
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-blue-600 mt-2">
+                <p className="text-xs text-blue-600 dark:text-blue-450 mt-2">
                   Nota aprobatoria: {uploadStatus.nota_aprobatoria || 14}
                 </p>
               </div>
@@ -322,13 +322,13 @@ const SyllabusUploader = () => {
             
             {/* Unidades detectadas */}
             {uploadStatus.unidades && uploadStatus.unidades.length > 0 && (
-              <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-                <h4 className="font-semibold text-green-800 mb-2">📖 Unidades curriculares</h4>
+              <div className="bg-green-50 dark:bg-emerald-950/20 rounded-lg p-3 border border-green-200 dark:border-emerald-900/50">
+                <h4 className="font-semibold text-green-800 dark:text-emerald-300 mb-2">📖 Unidades curriculares</h4>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
                   {uploadStatus.unidades.map((unidad, idx) => (
-                    <div key={idx} className="bg-white rounded p-2 text-sm">
+                    <div key={idx} className="bg-white dark:bg-[#131A2C] border dark:border-slate-850/80 rounded p-2 text-sm text-slate-800 dark:text-slate-200">
                       <span className="font-medium">{unidad.id}:</span> {unidad.nombre}
-                      <span className="text-xs text-gray-500 ml-2">({unidad.semanas})</span>
+                      <span className="text-xs text-gray-500 dark:text-slate-400 ml-2">({unidad.semanas})</span>
                     </div>
                   ))}
                 </div>
@@ -336,21 +336,21 @@ const SyllabusUploader = () => {
             )}
             
             {/* Modo de procesamiento */}
-            <div className="text-xs text-gray-400 text-center pt-2 border-t">
+            <div className="text-xs text-gray-400 dark:text-slate-500 text-center pt-2 border-t dark:border-slate-800">
               {uploadStatus.usando_gemini 
                 ? '🤖 Procesado con IA (Gemini)'
                 : '📝 Procesado con motor estándar'}
             </div>
           </div>
         ) : (
-          <div className="text-red-600 p-4 bg-red-50 rounded-lg">
+          <div className="text-red-600 dark:text-red-400 p-4 bg-red-50 dark:bg-red-950/20 border dark:border-red-900/40 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xl">❌</span>
               <span className="font-semibold">Error al procesar el sílabo</span>
             </div>
             <p>{uploadStatus?.message || 'Error desconocido al subir el sílabo.'}</p>
             {uploadStatus?.error && (
-              <p className="text-xs mt-2 text-red-500">{uploadStatus.error}</p>
+              <p className="text-xs mt-2 text-red-500 dark:text-red-400">{uploadStatus.error}</p>
             )}
           </div>
         )}

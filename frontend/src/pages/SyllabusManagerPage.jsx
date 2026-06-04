@@ -16,7 +16,7 @@ const SyllabusManagerPage = () => {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
         <Card>
-          <p className="text-gray-600">Inicia sesión para gestionar sílabos.</p>
+          <p className="text-gray-600 dark:text-slate-400">Inicia sesión para gestionar sílabos.</p>
         </Card>
       </div>
     );
@@ -26,7 +26,7 @@ const SyllabusManagerPage = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Gestión de Sílabos</h1>
+      <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">Gestión de Sílabos</h1>
       
       <div className="grid md:grid-cols-2 gap-6">
         <div className="space-y-6">
@@ -43,11 +43,11 @@ const SyllabusManagerPage = () => {
           
           {userSyllabi.length > 0 && (
             <Card title="Mis sílabos subidos">
-              <ul className="divide-y divide-gray-200">
+              <ul className="divide-y divide-gray-250 dark:divide-slate-800">
                 {userSyllabi.map(s => (
-                  <li key={s.id} className="py-2 flex justify-between">
-                    <span>{s.nombre_archivo}</span>
-                    <span className="text-xs text-gray-500">
+                  <li key={s.id} className="py-2 flex justify-between items-center text-sm">
+                    <span className="text-slate-800 dark:text-slate-200 truncate pr-4">{s.nombre_archivo}</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-400 shrink-0">
                       {s.fecha_subida ? new Date(s.fecha_subida).toLocaleDateString() : ''}
                     </span>
                   </li>

@@ -127,20 +127,20 @@ const PeriodManagementPage = () => {
 
   const StatCard = ({ icon: Icon, value, label, tone }) => {
     const toneMap = {
-      blue: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-100' },
-      emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100' },
-      violet: { bg: 'bg-violet-50', text: 'text-violet-600', border: 'border-violet-100' },
-      amber: { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-100' },
+      blue: { bg: 'bg-blue-50 dark:bg-blue-950/20', text: 'text-blue-600 dark:text-blue-400', border: 'border-blue-100 dark:border-blue-900/30' },
+      emerald: { bg: 'bg-emerald-50 dark:bg-emerald-950/20', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-100 dark:border-emerald-900/30' },
+      violet: { bg: 'bg-violet-50 dark:bg-violet-950/20', text: 'text-violet-600 dark:text-violet-400', border: 'border-violet-100 dark:border-violet-900/30' },
+      amber: { bg: 'bg-amber-50 dark:bg-amber-950/20', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-100 dark:border-amber-900/30' },
     };
     const t = toneMap[tone] || toneMap.blue;
     return (
-      <div className={`bg-white border ${t.border} rounded-xl p-4 flex items-center gap-3`}>
+      <div className={`bg-white dark:bg-[#131A2C] border ${t.border} rounded-xl p-4 flex items-center gap-3 transition-colors duration-200`}>
         <div className={`w-10 h-10 rounded-lg ${t.bg} flex items-center justify-center shrink-0`}>
           <Icon className={`w-5 h-5 ${t.text}`} />
         </div>
         <div className="min-w-0">
-          <p className="text-xl font-bold text-slate-900 truncate">{value}</p>
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{label}</p>
+          <p className="text-xl font-bold text-slate-900 dark:text-white truncate">{value}</p>
+          <p className="text-[11px] font-semibold text-slate-505 dark:text-slate-400 uppercase tracking-wider">{label}</p>
         </div>
       </div>
     );
@@ -154,18 +154,18 @@ const PeriodManagementPage = () => {
     );
 
     return (
-      <div className={`bg-white border rounded-xl p-5 transition-all hover:shadow-card-hover ${
-        isCurrent ? 'border-blue-300 ring-1 ring-blue-100' : 'border-slate-200 hover:border-slate-300'
+      <div className={`bg-white dark:bg-[#131A2C] border rounded-xl p-5 transition-all hover:shadow-card-hover ${
+        isCurrent ? 'border-blue-300 dark:border-blue-500/50 ring-1 ring-blue-100 dark:ring-blue-900/30' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
       }`}>
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
             <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md border ${
               isCurrent
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/30'
                 : isPast
-                  ? 'bg-slate-100 text-slate-500 border-slate-200'
-                  : 'bg-blue-50 text-blue-700 border-blue-100'
+                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-202 dark:border-slate-700'
+                  : 'bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border-blue-100 dark:border-blue-900/30'
             }`}>
               {isCurrent && <CheckCircle2 className="w-3 h-3" />}
               {isCurrent ? 'En curso' : isPast ? 'Finalizado' : 'Próximo'}
@@ -175,7 +175,7 @@ const PeriodManagementPage = () => {
             {!isCurrent && (
               <button
                 onClick={() => handleSetCurrent(period.id_periodo)}
-                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition-colors"
                 title="Activar como periodo actual"
               >
                 <PlayCircle className="w-3.5 h-3.5" />
@@ -183,7 +183,7 @@ const PeriodManagementPage = () => {
             )}
             <button
               onClick={() => handleEdit(period)}
-              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition-colors"
               title="Editar"
             >
               <Edit2 className="w-3.5 h-3.5" />
@@ -192,8 +192,8 @@ const PeriodManagementPage = () => {
         </div>
 
         {/* Content */}
-        <h3 className="text-base font-bold text-slate-900 mb-1">{period.nombre}</h3>
-        <p className="text-xs text-slate-500 mb-4">
+        <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1">{period.nombre}</h3>
+        <p className="text-xs text-slate-505 dark:text-slate-400 mb-4">
           Año {period.anio} · Término {period.termino}
         </p>
 
@@ -201,15 +201,15 @@ const PeriodManagementPage = () => {
         <div className="space-y-2 mb-4">
           <div className="flex items-center gap-2 text-xs">
             <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="text-slate-600">Inicio: <span className="font-medium text-slate-800">{formatDate(period.fecha_inicio)}</span></span>
+            <span className="text-slate-600 dark:text-slate-350">Inicio: <span className="font-medium text-slate-808 dark:text-slate-200">{formatDate(period.fecha_inicio)}</span></span>
           </div>
           <div className="flex items-center gap-2 text-xs">
             <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="text-slate-600">Fin: <span className="font-medium text-slate-800">{formatDate(period.fecha_fin)}</span></span>
+            <span className="text-slate-600 dark:text-slate-350">Fin: <span className="font-medium text-slate-808 dark:text-slate-200">{formatDate(period.fecha_fin)}</span></span>
           </div>
           <div className="flex items-center gap-2 text-xs">
             <TrendingUp className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="text-slate-600">Duración: <span className="font-medium text-slate-800">{durationDays} días</span></span>
+            <span className="text-slate-600 dark:text-slate-350">Duración: <span className="font-medium text-slate-808 dark:text-slate-200">{durationDays} días</span></span>
           </div>
         </div>
 
@@ -217,17 +217,17 @@ const PeriodManagementPage = () => {
         {isCurrent && (
           <div className="mt-auto">
             <div className="flex items-center justify-between text-[10px] mb-1">
-              <span className="font-semibold text-slate-500">Progreso del periodo</span>
-              <span className="font-bold text-blue-600">
+              <span className="font-semibold text-slate-500 dark:text-slate-400">Progreso del periodo</span>
+              <span className="font-bold text-blue-600 dark:text-blue-400">
                 {Math.min(100, Math.round(
                   ((new Date() - new Date(period.fecha_inicio)) /
                    (new Date(period.fecha_fin) - new Date(period.fecha_inicio))) * 100
                 ))}%
               </span>
             </div>
-            <div className="w-full bg-slate-100 rounded-full h-1.5">
+            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5">
               <div
-                className="bg-blue-600 h-1.5 rounded-full transition-all"
+                className="bg-blue-600 dark:bg-blue-500 h-1.5 rounded-full transition-all"
                 style={{
                   width: `${Math.min(100, Math.round(
                     ((new Date() - new Date(period.fecha_inicio)) /
@@ -255,11 +255,11 @@ const PeriodManagementPage = () => {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
             <CalendarDays className="w-7 h-7 text-blue-600" />
             Gestión de Periodos
           </h1>
-          <p className="text-sm text-slate-500 mt-1.5 max-w-lg">
+          <p className="text-sm text-slate-505 dark:text-slate-400 mt-1.5 max-w-lg">
             Administra los ciclos académicos, controla vigencias y establece el periodo activo del sistema.
           </p>
         </div>
@@ -281,19 +281,19 @@ const PeriodManagementPage = () => {
 
       {/* Current Period Banner */}
       {stats.actual && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-202 dark:border-emerald-900/30 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors duration-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center shrink-0">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+            <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/40 rounded-lg flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-455" />
             </div>
             <div>
-              <p className="text-sm font-bold text-emerald-900">Periodo actual activo</p>
-              <p className="text-xs text-emerald-700">
+              <p className="text-sm font-bold text-emerald-900 dark:text-emerald-200">Periodo actual activo</p>
+              <p className="text-xs text-emerald-700 dark:text-emerald-400">
                 {stats.actual.nombre} · {formatDate(stats.actual.fecha_inicio)} — {formatDate(stats.actual.fecha_fin)}
               </p>
             </div>
           </div>
-          <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-md border border-emerald-200 self-start sm:self-center">
+          <span className="text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-707 dark:text-emerald-400 px-2.5 py-1 rounded-md border border-emerald-202 dark:border-emerald-800 self-start sm:self-center">
             EN CURSO
           </span>
         </div>
@@ -301,23 +301,23 @@ const PeriodManagementPage = () => {
 
       {/* Results count */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">
-          Mostrando <span className="font-bold text-slate-900">{paginatedPeriods.length}</span> de{' '}
-          <span className="font-bold text-slate-900">{sortedPeriods.length}</span> periodos
+        <p className="text-sm text-slate-505 dark:text-slate-400">
+          Mostrando <span className="font-bold text-slate-900 dark:text-white">{paginatedPeriods.length}</span> de{' '}
+          <span className="font-bold text-slate-900 dark:text-white">{sortedPeriods.length}</span> periodos
         </p>
       </div>
 
       {/* Cards Grid */}
       {sortedPeriods.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
-          <div className="w-14 h-14 bg-slate-50 rounded-xl flex items-center justify-center mx-auto mb-4 border border-slate-100">
-            <AlertCircle className="w-6 h-6 text-slate-400" />
+        <div className="bg-white dark:bg-[#131A2C] border border-slate-202 dark:border-slate-800 rounded-2xl p-12 text-center transition-colors duration-200">
+          <div className="w-14 h-14 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center mx-auto mb-4 border border-slate-100 dark:border-slate-700">
+            <AlertCircle className="w-6 h-6 text-slate-400 dark:text-slate-500" />
           </div>
-          <h3 className="text-base font-bold text-slate-800 mb-1">No hay periodos registrados</h3>
-          <p className="text-sm text-slate-500 mb-4 max-w-sm mx-auto">
+          <h3 className="text-base font-bold text-slate-808 dark:text-white mb-1">No hay periodos registrados</h3>
+          <p className="text-sm text-slate-505 dark:text-slate-400 mb-4 max-w-sm mx-auto">
             Comienza aperturando el primer periodo académico para el sistema.
           </p>
-          <Button onClick={openCreateModal} className="bg-blue-600 hover:bg-blue-700 text-white text-sm">
+          <Button onClick={openCreateModal} className="bg-blue-600 hover:bg-blue-707 text-white text-sm">
             <Plus className="w-4 h-4 mr-1.5" /> Aperturar periodo
           </Button>
         </div>
@@ -332,14 +332,14 @@ const PeriodManagementPage = () => {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-505 dark:text-slate-400">
             Página {currentPage} de {totalPages}
           </p>
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="p-2 rounded-lg border border-slate-208 dark:border-slate-800 text-slate-605 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -349,8 +349,8 @@ const PeriodManagementPage = () => {
                 onClick={() => setCurrentPage(page)}
                 className={`w-9 h-9 rounded-lg text-sm font-semibold transition-colors ${
                   currentPage === page
-                    ? 'bg-blue-600 text-white'
-                    : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                    ? 'bg-blue-655 dark:bg-blue-500 text-white'
+                    : 'border border-slate-208 dark:border-slate-800 text-slate-605 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                 }`}
               >
                 {page}
@@ -359,7 +359,7 @@ const PeriodManagementPage = () => {
             <button
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="p-2 rounded-lg border border-slate-208 dark:border-slate-800 text-slate-605 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -371,35 +371,35 @@ const PeriodManagementPage = () => {
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingPeriod ? 'Editar Periodo' : 'Aperturar Nuevo Periodo'}>
         <form onSubmit={editingPeriod ? handleUpdate : handleCreate} className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nombre Oficial del Periodo</label>
+            <label className="block text-sm font-semibold text-slate-705 dark:text-slate-300 mb-1.5">Nombre Oficial del Periodo</label>
             <input
               type="text"
               value={formData.nombre}
               onChange={(e) => setFormData({...formData, nombre: e.target.value})}
-              className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium bg-white"
+              className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
               placeholder="Ej. 2026-I"
               required
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Año</label>
+              <label className="block text-sm font-semibold text-slate-705 dark:text-slate-300 mb-1.5">Año</label>
               <input
                 type="number"
                 min="2020"
                 max="2050"
                 value={formData.anio}
                 onChange={(e) => setFormData({...formData, anio: parseInt(e.target.value)})}
-                className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white"
+                className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Término</label>
+              <label className="block text-sm font-semibold text-slate-705 dark:text-slate-300 mb-1.5">Término</label>
               <select
                 value={formData.termino}
                 onChange={(e) => setFormData({...formData, termino: e.target.value})}
-                className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white appearance-none"
+                className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white appearance-none"
                 required
               >
                 <option value="">Seleccionar...</option>
@@ -411,22 +411,22 @@ const PeriodManagementPage = () => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Fecha de Inicio</label>
+              <label className="block text-sm font-semibold text-slate-705 dark:text-slate-300 mb-1.5">Fecha de Inicio</label>
               <input
                 type="date"
                 value={formData.fecha_inicio}
                 onChange={(e) => setFormData({...formData, fecha_inicio: e.target.value})}
-                className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white text-slate-700"
+                className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Fecha de Fin</label>
+              <label className="block text-sm font-semibold text-slate-705 dark:text-slate-300 mb-1.5">Fecha de Fin</label>
               <input
                 type="date"
                 value={formData.fecha_fin}
                 onChange={(e) => setFormData({...formData, fecha_fin: e.target.value})}
-                className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white text-slate-700"
+                className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
                 required
               />
             </div>
@@ -439,12 +439,12 @@ const PeriodManagementPage = () => {
                 checked={formData.es_actual}
                 onChange={(e) => setFormData({...formData, es_actual: e.target.checked})}
               />
-              <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-              <span className="ml-3 text-sm font-medium text-slate-700">Forzar como periodo actual</span>
+              <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 dark:after:border-slate-655 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-655"></div>
+              <span className="ml-3 text-sm font-medium text-slate-705 dark:text-slate-300">Forzar como periodo actual</span>
             </label>
           </div>
 
-          <div className="flex justify-end gap-3 pt-5 border-t border-slate-100">
+          <div className="flex justify-end gap-3 pt-5 border-t border-slate-100 dark:border-slate-800">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} className="text-sm">
               Cancelar
             </Button>

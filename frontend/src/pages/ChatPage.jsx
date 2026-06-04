@@ -74,17 +74,17 @@ const ChatPage = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="flex items-center justify-center min-h-[80vh] bg-[#FAF9F6]">
+      <div className="flex items-center justify-center min-h-[80vh] bg-[#FAF9F6] dark:bg-[#0B0F19]">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white border border-slate-200 shadow-sm p-10 rounded-3xl max-w-md w-full text-center"
+          className="bg-white dark:bg-[#131A2C] border border-slate-200 dark:border-slate-800 shadow-sm p-10 rounded-3xl max-w-md w-full text-center"
         >
-          <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
-            <ShieldAlert className="w-8 h-8 text-slate-400" />
+          <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-5">
+            <ShieldAlert className="w-8 h-8 text-slate-400 dark:text-slate-500" />
           </div>
-          <h2 className="text-2xl font-extrabold text-slate-900 mb-2 tracking-tight">Acceso Denegado</h2>
-          <p className="text-slate-500 text-sm font-medium">Inicia sesión para usar el asistente de inteligencia artificial.</p>
+          <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white mb-2 tracking-tight">Acceso Denegado</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Inicia sesión para usar el asistente de inteligencia artificial.</p>
         </motion.div>
       </div>
     );
@@ -107,12 +107,12 @@ const ChatPage = () => {
   const sortedPeriods = Object.keys(groupedEnrollments).sort((a, b) => b.localeCompare(a));
 
   return (
-    <div className="h-full w-full flex bg-[#FAF9F6] overflow-hidden relative font-['Plus_Jakarta_Sans',sans-serif]">
+    <div className="h-full w-full flex bg-[#FAF9F6] dark:bg-[#0B0F19] overflow-hidden relative font-['Plus_Jakarta_Sans',sans-serif] transition-colors duration-200">
 
       {/* Mobile Backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-slate-900/30 z-40 lg:hidden transition-opacity backdrop-blur-sm"
+          className="fixed inset-0 bg-slate-900/30 dark:bg-slate-950/50 z-40 lg:hidden transition-opacity backdrop-blur-sm"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -121,23 +121,23 @@ const ChatPage = () => {
       <div
         data-tour="student-chat-sidebar"
         className={`
-        fixed inset-y-0 left-0 z-50 w-[300px] bg-white border-r border-slate-100 transform transition-transform duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-50 w-[300px] bg-white dark:bg-[#131A2C] border-r border-slate-100 dark:border-slate-800/80 transform transition-transform duration-300 ease-in-out
         lg:relative lg:translate-x-0 shrink-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}
       >
         {/* Mobile close */}
         <div className="absolute top-3 right-3 lg:hidden z-10">
-          <button onClick={() => setSidebarOpen(false)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors">
+          <button onClick={() => setSidebarOpen(false)} className="p-1.5 text-slate-400 dark:text-slate-550 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="flex flex-col h-full">
-          <div className="p-5 border-b border-slate-100 shrink-0">
-            <div className="flex items-center gap-2.5 text-slate-900 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center shadow-sm">
-                <BookOpen className="w-4 h-4 text-white" />
+          <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 shrink-0">
+            <div className="flex items-center gap-2.5 text-slate-900 dark:text-white mb-4">
+              <div className="w-9 h-9 rounded-xl bg-slate-900 dark:bg-slate-800 flex items-center justify-center border dark:border-slate-700 shadow-sm">
+                <BookOpen className="w-4 h-4 text-white dark:text-slate-200" />
               </div>
               <h3 className="font-extrabold text-base tracking-tight">Mis Cursos</h3>
             </div>
@@ -145,14 +145,14 @@ const ChatPage = () => {
             {/* Buscador */}
             <div className="relative group">
               <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
-                <Search className="w-4 h-4 text-slate-400 group-focus-within:text-slate-600 transition-colors" />
+                <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 group-focus-within:text-slate-600 dark:group-focus-within:text-slate-350 transition-colors" />
               </div>
               <input
                 type="text"
                 placeholder="Buscar curso o periodo..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-2xl py-2.5 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-slate-300 transition-all placeholder:text-slate-400"
+                className="w-full bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-100 text-sm rounded-2xl py-2.5 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-850 focus:border-slate-300 dark:focus:border-slate-700 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-550"
               />
             </div>
           </div>
@@ -160,21 +160,21 @@ const ChatPage = () => {
           <div className="flex-1 overflow-y-auto p-3 space-y-6 no-scrollbar">
             {enrollments.length === 0 ? (
               <div className="text-center py-12 px-4">
-                <div className="bg-slate-50 w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-100">
-                  <Info className="w-5 h-5 text-slate-400" />
+                <div className="bg-slate-50 dark:bg-slate-900/60 w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-100 dark:border-slate-800">
+                  <Info className="w-5 h-5 text-slate-400 dark:text-slate-500" />
                 </div>
-                <p className="text-slate-500 text-sm font-semibold">Aún no estás inscrito en ningún curso.</p>
+                <p className="text-slate-500 dark:text-slate-400 text-sm font-semibold">Aún no estás inscrito en ningún curso.</p>
               </div>
             ) : sortedPeriods.length === 0 ? (
               <div className="text-center py-12 px-4">
-                <p className="text-slate-400 text-sm font-medium">No se encontraron cursos con "{searchTerm}"</p>
+                <p className="text-slate-400 dark:text-slate-500 text-sm font-medium">No se encontraron cursos con "{searchTerm}"</p>
               </div>
             ) : (
               sortedPeriods.map(periodo => (
                 <div key={periodo} className="space-y-2">
                   <div className="flex items-center gap-2 px-2 py-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{periodo}</span>
-                    <div className="h-px flex-1 bg-slate-100"></div>
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{periodo}</span>
+                    <div className="h-px flex-1 bg-slate-100 dark:bg-slate-800/80"></div>
                   </div>
 
                   <div className="space-y-1">
@@ -188,23 +188,23 @@ const ChatPage = () => {
                           onClick={() => handleContextSelect(ctx)}
                           className={`group p-3 rounded-2xl cursor-pointer transition-all duration-200 border-2 flex items-center gap-3 ${
                             isSelected
-                              ? 'bg-slate-50 border-slate-900 shadow-sm'
-                              : 'bg-transparent border-transparent hover:bg-slate-50 hover:border-slate-100'
+                              ? 'bg-slate-50 dark:bg-slate-800/40 border-slate-900 dark:border-slate-700 shadow-sm'
+                              : 'bg-transparent border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/30 hover:border-slate-100 dark:hover:border-slate-800/80'
                           }`}
                         >
                           <div className={`w-1.5 h-8 rounded-full shrink-0 transition-all ${
-                            isSelected ? 'bg-slate-900' : 'bg-transparent group-hover:bg-slate-300'
+                            isSelected ? 'bg-slate-900 dark:bg-slate-400' : 'bg-transparent group-hover:bg-slate-300 dark:group-hover:bg-slate-700'
                           }`} />
 
                           <div className="flex-1 min-w-0">
-                            <p className={`font-bold truncate text-[13px] mb-0.5 ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>
+                            <p className={`font-bold truncate text-[13px] mb-0.5 ${isSelected ? 'text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
                               {ctx.curso}
                             </p>
                             <div className="flex items-center gap-2">
                                <span className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider ${
-                                 ctx.silabo_validado ? 'text-emerald-600' : 'text-amber-600'
+                                 ctx.silabo_validado ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
                                }`}>
-                                 <div className={`w-1.5 h-1.5 rounded-full ${ctx.silabo_validado ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                                 <div className={`w-1.5 h-1.5 rounded-full ${ctx.silabo_validado ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-pulse'}`} />
                                  {ctx.silabo_validado ? 'OFICIAL' : 'PENDIENTE'}
                                </span>
                             </div>
@@ -219,18 +219,18 @@ const ChatPage = () => {
           </div>
 
           {selectedContext && (
-            <div className="shrink-0 p-4 border-t border-slate-100 bg-white">
+            <div className="shrink-0 p-4 border-t border-slate-100 dark:border-slate-800/80 bg-white dark:bg-[#131A2C]">
               <div className="flex items-center gap-2 mb-2 px-1">
-                <Zap className="w-3.5 h-3.5 text-blue-600" />
-                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Estado del Asistente</h4>
+                <Zap className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <h4 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Estado del Asistente</h4>
               </div>
               <div className={`p-3.5 rounded-2xl text-xs flex items-center gap-3 border ${
                 selectedContext.silabo_validado
-                  ? 'bg-emerald-50 border-emerald-100 text-emerald-800'
-                  : 'bg-amber-50 border-amber-100 text-amber-800'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/15 border-emerald-100 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300'
+                  : 'bg-amber-50 dark:bg-amber-950/15 border-amber-100 dark:border-amber-900/50 text-amber-800 dark:text-amber-300'
               }`}>
                 <div className={`shrink-0 w-7 h-7 rounded-xl flex items-center justify-center ${
-                  selectedContext.silabo_validado ? 'bg-emerald-100' : 'bg-amber-100'
+                  selectedContext.silabo_validado ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
                 }`}>
                   {selectedContext.silabo_validado ? <CheckCircle className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
                 </div>
@@ -246,21 +246,21 @@ const ChatPage = () => {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col h-full min-w-0 bg-[#FAF9F6]">
+      <div className="flex-1 flex flex-col h-full min-w-0 bg-[#FAF9F6] dark:bg-[#0B0F19] transition-colors duration-200">
 
         {/* Mobile Header */}
-        <div className="lg:hidden shrink-0 h-14 border-b border-slate-100 flex items-center px-4 gap-3 bg-white/80 backdrop-blur-md sticky top-0 z-30">
+        <div className="lg:hidden shrink-0 h-14 border-b border-slate-100 dark:border-slate-800/80 flex items-center px-4 gap-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-30">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+            className="p-2 -ml-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-850 rounded-xl transition-colors"
           >
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center shadow-sm">
-              <BookOpen className="w-4 h-4 text-white" />
+            <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-slate-800 flex items-center justify-center border dark:border-slate-700 shadow-sm">
+              <BookOpen className="w-4 h-4 text-white dark:text-slate-200" />
             </div>
-            <span className="font-bold text-slate-900 text-sm tracking-tight">Sylia</span>
+            <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">Sylia</span>
           </div>
         </div>
 
@@ -274,14 +274,14 @@ const ChatPage = () => {
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.4 }}
-                    className="w-20 h-20 bg-white border border-slate-200 rounded-3xl flex items-center justify-center mb-6 shadow-sm overflow-hidden p-4"
+                    className="w-20 h-20 bg-white dark:bg-[#131A2C] border border-slate-200 dark:border-slate-850 rounded-3xl flex items-center justify-center mb-6 shadow-sm overflow-hidden p-4"
                   >
                     <img src="/logo.png" alt="Sylia" className="w-full h-full object-contain" />
                   </motion.div>
-                  <h3 className="text-2xl font-extrabold text-slate-900 mb-2 tracking-tight">
+                  <h3 className="text-2xl font-extrabold text-slate-900 dark:text-white mb-2 tracking-tight">
                     {selectedContext ? selectedContext.curso : 'Bienvenido a Sylia'}
                   </h3>
-                  <p className="text-slate-500 max-w-sm leading-relaxed text-sm font-medium">
+                  <p className="text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed text-sm font-medium">
                     {selectedContext
                       ? 'Hazme cualquier pregunta sobre fórmulas de calificación, reglas de evaluación o temas del curso.'
                       : 'Selecciona un curso en el menú izquierdo para inicializar mi base de conocimiento y comenzar.'}
@@ -299,14 +299,14 @@ const ChatPage = () => {
         </div>
 
         {/* Input Footer */}
-        <div className="shrink-0 bg-white border-t border-slate-100 px-4 pb-5 pt-3" data-tour="student-chat-input">
+        <div className="shrink-0 bg-white dark:bg-[#131A2C] border-t border-slate-100 dark:border-slate-800/80 px-4 pb-5 pt-3 transition-colors duration-200" data-tour="student-chat-input">
           <div className="max-w-3xl mx-auto w-full">
             <QuickReplies onSelect={handleSend} lastIntent={currentResponse?.intent}  disabled={!selectedContextId} />
             <div className="mt-3">
               <ChatInput onSend={handleSend} isLoading={loading} disabled={!selectedContextId} />
             </div>
             <div className="text-center mt-2">
-              <span className="text-[10px] text-slate-400 font-semibold">Sylia puede cometer errores. Verifica la información con tu docente.</span>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">Sylia puede cometer errores. Verifica la información con tu docente.</span>
             </div>
           </div>
         </div>
