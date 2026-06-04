@@ -155,9 +155,7 @@ const VerifyEmailPage = () => {
 
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-md">
-              <ShieldCheck className="w-5 h-5 text-white" />
-            </div>
+            <img src="/logo.png" alt="Sylia AI Logo" className="h-10 w-auto object-contain" />
             <span className="text-lg font-bold text-white tracking-tight">Sylia AI</span>
           </div>
         </div>
@@ -236,9 +234,7 @@ const VerifyEmailPage = () => {
               <ArrowLeft className="w-4.5 h-4.5" />
             </Link>
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm">
-                <ShieldCheck className="w-3.5 h-3.5 text-white" />
-              </div>
+              <img src="/logo.png" alt="Sylia AI Logo" className="h-7 w-auto object-contain" />
               <span className="text-xs font-extrabold text-slate-900 tracking-tight">Sylia AI</span>
             </div>
           </div>

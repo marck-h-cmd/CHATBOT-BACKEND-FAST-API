@@ -61,9 +61,7 @@ const Navbar = () => {
           {/* Logo y nombre */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center gap-2.5 group">
-              <div className="w-8 h-8 rounded-xl bg-[#0B0F19] flex items-center justify-center shadow-sm">
-                <ShieldCheck className="w-4 h-4 text-white" />
-              </div>
+              <img src="/logo.png" alt="Sylia Logo" className="h-8 w-auto object-contain" />
               <span className="font-bold text-[#0B0F19] text-lg tracking-tight group-hover:text-blue-600 transition-colors">
                 Sylia
               </span>

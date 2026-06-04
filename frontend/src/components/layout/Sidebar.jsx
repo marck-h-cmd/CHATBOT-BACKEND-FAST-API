@@ -62,9 +62,7 @@ const Sidebar = () => {
       {/* Footer Area of Sidebar */}
       <div className="p-4 border-t border-slate-100">
         <div className="bg-[#FAF9F6] rounded-xl p-4 border border-slate-100 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#0B0F19] flex items-center justify-center shrink-0">
-             <span className="text-[10px] font-bold text-white">AI</span>
-          </div>
+          <img src="/logo.png" alt="Sylia AI Logo" className="h-8 w-auto object-contain shrink-0" />
           <div>
             <p className="text-xs font-bold text-slate-800 tracking-tight">Sylia AI</p>
             <p className="text-[10px] text-slate-400 font-medium">v1.2.0 • Estable</p>

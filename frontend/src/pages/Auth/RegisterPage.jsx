@@ -133,9 +133,7 @@ const RegisterPage = () => {
         {/* Top Brand Logo & Back Button */}
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-md">
-              <BookOpen className="w-5 h-5 text-white" />
-            </div>
+            <img src="/logo.png" alt="Sylia AI Logo" className="h-10 w-auto object-contain" />
             <span className="text-lg font-bold text-white tracking-tight">Sylia AI</span>
           </div>
           <Link to="/login" className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-300 hover:text-white transition-all">
@@ -234,9 +232,7 @@ const RegisterPage = () => {
               <ArrowLeft className="w-4.5 h-4.5" />
             </Link>
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm">
-                <BookOpen className="w-3.5 h-3.5 text-white" />
-              </div>
+              <img src="/logo.png" alt="Sylia AI Logo" className="h-7 w-auto object-contain" />
               <span className="text-xs font-extrabold text-slate-900 tracking-tight">Sylia AI</span>
             </div>
           </div>

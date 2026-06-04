@@ -58,11 +58,10 @@ const LoginPage = () => {
           transition={{ type: "spring", stiffness: 120, damping: 20 }}
           className="relative z-10 flex items-center gap-3"
         >
-          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-md">
-            <BookOpen className="w-5 h-5 text-white" />
-          </div>
+          <img src="/logo.png" alt="Sylia AI Logo" className="h-10 w-auto object-contain" />
           <span className="text-lg font-bold text-white tracking-tight">Sylia AI</span>
         </motion.div>
+
 
         {/* Content Body */}
         <div className="relative z-10 my-auto space-y-6">
@@ -167,9 +166,7 @@ const LoginPage = () => {
         >
           {/* Mobile Header Logo */}
           <div className="lg:hidden flex items-center gap-2.5 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm">
-              <BookOpen className="w-4 h-4 text-white" />
-            </div>
+            <img src="/logo.png" alt="Sylia AI Logo" className="h-8 w-auto object-contain" />
             <span className="text-base font-extrabold text-slate-900 tracking-tight">Sylia AI</span>
           </div>
 
