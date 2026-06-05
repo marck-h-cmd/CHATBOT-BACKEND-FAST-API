@@ -59,8 +59,8 @@ const MyCoursesPage = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10" data-tour="student-mycourses">
       <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Mis Cursos</h1>
-          <p className="text-slate-500 mt-2">Gestiona tus matrículas y accede al asistente de cada curso.</p>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Mis Cursos</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-2">Gestiona tus matrículas y accede al asistente de cada curso.</p>
         </div>
         <div className="flex gap-3">
           <Link to="/cursos">
@@ -77,14 +77,14 @@ const MyCoursesPage = () => {
       </div>
 
       {enrollments.length === 0 ? (
-        <div className="border border-slate-200 rounded-2xl p-12 text-center bg-white shadow-sm">
-          <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <BookOpen className="w-8 h-8 text-indigo-300" />
+        <div className="border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center bg-white dark:bg-[#131A2C] shadow-sm transition-colors duration-200">
+          <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-955/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <BookOpen className="w-8 h-8 text-indigo-300 dark:text-indigo-500" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">
             No estás inscrito en ningún curso
           </h2>
-          <p className="text-slate-500 max-w-md mx-auto mb-8">
+          <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-8">
             Inscríbete en cursos de tu periodo actual para poder usar el asistente inteligente con el contexto de tu sílabo.
           </p>
           <Link to="/cursos">
@@ -96,54 +96,54 @@ const MyCoursesPage = () => {
           {/* Barra de Filtros */}
           <div className="mb-6 relative max-w-md">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-slate-400" />
+              <Search className="h-5 w-5 text-slate-400 dark:text-slate-500" />
             </div>
             <input
               type="text"
               placeholder="Buscar por nombre o código..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
+              className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl leading-5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
             />
           </div>
 
           {filteredEnrollments.length === 0 ? (
-            <div className="text-center py-12 border border-slate-200 border-dashed rounded-xl bg-slate-50">
-              <p className="text-slate-500">No se encontraron cursos que coincidan con tu búsqueda.</p>
+            <div className="text-center py-12 border border-slate-200 dark:border-slate-800 border-dashed rounded-xl bg-slate-50 dark:bg-slate-900">
+              <p className="text-slate-500 dark:text-slate-400">No se encontraron cursos que coincidan con tu búsqueda.</p>
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredEnrollments.map((enrollment) => (
-                <div key={enrollment.id_contexto} className="flex flex-col bg-white border border-slate-200 rounded-2xl hover:border-indigo-300 hover:shadow-md transition-all duration-200 overflow-hidden">
+                <div key={enrollment.id_contexto} className="flex flex-col bg-white dark:bg-[#131A2C] border border-slate-200 dark:border-slate-800 rounded-2xl hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all duration-200 overflow-hidden">
                   <div className="p-6 flex-1">
                     <div className="flex justify-between items-start mb-4">
-                      <span className="text-xs font-semibold tracking-wider text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md">
+                      <span className="text-xs font-semibold tracking-wider text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 px-2.5 py-1 rounded-md border border-transparent dark:border-slate-800">
                         {enrollment.codigo_curso || 'N/A'}
                       </span>
                       {/* Estado Sílabo Badge */}
                       {enrollment.silabo_validado ? (
-                         <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100/50">
+                         <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-955/20 px-2.5 py-1 rounded-md border border-emerald-100/50 dark:border-emerald-900/30">
                            <CheckCircle2 className="w-3.5 h-3.5" /> Sílabo validado
                          </span>
                       ) : (
-                         <span className="flex items-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-100/50">
+                         <span className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-955/20 px-2.5 py-1 rounded-md border border-amber-105/50 dark:border-amber-900/30">
                            <CircleDashed className="w-3.5 h-3.5" /> Sílabo pendiente
                          </span>
                       )}
                     </div>
                     
-                    <h3 className="text-lg font-bold text-slate-800 mb-2 leading-tight">
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2 leading-tight">
                       {enrollment.curso}
                     </h3>
-                    <p className="text-sm text-slate-500 mb-4 font-medium">{enrollment.periodo}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 font-medium">{enrollment.periodo}</p>
                     
                     {/* Estado Verificación Opcional */}
                     {enrollment.estado_verificacion && enrollment.estado_verificacion !== 'APROBADO' && enrollment.estado_verificacion !== 'OFICIAL' && (
-                      <div className="mt-4 pt-4 border-t border-slate-100">
+                      <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                         <span className={`text-xs px-2.5 py-1 rounded-md font-medium border ${
                           enrollment.estado_verificacion === 'PENDIENTE_CONFIRMACION' 
-                            ? 'bg-slate-50 text-slate-600 border-slate-200' 
-                            : 'bg-red-50 text-red-700 border-red-100'
+                            ? 'bg-slate-50 dark:bg-slate-905 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800' 
+                            : 'bg-red-50 dark:bg-red-955/20 text-red-700 dark:text-red-400 border-red-100 dark:border-red-900/30'
                         }`}>
                           Estado matrícula: {enrollment.estado_verificacion?.replace(/_/g, ' ') || 'Sin estado'}
                         </span>
@@ -151,21 +151,21 @@ const MyCoursesPage = () => {
                     )}
                     
                     {/* Visualización de notas */}
-                    <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
-                      <div className="flex gap-2 text-xs font-medium text-slate-600">
-                        <span className="bg-slate-50 px-2 py-1 rounded border border-slate-100">PU1: {enrollment.notas?.pu1 ?? '-'}</span>
-                        <span className="bg-slate-50 px-2 py-1 rounded border border-slate-100">PU2: {enrollment.notas?.pu2 ?? '-'}</span>
-                        <span className="bg-slate-50 px-2 py-1 rounded border border-slate-100">PU3: {enrollment.notas?.pu3 ?? '-'}</span>
+                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                      <div className="flex gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
+                        <span className="bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded border border-slate-100 dark:border-slate-800">PU1: {enrollment.notas?.pu1 ?? '-'}</span>
+                        <span className="bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded border border-slate-100 dark:border-slate-800">PU2: {enrollment.notas?.pu2 ?? '-'}</span>
+                        <span className="bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded border border-slate-100 dark:border-slate-800">PU3: {enrollment.notas?.pu3 ?? '-'}</span>
                       </div>
                       {enrollment.notas?.nota_final != null && (
-                        <span className="bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded border border-indigo-100 text-xs">
+                        <span className="bg-indigo-50 dark:bg-indigo-955/20 text-indigo-700 dark:text-indigo-400 font-bold px-2 py-1 rounded border border-indigo-100 dark:border-indigo-900/30 text-xs">
                           FINAL: {enrollment.notas.nota_final}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <div className="p-4 bg-slate-50 border-t border-slate-100 flex flex-col gap-2">
+                  <div className="p-4 bg-slate-50/50 dark:bg-slate-900/30 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-2">
                     <Link to={`/chat?contexto=${enrollment.id_contexto}`}>
                       <Button className="w-full flex items-center justify-center gap-2 py-2">
                         <MessageSquare className="w-4 h-4" /> Consultar Asistente
@@ -178,7 +178,7 @@ const MyCoursesPage = () => {
                         </Button>
                       </Link>
                     )}
-                    <Button variant="outline" onClick={() => handleOpenModal(enrollment)} className="w-full py-2 flex items-center justify-center gap-2">
+                    <Button variant="outline" onClick={() => handleOpenModal(enrollment)} className="w-full py-2 flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border border-slate-205 dark:border-slate-800 text-slate-705 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                       <Edit3 className="w-4 h-4" /> Ingresar Notas
                     </Button>
                   </div>
@@ -192,53 +192,53 @@ const MyCoursesPage = () => {
       {/* Modal para ingresar notas */}
       <AnimatePresence>
         {modalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 dark:bg-black/60 backdrop-blur-sm p-4">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 relative overflow-hidden"
+              className="bg-white dark:bg-[#131A2C] border border-transparent dark:border-slate-800 rounded-2xl shadow-xl max-w-sm w-full p-6 relative overflow-hidden"
             >
-              <h3 className="text-xl font-bold text-slate-800 mb-2">Ingresar Notas</h3>
-              <p className="text-slate-600 text-sm mb-6">
+              <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Ingresar Notas</h3>
+              <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">
                 Ingresa tus notas (PU1, PU2, PU3 y Nota Final) para este curso. El asistente usará estos datos para simular promedios.
               </p>
               
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">PU1</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-350 mb-1">PU1</label>
                   <input 
                     type="number" step="0.1" min="0" max="20"
                     value={notasForm.pu1} 
                     onChange={(e) => setNotasForm({...notasForm, pu1: e.target.value})}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">PU2</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-355 mb-1">PU2</label>
                   <input 
                     type="number" step="0.1" min="0" max="20"
                     value={notasForm.pu2} 
                     onChange={(e) => setNotasForm({...notasForm, pu2: e.target.value})}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">PU3</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-355 mb-1">PU3</label>
                   <input 
                     type="number" step="0.1" min="0" max="20"
                     value={notasForm.pu3} 
                     onChange={(e) => setNotasForm({...notasForm, pu3: e.target.value})}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Nota Final</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-355 mb-1">Nota Final</label>
                   <input 
                     type="number" step="0.1" min="0" max="20"
                     value={notasForm.nota_final} 
                     onChange={(e) => setNotasForm({...notasForm, nota_final: e.target.value})}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
               </div>
@@ -252,7 +252,7 @@ const MyCoursesPage = () => {
                 </button>
                 <button 
                   onClick={() => setModalOpen(false)}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-4 rounded-lg transition-colors"
+                  className="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium py-2 px-4 rounded-lg transition-colors"
                 >
                   Cancelar
                 </button>

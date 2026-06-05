@@ -44,17 +44,17 @@ const SyllabusChunksList = () => {
           {loading ? (
             <LoadingSpinner />
           ) : chunks.length === 0 ? (
-            <p className="text-gray-500">No hay chunks generados para este sílabo.</p>
+            <p className="text-gray-500 dark:text-slate-400 text-sm">No hay chunks generados para este sílabo.</p>
           ) : (
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {chunks.map((chunk, idx) => (
-                <div key={chunk.id || idx} className="border-l-4 border-blue-300 pl-3 text-sm">
-                  <div className="text-xs text-gray-500 mb-1">
+                <div key={chunk.id || idx} className="border-l-4 border-blue-300 dark:border-blue-750 pl-3 text-sm">
+                  <div className="text-xs text-gray-500 dark:text-slate-400 mb-1">
                     <span className="font-medium">Sección:</span> {chunk.tipo_seccion || 'general'} |
                     <span className="font-medium ml-2">Unidad:</span> {chunk.unidad || '-'}
                   </div>
-                  <p className="text-gray-700">{chunk.chunk_texto.substring(0, 300)}...</p>
-                  <div className="text-xs text-gray-400 mt-1">
+                  <p className="text-gray-700 dark:text-slate-300 leading-relaxed">{chunk.chunk_texto.substring(0, 300)}...</p>
+                  <div className="text-xs text-gray-400 dark:text-slate-550 mt-1">
                     Embedding dimension: {chunk.embedding?.length || 0}
                   </div>
                 </div>

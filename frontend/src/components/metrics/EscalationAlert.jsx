@@ -14,13 +14,13 @@ const EscalationAlert = ({ escalations = [], onDismiss, onViewDetails }) => {
   };
 
   return (
-    <div className="bg-orange-50 border-l-4 border-orange-500 rounded-r-lg p-4 mb-4 shadow-sm">
+    <div className="bg-orange-50 dark:bg-orange-950/20 border-l-4 border-orange-500 dark:border-orange-600 rounded-r-lg p-4 mb-4 shadow-sm transition-colors duration-200">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
           <span className="text-2xl">⚠️</span>
           <div>
-            <h4 className="font-semibold text-orange-800">Escalamiento a tutoría</h4>
-            <p className="text-sm text-orange-700">
+            <h4 className="font-semibold text-orange-800 dark:text-orange-200">Escalamiento a tutoría</h4>
+            <p className="text-sm text-orange-700 dark:text-orange-300">
               {escalations.length} incidente{escalations.length !== 1 ? 's' : ''} ha{escalations.length === 1 ? '' : 'n'} sido escalado{escalations.length === 1 ? '' : 's'} a nivel 2.
               {escalations.length > 0 && ` Revisa el más reciente: ${escalations[0].recomendacion || 'Se requiere atención docente'}`}
             </p>

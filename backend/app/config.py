@@ -29,6 +29,7 @@ class Config:
     
     DATABASE_URL = _normalize_database_url(os.getenv("DATABASE_URL"))
     SECRET_KEY = os.getenv("SECRET_KEY")
+    ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")

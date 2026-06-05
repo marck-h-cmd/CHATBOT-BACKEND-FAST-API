@@ -14,9 +14,9 @@ const Button = ({
   
   const variants = {
     primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500 shadow-sm hover:shadow-md active:transform active:scale-[0.98]',
-    secondary: 'bg-slate-800 text-white hover:bg-slate-900 focus:ring-slate-800 shadow-sm hover:shadow-md active:transform active:scale-[0.98]',
+    secondary: 'bg-slate-800 dark:bg-slate-700 text-white hover:bg-slate-900 dark:hover:bg-slate-600 focus:ring-slate-800 dark:focus:ring-slate-700 shadow-sm hover:shadow-md active:transform active:scale-[0.98]',
     danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-sm hover:shadow-md active:transform active:scale-[0.98]',
-    outline: 'border-2 border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50 focus:ring-slate-200',
+    outline: 'border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 focus:ring-indigo-500 dark:focus:ring-slate-700',
   };
 
   const sizes = {

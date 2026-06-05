@@ -20,7 +20,7 @@ security = HTTPBearer()
 class SecurityService:
     SECRET_KEY = Config.SECRET_KEY
     ALGORITHM = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 horas
+    ACCESS_TOKEN_EXPIRE_MINUTES = 30  # 30 minutos
     REFRESH_TOKEN_EXPIRE_DAYS = 7  # 7 días
     
     @staticmethod

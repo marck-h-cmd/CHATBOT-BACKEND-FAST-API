@@ -43,7 +43,7 @@ import NotFoundPage from '../pages/NotFoundPage';
 
 // Layout wrapper para páginas con navegación (todas excepto auth)
 const AppLayout = ({ children }) => (
-  <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
+  <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
     <Navbar />
     <main className="flex-1 relative">
       {children}
@@ -53,7 +53,7 @@ const AppLayout = ({ children }) => (
 );
 
 const ChatLayout = ({ children }) => (
-  <div className="h-[100dvh] flex flex-col bg-slate-50 overflow-hidden font-sans">
+  <div className="h-[100dvh] flex flex-col bg-slate-50 dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 overflow-hidden font-sans transition-colors duration-200">
     <Navbar />
     <main className="flex-1 min-h-0 overflow-hidden">
       {children}

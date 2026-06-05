@@ -149,63 +149,63 @@ const CourseManagementPage = () => {
 
   const StatCard = ({ icon: Icon, value, label, tone }) => {
     const toneMap = {
-      blue: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-100' },
-      emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100' },
-      violet: { bg: 'bg-violet-50', text: 'text-violet-600', border: 'border-violet-100' },
-      amber: { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-100' },
+      blue: { bg: 'bg-blue-50 dark:bg-blue-950/20', text: 'text-blue-600 dark:text-blue-400', border: 'border-blue-100 dark:border-blue-900/30' },
+      emerald: { bg: 'bg-emerald-50 dark:bg-emerald-950/20', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-100 dark:border-emerald-900/30' },
+      violet: { bg: 'bg-violet-50 dark:bg-violet-950/20', text: 'text-violet-600 dark:text-violet-400', border: 'border-violet-100 dark:border-violet-900/30' },
+      amber: { bg: 'bg-amber-50 dark:bg-amber-950/20', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-100 dark:border-amber-900/30' },
     };
     const t = toneMap[tone] || toneMap.blue;
     return (
-      <div className={`bg-white border ${t.border} rounded-xl p-4 flex items-center gap-3`}>
+      <div className={`bg-white dark:bg-[#131A2C] border ${t.border} rounded-xl p-4 flex items-center gap-3 transition-colors duration-200`}>
         <div className={`w-10 h-10 rounded-lg ${t.bg} flex items-center justify-center shrink-0`}>
           <Icon className={`w-5 h-5 ${t.text}`} />
         </div>
         <div>
-          <p className="text-xl font-bold text-slate-900">{value}</p>
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{label}</p>
+          <p className="text-xl font-bold text-slate-900 dark:text-white">{value}</p>
+          <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</p>
         </div>
       </div>
     );
   };
 
   const CourseCard = ({ course }) => (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-card-hover hover:border-slate-300 transition-all group flex flex-col">
+    <div className="bg-white dark:bg-[#131A2C] border border-slate-200 dark:border-slate-800 rounded-xl p-5 hover:shadow-card-hover hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 group flex flex-col">
       <div className="flex items-start justify-between mb-3">
-        <span className="font-mono text-[11px] font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200">
+        <span className="font-mono text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-655 dark:text-slate-400 px-2 py-1 rounded border border-slate-200 dark:border-slate-700">
           {course.codigo_curso}
         </span>
         <div className="flex items-center gap-1">
           <button
             onClick={() => handleEdit(course)}
-            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition-colors"
             title="Editar"
           >
             <Edit2 className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => handleDelete(course.id_curso)}
-            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
             title="Eliminar"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
-      <h3 className="text-sm font-bold text-slate-900 leading-snug mb-1 line-clamp-2 min-h-[2.5rem]">
+      <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-snug mb-1 line-clamp-2 min-h-[2.5rem]">
         {course.nombre_curso}
       </h3>
-      <p className="text-xs text-slate-500 mb-4">{course.escuela}</p>
+      <p className="text-xs text-slate-505 dark:text-slate-400 mb-4">{course.escuela}</p>
       <div className="mt-auto flex items-center gap-2 flex-wrap">
-        <span className="text-[10px] font-semibold bg-blue-50 text-blue-700 px-2 py-1 rounded-md border border-blue-100">
+        <span className="text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 px-2 py-1 rounded-md border border-blue-100 dark:border-blue-900/30">
           {course.ciclo_referencial || 'Sin ciclo'} ciclo
         </span>
-        <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md border border-emerald-100">
+        <span className="text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 px-2 py-1 rounded-md border border-emerald-100 dark:border-emerald-900/30">
           {course.creditos} créd.
         </span>
         <span className={`text-[10px] font-semibold px-2 py-1 rounded-md border ${
           course.estado
-            ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-            : 'bg-slate-100 text-slate-500 border-slate-200'
+            ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30'
+            : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
         }`}>
           {course.estado ? 'Activo' : 'Inactivo'}
         </span>
@@ -214,20 +214,20 @@ const CourseManagementPage = () => {
   );
 
   const EmptyState = () => (
-    <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
-      <div className="w-14 h-14 bg-slate-50 rounded-xl flex items-center justify-center mx-auto mb-4 border border-slate-100">
-        <AlertCircle className="w-6 h-6 text-slate-400" />
+    <div className="bg-white dark:bg-[#131A2C] border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center transition-colors duration-200">
+      <div className="w-14 h-14 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center mx-auto mb-4 border border-slate-100 dark:border-slate-700">
+        <AlertCircle className="w-6 h-6 text-slate-400 dark:text-slate-500" />
       </div>
-      <h3 className="text-base font-bold text-slate-800 mb-1">
+      <h3 className="text-base font-bold text-slate-800 dark:text-white mb-1">
         {hasActiveFilters ? 'Sin resultados para los filtros aplicados' : 'No hay cursos registrados'}
       </h3>
-      <p className="text-sm text-slate-500 mb-4 max-w-sm mx-auto">
+      <p className="text-sm text-slate-505 dark:text-slate-400 mb-4 max-w-sm mx-auto">
         {hasActiveFilters
           ? 'Prueba ajustando los filtros de búsqueda para encontrar lo que buscas.'
           : 'Comienza agregando el primer curso al catálogo académico.'}
       </p>
       {hasActiveFilters ? (
-        <button onClick={clearFilters} className="text-sm font-semibold text-blue-600 hover:text-blue-700">
+        <button onClick={clearFilters} className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
           Limpiar filtros
         </button>
       ) : (
@@ -251,11 +251,11 @@ const CourseManagementPage = () => {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
             <BookMarked className="w-7 h-7 text-blue-600" />
             Catálogo Académico
           </h1>
-          <p className="text-sm text-slate-500 mt-1.5 max-w-lg">
+          <p className="text-sm text-slate-505 dark:text-slate-400 mt-1.5 max-w-lg">
             Gestiona el plan de estudios, asigna créditos y organiza los cursos por ciclo y escuela.
           </p>
         </div>
@@ -276,7 +276,7 @@ const CourseManagementPage = () => {
       </div>
 
       {/* Toolbar */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-card">
+      <div className="bg-white dark:bg-[#131A2C] border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-card transition-colors duration-200">
         <div className="flex flex-col lg:flex-row gap-3 justify-between">
           {/* Search */}
           <div className="relative flex-1 min-w-0">
@@ -286,7 +286,7 @@ const CourseManagementPage = () => {
               placeholder="Buscar por código o nombre de curso..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm font-medium text-slate-800 placeholder:text-slate-400"
+              className="w-full pl-9 pr-4 py-2.5 border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm font-medium text-slate-800 dark:text-slate-105 placeholder:text-slate-405 dark:placeholder:text-slate-500"
             />
           </div>
 
@@ -297,7 +297,7 @@ const CourseManagementPage = () => {
               <select
                 value={filterEscuela}
                 onChange={(e) => setFilterEscuela(e.target.value)}
-                className="pl-8 pr-7 py-2.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm font-medium text-slate-700 appearance-none min-w-[180px]"
+                className="pl-8 pr-7 py-2.5 border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm font-medium text-slate-705 dark:text-slate-300 appearance-none min-w-[180px]"
               >
                 <option value="all">Todas las escuelas</option>
                 {escuelas.map(esc => (
@@ -310,7 +310,7 @@ const CourseManagementPage = () => {
               <select
                 value={filterCiclo}
                 onChange={(e) => setFilterCiclo(e.target.value)}
-                className="pl-8 pr-7 py-2.5 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm font-medium text-slate-700 appearance-none min-w-[150px]"
+                className="pl-8 pr-7 py-2.5 border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm font-medium text-slate-705 dark:text-slate-300 appearance-none min-w-[150px]"
               >
                 <option value="all">Todos los ciclos</option>
                 {ciclosDisponibles.map(c => (
@@ -320,17 +320,17 @@ const CourseManagementPage = () => {
             </div>
 
             {/* View toggle */}
-            <div className="flex items-center bg-slate-100 rounded-lg p-1">
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                 title="Vista de tarjetas"
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                 title="Vista de lista"
               >
                 <List className="w-4 h-4" />
@@ -341,24 +341,24 @@ const CourseManagementPage = () => {
 
         {/* Active filters */}
         {hasActiveFilters && (
-          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 flex-wrap">
-            <span className="text-xs font-medium text-slate-500">Filtros activos:</span>
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex-wrap">
+            <span className="text-xs font-medium text-slate-505 dark:text-slate-400">Filtros activos:</span>
             {searchTerm && (
-              <span className="inline-flex items-center gap-1 text-xs font-medium bg-blue-50 text-blue-700 px-2 py-1 rounded-md border border-blue-100">
+              <span className="inline-flex items-center gap-1 text-xs font-medium bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 px-2 py-1 rounded-md border border-blue-100 dark:border-blue-900/30">
                 Buscar: "{searchTerm}" <button onClick={() => setSearchTerm('')}><X className="w-3 h-3" /></button>
               </span>
             )}
             {filterEscuela !== 'all' && (
-              <span className="inline-flex items-center gap-1 text-xs font-medium bg-violet-50 text-violet-700 px-2 py-1 rounded-md border border-violet-100">
+              <span className="inline-flex items-center gap-1 text-xs font-medium bg-violet-50 dark:bg-violet-950/20 text-violet-707 dark:text-violet-400 px-2 py-1 rounded-md border border-violet-100 dark:border-violet-900/30">
                 {filterEscuela} <button onClick={() => setFilterEscuela('all')}><X className="w-3 h-3" /></button>
               </span>
             )}
             {filterCiclo !== 'all' && (
-              <span className="inline-flex items-center gap-1 text-xs font-medium bg-amber-50 text-amber-700 px-2 py-1 rounded-md border border-amber-100">
+              <span className="inline-flex items-center gap-1 text-xs font-medium bg-amber-50 dark:bg-amber-950/20 text-amber-707 dark:text-amber-400 px-2 py-1 rounded-md border border-amber-100 dark:border-amber-900/30">
                 {filterCiclo} Ciclo <button onClick={() => setFilterCiclo('all')}><X className="w-3 h-3" /></button>
               </span>
             )}
-            <button onClick={clearFilters} className="text-xs font-semibold text-slate-500 hover:text-slate-700 ml-auto">
+            <button onClick={clearFilters} className="text-xs font-semibold text-slate-505 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 ml-auto">
               Limpiar todo
             </button>
           </div>
@@ -367,9 +367,9 @@ const CourseManagementPage = () => {
 
       {/* Results count */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">
-          Mostrando <span className="font-bold text-slate-900">{paginatedCourses.length}</span> de{' '}
-          <span className="font-bold text-slate-900">{filteredCourses.length}</span> cursos
+        <p className="text-sm text-slate-505 dark:text-slate-400">
+          Mostrando <span className="font-bold text-slate-900 dark:text-white">{paginatedCourses.length}</span> de{' '}
+          <span className="font-bold text-slate-900 dark:text-white">{filteredCourses.length}</span> cursos
         </p>
       </div>
 
@@ -383,45 +383,45 @@ const CourseManagementPage = () => {
           ))}
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
+        <div className="bg-white dark:bg-[#131A2C] border border-slate-200 dark:border-slate-800 rounded-xl shadow-card overflow-hidden transition-colors duration-200">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Código</th>
-                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Asignatura</th>
-                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Ciclo</th>
-                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Créd.</th>
-                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Escuela</th>
-                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Estado</th>
-                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Acciones</th>
+                <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800">
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-505 dark:text-slate-400 uppercase tracking-wider">Código</th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-505 dark:text-slate-400 uppercase tracking-wider">Asignatura</th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-505 dark:text-slate-400 uppercase tracking-wider">Ciclo</th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-505 dark:text-slate-400 uppercase tracking-wider">Créd.</th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-505 dark:text-slate-400 uppercase tracking-wider">Escuela</th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-505 dark:text-slate-400 uppercase tracking-wider">Estado</th>
+                  <th className="px-5 py-3.5 text-[11px] font-bold text-slate-505 dark:text-slate-400 uppercase tracking-wider text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {paginatedCourses.map(course => (
-                  <tr key={course.id_curso} className="hover:bg-slate-50/60 transition-colors">
+                  <tr key={course.id_curso} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
                     <td className="px-5 py-3.5">
-                      <span className="font-mono text-[11px] font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200">
+                      <span className="font-mono text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-655 dark:text-slate-400 px-2 py-1 rounded border border-slate-200 dark:border-slate-700">
                         {course.codigo_curso}
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <p className="text-sm font-semibold text-slate-800">{course.nombre_curso}</p>
+                      <p className="text-sm font-semibold text-slate-808 dark:text-slate-200">{course.nombre_curso}</p>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="text-xs font-medium text-slate-600">{course.ciclo_referencial || '-'}</span>
+                      <span className="text-xs font-medium text-slate-605 dark:text-slate-400">{course.ciclo_referencial || '-'}</span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="text-xs font-medium text-slate-600">{course.creditos}</span>
+                      <span className="text-xs font-medium text-slate-605 dark:text-slate-400">{course.creditos}</span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="text-xs text-slate-600">{course.escuela}</span>
+                      <span className="text-xs text-slate-605 dark:text-slate-400">{course.escuela}</span>
                     </td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-flex text-[10px] font-bold px-2 py-1 rounded-md border ${
                         course.estado
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                          : 'bg-slate-100 text-slate-500 border-slate-200'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-505 dark:text-slate-400 border-slate-200 dark:border-slate-700'
                       }`}>
                         {course.estado ? 'Activo' : 'Inactivo'}
                       </span>
@@ -429,14 +429,14 @@ const CourseManagementPage = () => {
                     <td className="px-5 py-3.5 text-right space-x-1">
                       <button
                         onClick={() => handleEdit(course)}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition-colors"
                         title="Editar"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => handleDelete(course.id_curso)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
                         title="Eliminar"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -453,14 +453,14 @@ const CourseManagementPage = () => {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-505 dark:text-slate-400">
             Página {currentPage} de {totalPages}
           </p>
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-605 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -470,8 +470,8 @@ const CourseManagementPage = () => {
                 onClick={() => setCurrentPage(page)}
                 className={`w-9 h-9 rounded-lg text-sm font-semibold transition-colors ${
                   currentPage === page
-                    ? 'bg-blue-600 text-white'
-                    : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                    ? 'bg-blue-655 dark:bg-blue-500 text-white'
+                    : 'border border-slate-200 dark:border-slate-800 text-slate-605 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                 }`}
               >
                 {page}
@@ -480,7 +480,7 @@ const CourseManagementPage = () => {
             <button
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-605 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -492,36 +492,36 @@ const CourseManagementPage = () => {
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingCourse ? 'Editar Curso' : 'Registrar Nuevo Curso'}>
         <form onSubmit={editingCourse ? handleUpdate : handleCreate} className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Código del Curso</label>
+            <label className="block text-sm font-semibold text-slate-705 dark:text-slate-300 mb-1.5">Código del Curso</label>
             <input
               type="text"
               value={formData.codigo_curso}
               onChange={(e) => setFormData({...formData, codigo_curso: e.target.value.toUpperCase()})}
-              className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-sm bg-white"
+              className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
               required
               disabled={editingCourse}
               placeholder="Ej. EE-101"
             />
-            {editingCourse && <p className="text-xs text-slate-500 mt-1">El código no se puede modificar una vez creado.</p>}
+            {editingCourse && <p className="text-xs text-slate-505 dark:text-slate-400 mt-1">El código no se puede modificar una vez creado.</p>}
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nombre de la Asignatura</label>
+            <label className="block text-sm font-semibold text-slate-705 dark:text-slate-300 mb-1.5">Nombre de la Asignatura</label>
             <input
               type="text"
               value={formData.nombre_curso}
               onChange={(e) => setFormData({...formData, nombre_curso: e.target.value})}
-              className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white"
+              className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
               required
               placeholder="Nombre completo del curso"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Ciclo Referencial</label>
+              <label className="block text-sm font-semibold text-slate-705 dark:text-slate-300 mb-1.5">Ciclo Referencial</label>
               <select
                 value={formData.ciclo_referencial}
                 onChange={(e) => setFormData({...formData, ciclo_referencial: e.target.value})}
-                className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white appearance-none"
+                className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white appearance-none"
               >
                 <option value="">Seleccionar...</option>
                 {CICLOS_ORDEN.map(c => (
@@ -530,25 +530,25 @@ const CourseManagementPage = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Créditos</label>
+              <label className="block text-sm font-semibold text-slate-705 dark:text-slate-300 mb-1.5">Créditos</label>
               <input
                 type="number"
                 min="1"
                 max="10"
                 value={formData.creditos}
                 onChange={(e) => setFormData({...formData, creditos: parseInt(e.target.value)})}
-                className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white"
+                className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                 required
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Escuela / Facultad</label>
+            <label className="block text-sm font-semibold text-slate-705 dark:text-slate-300 mb-1.5">Escuela / Facultad</label>
             <input
               type="text"
               value={formData.escuela}
               onChange={(e) => setFormData({...formData, escuela: e.target.value})}
-              className="w-full border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white"
+              className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
               required
               placeholder="Ej. Ingeniería de Sistemas"
             />
@@ -561,12 +561,12 @@ const CourseManagementPage = () => {
                 checked={formData.estado}
                 onChange={(e) => setFormData({...formData, estado: e.target.checked})}
               />
-              <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-              <span className="ml-3 text-sm font-medium text-slate-700">Curso Activo</span>
+              <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 dark:after:border-slate-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-655"></div>
+              <span className="ml-3 text-sm font-medium text-slate-705 dark:text-slate-300">Curso Activo</span>
             </label>
           </div>
 
-          <div className="flex justify-end gap-3 pt-5 border-t border-slate-100">
+          <div className="flex justify-end gap-3 pt-5 border-t border-slate-100 dark:border-slate-800">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} className="text-sm">
               Cancelar
             </Button>

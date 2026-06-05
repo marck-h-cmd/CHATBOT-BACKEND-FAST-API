@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { LayoutDashboard, BookMarked, CalendarDays, FileText, Search, Ticket, AlertTriangle, BarChart3, Menu, LogOut, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, BookMarked, CalendarDays, FileText, Search, Ticket, AlertTriangle, BarChart3, Menu, LogOut, ShieldAlert, ShieldCheck, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const AdminDashboardPage = () => {
   const { user, logout } = useAuth();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
@@ -28,11 +30,11 @@ const AdminDashboardPage = () => {
 
   if (!user || (user?.rol && user.rol.toLowerCase() !== 'admin')) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center p-8 bg-white border border-slate-200 rounded-2xl shadow-sm max-w-sm w-full">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0B0F19] transition-colors duration-200">
+        <div className="text-center p-8 bg-white dark:bg-[#131A2C] border border-slate-200 dark:border-slate-800 shadow-sm max-w-sm w-full">
           <ShieldAlert className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Acceso Denegado</h2>
-          <p className="text-slate-500 mb-6">Solo personal autorizado puede acceder al panel de administración.</p>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Acceso Denegado</h2>
+          <p className="text-slate-500 dark:text-slate-400 mb-6">Solo personal autorizado puede acceder al panel de administración.</p>
           <Link to="/dashboard" className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors w-full inline-block">
             Volver al Inicio
           </Link>
@@ -42,12 +44,12 @@ const AdminDashboardPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex bg-slate-50 relative overflow-hidden font-sans">
+    <div className="min-h-screen flex bg-slate-50 dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 relative overflow-hidden font-sans transition-colors duration-200">
 
       {/* Mobile Backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-[#0B0F19]/40 z-40 md:hidden backdrop-blur-sm transition-opacity"
+          className="fixed inset-0 bg-[#0B0F19]/45 z-40 md:hidden backdrop-blur-sm transition-opacity"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -114,25 +116,35 @@ const AdminDashboardPage = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
         {/* Top Bar */}
-        <header className="bg-white/80 backdrop-blur-md border-b border-slate-100 h-16 shrink-0 flex items-center justify-between px-4 sm:px-6 z-10">
+        <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-800/80 h-16 shrink-0 flex items-center justify-between px-4 sm:px-6 z-10 transition-colors duration-200">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 -ml-2 text-slate-500 hover:text-[#0B0F19] hover:bg-slate-100 rounded-xl transition-colors"
+              className="p-2 -ml-2 text-slate-500 dark:text-slate-400 hover:text-[#0B0F19] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
             >
               <Menu className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-2.5">
-               <span className="font-bold text-[#0B0F19] text-sm hidden sm:block tracking-tight">Panel de Administración</span>
+               <span className="font-bold text-[#0B0F19] dark:text-white text-sm hidden sm:block tracking-tight">Panel de Administración</span>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Botón de cambio de tema */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200"
+              title="Cambiar tema"
+            >
+              {resolvedTheme === 'dark' ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
+            </button>
+
             <div className="flex flex-col items-end mr-1">
-              <span className="text-sm font-bold text-[#0B0F19] leading-tight">
+              <span className="text-sm font-bold text-[#0B0F19] dark:text-white leading-tight">
                 {user?.nombres?.split(' ')[0] || 'Administrador'}
               </span>
-              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider hidden sm:block">
+              <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider hidden sm:block">
                 Administrador
               </span>
             </div>
@@ -143,7 +155,7 @@ const AdminDashboardPage = () => {
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 bg-slate-50 relative">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 bg-slate-50 dark:bg-[#0B0F19] relative transition-colors duration-200">
           <div className="max-w-7xl mx-auto w-full">
             <Outlet />
           </div>

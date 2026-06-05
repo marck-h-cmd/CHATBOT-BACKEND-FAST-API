@@ -9,13 +9,13 @@ const LoadingSpinner = ({ size = 'md', fullScreen = false }) => {
 
   const spinner = (
     <div className="flex justify-center items-center">
-      <div className={`${sizes[size]} border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin`}></div>
+      <div className={`${sizes[size]} border-4 border-blue-200 dark:border-blue-900/50 border-t-blue-600 dark:border-t-blue-500 rounded-full animate-spin`}></div>
     </div>
   );
 
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-white bg-opacity-75 z-50">
+      <div className="fixed inset-0 flex items-center justify-center bg-white/75 dark:bg-[#0B0F19]/75 z-50 transition-colors duration-200">
         {spinner}
       </div>
     );

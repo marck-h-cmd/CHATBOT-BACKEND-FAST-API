@@ -9,7 +9,7 @@ const IncidentList = ({ incidents, onRefresh, loading = false }) => {
   if (!incidents || incidents.length === 0) {
     return (
       <Card title="Incidentes académicos">
-        <p className="text-gray-500 text-center py-4">No hay incidentes registrados.</p>
+        <p className="text-slate-500 dark:text-slate-400 text-center py-4">No hay incidentes registrados.</p>
       </Card>
     );
   }
@@ -22,10 +22,10 @@ const IncidentList = ({ incidents, onRefresh, loading = false }) => {
 
   const getSeverityColor = (severity) => {
     switch (severity) {
-      case 'MUY_ALTO': return 'bg-red-100 text-red-800 border-red-200';
-      case 'ALTO': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'MEDIO': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'MUY_ALTO': return 'bg-red-100 dark:bg-red-950/20 text-red-800 dark:text-red-300 border-red-200 dark:border-red-900/50';
+      case 'ALTO': return 'bg-orange-100 dark:bg-orange-950/20 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-900/50';
+      case 'MEDIO': return 'bg-yellow-100 dark:bg-yellow-950/20 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-900/50';
+      default: return 'bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-200 border-gray-200 dark:border-slate-700';
     }
   };
 
@@ -89,19 +89,19 @@ const IncidentList = ({ incidents, onRefresh, loading = false }) => {
               <span className="font-medium">Recomendación:</span> {inc.recomendacion || 'Consultar con tutoría'}
             </div>
             <div className="mt-2 flex justify-between items-center">
-              <span className="text-xs px-2 py-0.5 bg-white bg-opacity-50 rounded-full">
+              <span className="text-xs px-2 py-0.5 bg-white dark:bg-slate-900/60 bg-opacity-50 dark:bg-opacity-100 rounded-full border border-black/5 dark:border-white/5">
                 Severidad: {getSeverityText(inc.severidad)}
               </span>
               {inc.resuelto ? (
-                <span className="text-xs text-green-700">✓ Resuelto</span>
+                <span className="text-xs text-green-700 dark:text-green-400 font-semibold">✓ Resuelto</span>
               ) : (
-                <span className="text-xs text-red-700">⚠️ Activo</span>
+                <span className="text-xs text-red-700 dark:text-red-400 font-semibold">⚠️ Activo</span>
               )}
             </div>
           </div>
         ))}
         {filteredIncidents.length === 0 && (
-          <p className="text-gray-500 text-center py-4">No hay incidentes con este filtro.</p>
+          <p className="text-slate-500 dark:text-slate-400 text-center py-4">No hay incidentes con este filtro.</p>
         )}
       </div>
     </Card>

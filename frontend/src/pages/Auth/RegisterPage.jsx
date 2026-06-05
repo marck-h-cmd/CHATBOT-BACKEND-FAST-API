@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Mail, Lock, User, Hash, AlertCircle, ArrowLeft, ArrowRight, BookOpen, Shield, MessageSquare } from 'lucide-react';
+import { Mail, Lock, User, Hash, AlertCircle, ArrowLeft, ArrowRight, BookOpen, Shield, MessageSquare, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { isValidUniversityEmail, isValidUniversityCode, isValidPassword, isValidName } from '../../utils/validators';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -18,6 +19,7 @@ const RegisterPage = () => {
   const [touched, setTouched] = useState({});
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const validateField = (name, value) => {
@@ -102,7 +104,7 @@ const RegisterPage = () => {
   };
 
   const getInputClass = (name) => {
-    const baseClass = "w-full px-3.5 py-2.5 bg-white border rounded-xl text-slate-900 text-xs font-semibold placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-1 shadow-sm";
+    const baseClass = "w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-slate-900 dark:text-slate-100 text-xs font-semibold placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:ring-1 shadow-sm";
     if (touched[name]) {
       if (errors[name]) {
         return `${baseClass} border-red-500 focus:border-red-500 focus:ring-red-500`;
@@ -110,11 +112,23 @@ const RegisterPage = () => {
         return `${baseClass} border-emerald-500/80 focus:border-emerald-500 focus:ring-emerald-500`;
       }
     }
-    return `${baseClass} border-slate-200 focus:border-slate-900 focus:ring-slate-900`;
+    return `${baseClass} border-slate-200 dark:border-slate-800 focus:border-slate-900 dark:focus:border-slate-100 focus:ring-slate-900 dark:focus:ring-slate-100`;
   };
 
   return (
-    <div className="min-h-screen lg:h-screen w-screen flex bg-[#FAF9F6] font-['Plus_Jakarta_Sans',sans-serif] lg:overflow-hidden select-none">
+    <div className="min-h-screen lg:h-screen w-screen flex bg-[#FAF9F6] dark:bg-[#0B0F19] font-['Plus_Jakarta_Sans',sans-serif] lg:overflow-hidden select-none relative transition-colors duration-200">
+      
+      {/* Theme Toggle Button */}
+      <div className="absolute top-4 right-4 z-50">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-200 shadow-sm"
+          title="Cambiar tema"
+        >
+          {resolvedTheme === 'dark' ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
+        </button>
+      </div>
       
       {/* LEFT PANEL: Classic Deep Slate Split Branding Panel */}
       <div className="hidden lg:flex lg:w-[42%] bg-[#0B0F19] flex-col justify-between p-10 relative overflow-hidden border-r border-[#1E293B]">
@@ -133,9 +147,7 @@ const RegisterPage = () => {
         {/* Top Brand Logo & Back Button */}
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-md">
-              <BookOpen className="w-5 h-5 text-white" />
-            </div>
+            <img src="/logo.png" alt="Sylia AI Logo" className="h-10 w-auto object-contain" />
             <span className="text-lg font-bold text-white tracking-tight">Sylia AI</span>
           </div>
           <Link to="/login" className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-300 hover:text-white transition-all">
@@ -219,7 +231,7 @@ const RegisterPage = () => {
       </div>
 
       {/* RIGHT PANEL: Classic Clean White Form Column */}
-      <div className="w-full lg:w-[58%] flex items-center justify-center p-6 sm:p-10 relative bg-white overflow-y-auto no-scrollbar">
+      <div className="w-full lg:w-[58%] flex items-center justify-center p-6 sm:p-10 relative bg-white dark:bg-[#0B0F19] overflow-y-auto no-scrollbar transition-colors duration-200">
         
         {/* Centered Minimalist Form Container */}
         <motion.div 
@@ -230,23 +242,21 @@ const RegisterPage = () => {
         >
           {/* Mobile Back Button & Header Logo */}
           <div className="lg:hidden flex items-center justify-between mb-2">
-            <Link to="/login" className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 shadow-sm hover:bg-slate-100 transition-colors">
+            <Link to="/login" className="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 shadow-sm hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors">
               <ArrowLeft className="w-4.5 h-4.5" />
             </Link>
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm">
-                <BookOpen className="w-3.5 h-3.5 text-white" />
-              </div>
-              <span className="text-xs font-extrabold text-slate-900 tracking-tight">Sylia AI</span>
+              <img src="/logo.png" alt="Sylia AI Logo" className="h-7 w-auto object-contain" />
+              <span className="text-xs font-extrabold text-slate-900 dark:text-white tracking-tight">Sylia AI</span>
             </div>
           </div>
 
           {/* Form Header */}
           <div className="space-y-1 text-left">
-            <h2 className="text-2xl lg:text-3xl font-extrabold text-[#0B0F19] tracking-tight">
+            <h2 className="text-2xl lg:text-3xl font-extrabold text-[#0B0F19] dark:text-white tracking-tight">
               Crear cuenta
             </h2>
-            <p className="text-slate-500 text-xs font-semibold leading-relaxed">
+            <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold leading-relaxed">
               Completa tus datos usando tu correo oficial @unitru.edu.pe
             </p>
           </div>
@@ -261,11 +271,11 @@ const RegisterPage = () => {
                 transition={{ type: "spring", stiffness: 350, damping: 30 }}
                 className="overflow-hidden"
               >
-                <div className="p-3.5 rounded-xl bg-red-50/80 border border-red-200 flex items-start gap-2.5">
-                  <AlertCircle className="w-4.5 h-4.5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="p-3.5 rounded-xl bg-red-50/80 dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 flex items-start gap-2.5">
+                  <AlertCircle className="w-4.5 h-4.5 text-red-650 dark:text-red-400 flex-shrink-0 mt-0.5" />
                   <div className="space-y-0.5">
-                    <h4 className="text-[10px] font-bold text-red-950">Error de Registro</h4>
-                    <p className="text-[10px] text-red-700 font-medium leading-relaxed">{errors.general}</p>
+                    <h4 className="text-[10px] font-bold text-red-950 dark:text-red-200">Error de Registro</h4>
+                    <p className="text-[10px] text-red-700 dark:text-red-400 font-medium leading-relaxed">{errors.general}</p>
                   </div>
                 </div>
               </motion.div>
@@ -278,7 +288,7 @@ const RegisterPage = () => {
             {/* Row 1: Nombres y Apellidos */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label htmlFor="nombres" className="block text-[12px] font-bold text-slate-700 tracking-tight">
+                <label htmlFor="nombres" className="block text-[12px] font-bold text-slate-700 dark:text-slate-300 tracking-tight">
                   Nombres
                 </label>
                 <input
@@ -307,7 +317,7 @@ const RegisterPage = () => {
               </div>
 
               <div className="space-y-1">
-                <label htmlFor="apellidos" className="block text-[12px] font-bold text-slate-700 tracking-tight">
+                <label htmlFor="apellidos" className="block text-[12px] font-bold text-slate-700 dark:text-slate-300 tracking-tight">
                   Apellidos
                 </label>
                 <input
@@ -339,7 +349,7 @@ const RegisterPage = () => {
             {/* Row 2: Código Universitario y Correo Institucional */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label htmlFor="codigo_universitario" className="block text-[12px] font-bold text-slate-700 tracking-tight">
+                <label htmlFor="codigo_universitario" className="block text-[12px] font-bold text-slate-700 dark:text-slate-300 tracking-tight">
                   Código Universitario
                 </label>
                 <input
@@ -368,7 +378,7 @@ const RegisterPage = () => {
               </div>
 
               <div className="space-y-1">
-                <label htmlFor="email" className="block text-[12px] font-bold text-slate-700 tracking-tight">
+                <label htmlFor="email" className="block text-[12px] font-bold text-slate-700 dark:text-slate-300 tracking-tight">
                   Correo Institucional
                 </label>
                 <input
@@ -400,7 +410,7 @@ const RegisterPage = () => {
             {/* Row 3: Contraseña y Confirmar Contraseña */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label htmlFor="password" className="block text-[12px] font-bold text-slate-700 tracking-tight">
+                <label htmlFor="password" className="block text-[12px] font-bold text-slate-700 dark:text-slate-300 tracking-tight">
                   Contraseña
                 </label>
                 <input
@@ -429,7 +439,7 @@ const RegisterPage = () => {
               </div>
 
               <div className="space-y-1">
-                <label htmlFor="confirmPassword" className="block text-[12px] font-bold text-slate-700 tracking-tight">
+                <label htmlFor="confirmPassword" className="block text-[12px] font-bold text-slate-700 dark:text-slate-300 tracking-tight">
                   Confirmar Contraseña
                 </label>
                 <input
@@ -461,11 +471,11 @@ const RegisterPage = () => {
             {/* Submit Button */}
             <div className="pt-2">
               <motion.button
-                whileHover={{ scale: 1.012, backgroundColor: "#151C2F" }}
+                whileHover={{ scale: 1.012, backgroundColor: resolvedTheme === 'dark' ? '#1e293b' : '#151C2F' }}
                 whileTap={{ scale: 0.988 }}
                 type="submit"
                 disabled={loading}
-                className="relative w-full py-2.5 bg-[#0B0F19] text-white rounded-xl font-bold text-xs tracking-wide shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center gap-2 group disabled:opacity-75 disabled:cursor-not-allowed overflow-hidden"
+                className="relative w-full py-2.5 bg-[#0B0F19] dark:bg-slate-800 text-white rounded-xl font-bold text-xs tracking-wide shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center gap-2 group disabled:opacity-75 disabled:cursor-not-allowed overflow-hidden"
               >
                 {loading ? (
                   <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -483,10 +493,10 @@ const RegisterPage = () => {
           </form>
 
           {/* Extra Login Redirect */}
-          <div className="text-center pt-2.5 border-t border-slate-100">
-            <p className="text-xs text-slate-500 font-medium">
+          <div className="text-center pt-2.5 border-t border-slate-100 dark:border-slate-800">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
               ¿Ya tienes una cuenta registrada?{' '}
-              <Link to="/login" className="font-bold text-blue-600 hover:text-blue-700 hover:underline transition-colors ml-0.5">
+              <Link to="/login" className="font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline transition-colors ml-0.5">
                 Inicia sesión aquí
               </Link>
             </p>

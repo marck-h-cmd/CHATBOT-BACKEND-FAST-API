@@ -65,6 +65,31 @@ def _generar_y_guardar_chunks(db: Session, silabo_id: int, texto: str, metadata_
     return len(chunks)
 
 
+def _validar_archivo_pdf(archivo: UploadFile):
+    """Valida extensión, MIME type y tamaño del archivo PDF."""
+    from app.config import Config
+    
+    # 1. Validar extensión
+    ext = os.path.splitext(archivo.filename)[1].lower() if archivo.filename else ""
+    if ext != ".pdf":
+        raise HTTPException(status_code=400, detail="Solo se permiten archivos PDF.")
+        
+    # 2. Validar tipo MIME
+    if archivo.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="El tipo de archivo debe ser application/pdf.")
+
+    # 3. Validar tamaño
+    archivo.file.seek(0, 2)
+    size = archivo.file.tell()
+    archivo.file.seek(0)
+    if size > Config.MAX_PDF_SIZE_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"El archivo excede el tamaño máximo permitido de {Config.MAX_PDF_SIZE_MB}MB."
+        )
+
+
+
 @router.post("/upload")
 async def subir_silabo(
     id_curso: int = Form(...),
@@ -85,6 +110,9 @@ async def subir_silabo(
     
     if oficial:
         raise HTTPException(status_code=400, detail="Ya existe un sílabo oficial para este curso y periodo")
+
+    # 1.5 Validar el archivo PDF
+    _validar_archivo_pdf(archivo)
 
     # 2. Procesar PDF
     contenido = await archivo.read()
@@ -663,6 +691,9 @@ async def resolver_incidente_servicio(
     if accion == "REEMPLAZAR_PDF":
         if not archivo:
             raise HTTPException(status_code=400, detail="Debe proporcionar un nuevo archivo PDF")
+            
+        # Validar el nuevo archivo PDF
+        _validar_archivo_pdf(archivo)
             
         contenido = await archivo.read()
         filename = f"{uuid.uuid4()}_{archivo.filename}"
