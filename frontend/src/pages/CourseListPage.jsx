@@ -3,16 +3,48 @@ import { useCourse } from '../contexts/CourseContext';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import Modal from '../components/ui/Modal';
 import { Search, Filter, Calendar, AlertCircle, BookOpen, ChevronRight, Layers } from 'lucide-react';
 
 const CourseListPage = () => {
-  const { courses, loading, getCurrentPeriod } = useCourse();
+  const { courses, enrollments, loading, getCurrentPeriod, enrollInCourse, refreshData } = useCourse();
   const navigate = useNavigate();
   const [filter, setFilter] = React.useState('all');
   const [cycleFilter, setCycleFilter] = React.useState('all');
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [enrollingCycle, setEnrollingCycle] = React.useState(null);
+  const [confirmModalOpen, setConfirmModalOpen] = React.useState(false);
+  const [cycleToEnroll, setCycleToEnroll] = React.useState(null);
+  const [coursesToEnrollList, setCoursesToEnrollList] = React.useState([]);
 
   const currentPeriod = getCurrentPeriod();
+
+  const isEnrolled = (courseId) => {
+    return enrollments.some(e => e.id_curso === courseId && e.id_periodo === currentPeriod?.id_periodo);
+  };
+
+  const handleEnrollCycleClick = (cycle, courses) => {
+    setCycleToEnroll(cycle);
+    setCoursesToEnrollList(courses);
+    setConfirmModalOpen(true);
+  };
+
+  const executeEnrollCycle = async () => {
+    if (!currentPeriod || !cycleToEnroll) return;
+    setEnrollingCycle(cycleToEnroll);
+    try {
+      const promises = coursesToEnrollList.map(course => 
+        enrollInCourse(course.id_curso, currentPeriod.id_periodo)
+      );
+      await Promise.all(promises);
+      await refreshData();
+      setConfirmModalOpen(false);
+    } catch (err) {
+      alert("Ocurrió un error al procesar la inscripción del ciclo.");
+    } finally {
+      setEnrollingCycle(null);
+    }
+  };
 
   // Filtrar cursos
   const filteredCourses = courses.filter(course => {
@@ -130,14 +162,26 @@ const CourseListPage = () => {
             return (
               <div key={cycle} className="scroll-mt-8 bg-white dark:bg-[#131A2C] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden transition-colors duration-200">
                 {/* Cabecera del Ciclo */}
-                <div className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex justify-between items-center">
+                <div className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex justify-between items-center flex-wrap gap-3">
                   <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
                     <Layers className="w-5 h-5 text-indigo-600 dark:text-indigo-400" /> 
                     Ciclo {cycle}
                   </h2>
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider bg-white dark:bg-slate-900 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-800">
-                    {cycleCourses.length} cursos
-                  </span>
+                  <div className="flex items-center gap-3">
+                    {cycle !== 'Sin ciclo' && cycleCourses.some(c => !isEnrolled(c.id_curso)) && (
+                      <Button
+                        size="sm"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-sm text-xs px-3.5 py-1.5 rounded-lg"
+                        onClick={() => handleEnrollCycleClick(cycle, cycleCourses.filter(c => !isEnrolled(c.id_curso)))}
+                        disabled={enrollingCycle === cycle}
+                      >
+                        {enrollingCycle === cycle ? 'Matriculando...' : 'Matricular todo el ciclo'}
+                      </Button>
+                    )}
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800">
+                      {cycleCourses.length} cursos
+                    </span>
+                  </div>
                 </div>
                 
                 {/* Data Table */}
@@ -176,13 +220,20 @@ const CourseListPage = () => {
                             </span>
                           </td>
                           <td className="py-4 px-6 align-middle text-right">
-                            <Button 
-                              size="sm"
-                              className="w-full sm:w-auto shadow-sm"
-                              onClick={() => navigate('/inscripcion', { state: { courseId: course.id_curso } })}
-                            >
-                              Inscribirse
-                            </Button>
+                            {isEnrolled(course.id_curso) ? (
+                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-450 bg-emerald-50 dark:bg-emerald-955/20 px-2.5 py-1.5 rounded-md border border-emerald-100 dark:border-emerald-900/30">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                Inscrito
+                              </span>
+                            ) : (
+                              <Button 
+                                size="sm"
+                                className="w-full sm:w-auto shadow-sm"
+                                onClick={() => navigate('/inscripcion', { state: { courseId: course.id_curso } })}
+                              >
+                                Inscribirse
+                              </Button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -204,6 +255,42 @@ const CourseListPage = () => {
           )}
         </div>
       )}
+      <Modal
+        isOpen={confirmModalOpen}
+        onClose={() => setConfirmModalOpen(false)}
+        title="Confirmar Matrícula Masiva"
+        actions={
+          <>
+            <Button variant="outline" onClick={() => setConfirmModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              onClick={executeEnrollCycle}
+              disabled={enrollingCycle !== null}
+            >
+              {enrollingCycle !== null ? 'Matriculando...' : 'Confirmar Matrícula'}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            ¿Estás seguro de que deseas matricularte en todos los cursos del <strong className="text-indigo-600 dark:text-indigo-400">Ciclo {cycleToEnroll}</strong>?
+          </p>
+          <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-105 dark:border-slate-800">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cursos a inscribir:</p>
+            <ul className="space-y-2 max-h-40 overflow-y-auto pr-1">
+              {coursesToEnrollList.map(c => (
+                <li key={c.id_curso} className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex justify-between items-center">
+                  <span>{c.nombre_curso}</span>
+                  <span className="text-xs font-mono bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800 text-slate-500">{c.codigo_curso}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
