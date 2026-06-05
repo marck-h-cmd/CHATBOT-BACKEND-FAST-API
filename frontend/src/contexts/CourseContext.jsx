@@ -51,8 +51,8 @@ export const CourseProvider = ({ children }) => {
     return () => window.removeEventListener('focus', handleFocus);
   }, [isAuthenticated]);
 
-  const loadPublicData = async () => {
-    setLoading(true);
+  const loadPublicData = async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     try {
       const [coursesData, periodsData] = await Promise.all([
         courseAPI.getCourses(),
@@ -65,7 +65,7 @@ export const CourseProvider = ({ children }) => {
       const errorInfo = handleApiError(err);
       setError(errorInfo.message);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   };
 
@@ -115,11 +115,12 @@ export const CourseProvider = ({ children }) => {
     enrollInCourse,
     getCurrentPeriod,
     getEnrollmentByCourse,
-    refreshData: () => {
-      loadPublicData();
+    refreshData: async (showSpinner = false) => {
+      const promises = [loadPublicData(showSpinner)];
       if (isAuthenticated) {
-        loadEnrollments();
+        promises.push(loadEnrollments());
       }
+      await Promise.all(promises);
     }
   };
 

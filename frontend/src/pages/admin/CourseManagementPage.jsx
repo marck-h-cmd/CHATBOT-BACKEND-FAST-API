@@ -80,7 +80,7 @@ const CourseManagementPage = () => {
       await courseAPI.createCourse(formData);
       setIsModalOpen(false);
       resetForm();
-      refreshData();
+      await refreshData();
     } catch (error) {
       alert('Error al crear curso: ' + error.message);
     }
@@ -106,7 +106,7 @@ const CourseManagementPage = () => {
       setIsModalOpen(false);
       resetForm();
       setEditingCourse(null);
-      refreshData();
+      await refreshData();
     } catch (error) {
       alert('Error al actualizar curso: ' + error.message);
     }
@@ -116,7 +116,7 @@ const CourseManagementPage = () => {
     if (!confirm('¿Estás seguro de eliminar este curso? Esta acción no se puede deshacer.')) return;
     try {
       await courseAPI.deleteCourse(id_curso);
-      refreshData();
+      await refreshData();
     } catch (error) {
       alert('Error al eliminar curso: ' + error.message);
     }

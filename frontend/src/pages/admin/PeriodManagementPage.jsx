@@ -60,7 +60,7 @@ const PeriodManagementPage = () => {
       await periodAPI.createPeriod(formData);
       setIsModalOpen(false);
       resetForm();
-      refreshData();
+      await refreshData();
     } catch (error) {
       alert('Error al crear periodo: ' + error.message);
     }
@@ -86,7 +86,7 @@ const PeriodManagementPage = () => {
       setIsModalOpen(false);
       resetForm();
       setEditingPeriod(null);
-      refreshData();
+      await refreshData();
     } catch (error) {
       alert('Error al actualizar periodo: ' + error.message);
     }
@@ -96,7 +96,7 @@ const PeriodManagementPage = () => {
     if (!confirm('¿Deseas activar este periodo? Todos los demás periodos pasarán a inactivos.')) return;
     try {
       await periodAPI.updatePeriod(id_periodo, { es_actual: true });
-      refreshData();
+      await refreshData();
     } catch (error) {
       alert('Error al establecer periodo actual: ' + error.message);
     }

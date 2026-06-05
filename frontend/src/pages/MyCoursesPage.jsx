@@ -70,7 +70,7 @@ const MyCoursesPage = () => {
       
       await contextAPI.updateGrades(selectedContextId, payload);
       setModalOpen(false);
-      refreshData();
+      await refreshData();
     } catch (err) {
       alert("Error al actualizar las notas.");
     }

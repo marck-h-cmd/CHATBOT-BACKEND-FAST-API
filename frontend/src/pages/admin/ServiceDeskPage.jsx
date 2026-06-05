@@ -52,7 +52,7 @@ const ServiceDeskPage = () => {
           body: JSON.stringify({ resuelto: newStatus === 'RESUELTA' || newStatus === 'CERRADA' })
         });
       }
-      refreshData();
+      await refreshData();
     } catch (error) {
       alert('Error al actualizar estado: ' + error.message);
     }

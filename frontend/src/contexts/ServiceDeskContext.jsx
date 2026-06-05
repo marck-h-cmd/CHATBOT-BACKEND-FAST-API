@@ -28,8 +28,8 @@ export const ServiceDeskProvider = ({ children }) => {
     loadData();
   }, []);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     try {
       const [requestsData, incidentsData] = await Promise.all([
         serviceDeskAPI.getServiceRequests(),
@@ -50,7 +50,7 @@ export const ServiceDeskProvider = ({ children }) => {
       const errorInfo = handleApiError(err);
       setError(errorInfo.message);
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   };
 
@@ -139,7 +139,7 @@ export const ServiceDeskProvider = ({ children }) => {
     createIncident,
     updateIncident,
     deleteIncident,
-    refreshData: loadData
+    refreshData: (showSpinner = false) => loadData(showSpinner)
   };
 
   return <ServiceDeskContext.Provider value={value}>{children}</ServiceDeskContext.Provider>;

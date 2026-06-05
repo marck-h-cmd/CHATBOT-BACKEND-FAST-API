@@ -75,6 +75,9 @@ const Navbar = () => {
             <div className="hidden md:flex items-center gap-1 ml-6 flex-1">
               <NavItem to="/dashboard" icon={LayoutDashboard} label="Panel" tourId="student-nav-dashboard" />
               <NavItem to="/chat" icon={MessageSquare} label="Asistente" tourId="student-nav-chat" />
+              {user?.rol === 'estudiante' && (
+                <NavItem to="/mis-cursos" icon={BookMarked} label="Mis Cursos" tourId="student-nav-mycourses" />
+              )}
               <NavItem to="/cursos" icon={BookMarked} label="Cursos" tourId="student-nav-courses" />
               <NavItem to="/sugerencias" icon={BookOpen} label="Sugerencias" />
               {user?.rol === 'admin' && (
@@ -158,6 +161,9 @@ const Navbar = () => {
         <div className="md:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-100 dark:border-slate-800 px-4 py-4 space-y-1 shadow-xl absolute w-full transition-colors duration-200">
           <MobileNavItem to="/dashboard" icon={LayoutDashboard} label="Panel" onClick={() => setMenuOpen(false)} tourId="student-nav-dashboard" />
           <MobileNavItem to="/chat" icon={MessageSquare} label="Asistente" onClick={() => setMenuOpen(false)} tourId="student-nav-chat" />
+          {user?.rol === 'estudiante' && (
+            <MobileNavItem to="/mis-cursos" icon={BookMarked} label="Mis Cursos" onClick={() => setMenuOpen(false)} tourId="student-nav-mycourses" />
+          )}
           <MobileNavItem to="/cursos" icon={BookMarked} label="Cursos y Matrícula" onClick={() => setMenuOpen(false)} tourId="student-nav-courses" />
           <MobileNavItem to="/sugerencias" icon={BookOpen} label="Sugerencias" onClick={() => setMenuOpen(false)} />
           {user?.rol === 'admin' && (
