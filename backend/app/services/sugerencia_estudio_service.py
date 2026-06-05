@@ -189,3 +189,20 @@ class SugerenciaEstudioService:
         if sugerencia:
             return SugerenciaEstudioService.formatear_respuesta(sugerencia)
         return "No tengo suficiente información de tus notas o del sílabo para darte una sugerencia ahora mismo."
+
+    @staticmethod
+    def serializar_sugerencia(sugerencia: SugerenciaEstudio) -> dict:
+        if not sugerencia:
+            return None
+        return {
+            "id_sugerencia": sugerencia.id_sugerencia,
+            "id_contexto": sugerencia.id_contexto,
+            "tipo_sugerencia": sugerencia.tipo_sugerencia.value if hasattr(sugerencia.tipo_sugerencia, "value") else sugerencia.tipo_sugerencia,
+            "tema_o_evidencia": sugerencia.tema_o_evidencia,
+            "horas_sugeridas": sugerencia.horas_sugeridas,
+            "distribucion_sugerida": sugerencia.distribucion_sugerida,
+            "justificacion": sugerencia.justificacion,
+            "prioridad": sugerencia.prioridad,
+            "estado": sugerencia.estado.value if hasattr(sugerencia.estado, "value") else sugerencia.estado,
+            "fecha_generacion": sugerencia.fecha_generacion.isoformat() if sugerencia.fecha_generacion else None
+        }

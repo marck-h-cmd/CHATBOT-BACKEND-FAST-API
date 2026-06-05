@@ -11,31 +11,61 @@ const MyCoursesPage = () => {
   const { enrollments, loading, refreshData } = useCourse();
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedContextId, setSelectedContextId] = useState(null);
   const [notasForm, setNotasForm] = useState({ pu1: '', pu2: '', pu3: '', nota_final: '' });
 
+  const handleNotaChange = (field, value) => {
+    setNotasForm(prev => {
+      const updated = { ...prev, [field]: value };
+      if (updated.pu1 !== '' && updated.pu2 !== '' && updated.pu3 !== '') {
+        const p1 = parseFloat(updated.pu1);
+        const p2 = parseFloat(updated.pu2);
+        const p3 = parseFloat(updated.pu3);
+        if (!isNaN(p1) && !isNaN(p2) && !isNaN(p3)) {
+          updated.nota_final = ((p1 + p2 + p3) / 3).toFixed(2);
+        } else {
+          updated.nota_final = '';
+        }
+      } else {
+        updated.nota_final = '';
+      }
+      return updated;
+    });
+  };
+
   const handleOpenModal = (enrollment) => {
     setSelectedContextId(enrollment.id_contexto);
+    const pu1 = enrollment.notas?.pu1 ?? '';
+    const pu2 = enrollment.notas?.pu2 ?? '';
+    const pu3 = enrollment.notas?.pu3 ?? '';
+    let nota_final = enrollment.notas?.nota_final ?? '';
+
+    if (pu1 !== '' && pu2 !== '' && pu3 !== '') {
+      const p1 = parseFloat(pu1);
+      const p2 = parseFloat(pu2);
+      const p3 = parseFloat(pu3);
+      if (!isNaN(p1) && !isNaN(p2) && !isNaN(p3)) {
+        nota_final = ((p1 + p2 + p3) / 3).toFixed(2);
+      }
+    }
+
     setNotasForm({
-      pu1: enrollment.notas?.pu1 ?? '',
-      pu2: enrollment.notas?.pu2 ?? '',
-      pu3: enrollment.notas?.pu3 ?? '',
-      nota_final: enrollment.notas?.nota_final ?? ''
+      pu1,
+      pu2,
+      pu3,
+      nota_final
     });
     setModalOpen(true);
   };
 
   const handleSaveNotas = async () => {
     try {
-      // Parsear a números, si está vacío enviar null
       const parseVal = (val) => val === '' ? null : parseFloat(val);
       const payload = {
         pu1: parseVal(notasForm.pu1),
         pu2: parseVal(notasForm.pu2),
-        pu3: parseVal(notasForm.pu3),
-        nota_final: parseVal(notasForm.nota_final)
+        pu3: parseVal(notasForm.pu3)
       };
       
       await contextAPI.updateGrades(selectedContextId, payload);
@@ -118,7 +148,7 @@ const MyCoursesPage = () => {
                   <div className="p-6 flex-1">
                     <div className="flex justify-between items-start mb-4">
                       <span className="text-xs font-semibold tracking-wider text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 px-2.5 py-1 rounded-md border border-transparent dark:border-slate-800">
-                        {enrollment.codigo_curso || 'N/A'}
+                        {enrollment.id_curso || 'N/A'}
                       </span>
                       {/* Estado Sílabo Badge */}
                       {enrollment.silabo_validado ? (
@@ -210,7 +240,7 @@ const MyCoursesPage = () => {
                   <input 
                     type="number" step="0.1" min="0" max="20"
                     value={notasForm.pu1} 
-                    onChange={(e) => setNotasForm({...notasForm, pu1: e.target.value})}
+                    onChange={(e) => handleNotaChange('pu1', e.target.value)}
                     className="w-full border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
@@ -219,7 +249,7 @@ const MyCoursesPage = () => {
                   <input 
                     type="number" step="0.1" min="0" max="20"
                     value={notasForm.pu2} 
-                    onChange={(e) => setNotasForm({...notasForm, pu2: e.target.value})}
+                    onChange={(e) => handleNotaChange('pu2', e.target.value)}
                     className="w-full border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
@@ -228,7 +258,7 @@ const MyCoursesPage = () => {
                   <input 
                     type="number" step="0.1" min="0" max="20"
                     value={notasForm.pu3} 
-                    onChange={(e) => setNotasForm({...notasForm, pu3: e.target.value})}
+                    onChange={(e) => handleNotaChange('pu3', e.target.value)}
                     className="w-full border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
@@ -237,8 +267,9 @@ const MyCoursesPage = () => {
                   <input 
                     type="number" step="0.1" min="0" max="20"
                     value={notasForm.nota_final} 
-                    onChange={(e) => setNotasForm({...notasForm, nota_final: e.target.value})}
-                    className="w-full border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
+                    disabled={true}
+                    className="w-full border border-slate-200 dark:border-slate-850 bg-slate-50 dark:bg-slate-900/40 text-slate-550 dark:text-slate-400 rounded-lg px-3 py-2 cursor-not-allowed outline-none select-none font-semibold border-dashed"
+                    placeholder="Auto-calculado"
                   />
                 </div>
               </div>

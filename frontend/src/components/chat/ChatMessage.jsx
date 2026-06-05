@@ -1,13 +1,33 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { formatDateTime } from '../../utils/formatters';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { Clock, CheckCircle, BookOpen, XCircle } from 'lucide-react';
+import * as sugerenciasAPI from '../../api/sugerencias';
 
 const ChatMessage = ({ message }) => {
   const isUser = message.role === 'user';
   const isError = message.isError;
   const riesgo = message.riesgo;
   const fragmentos = message.fragmentos;
+  const sugerencia = message.sugerencia;
+
+  const [sugEstado, setSugEstado] = useState(sugerencia?.estado || 'PENDIENTE');
+  const [loadingSug, setLoadingSug] = useState(false);
+
+  const handleUpdateSugerencia = async (nuevoEstado) => {
+    if (!sugerencia?.id_sugerencia) return;
+    setLoadingSug(true);
+    try {
+      await sugerenciasAPI.updateSugerenciaEstado(sugerencia.id_sugerencia, nuevoEstado, 1);
+      setSugEstado(nuevoEstado);
+    } catch (err) {
+      console.error("Error al actualizar estado de sugerencia desde chat:", err);
+      alert("No se pudo actualizar la sugerencia.");
+    } finally {
+      setLoadingSug(false);
+    }
+  };
 
   return (
     <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'} mb-6`}>
@@ -71,10 +91,98 @@ const ChatMessage = ({ message }) => {
               <div>
                 <span className="font-bold text-amber-900 dark:text-amber-300 text-xs uppercase tracking-wider">Alerta académica</span>
                 <p className="text-amber-800 dark:text-amber-400 mt-0.5 text-xs leading-relaxed font-medium">
-                  {riesgo === 'MUY_ALTO' && 'Riesgo muy alto de desaprobación. ¡Consulta con tutoría de inmediato!'}
-                  {riesgo === 'ALTO' && 'Riesgo alto de desaprobación. Te recomendamos buscar asesoría académica.'}
-                  {riesgo === 'MEDIO' && 'Riesgo medio. Mejora tu desempeño en las próximas evaluaciones.'}
+                  {['MUY ALTO', 'MUY_ALTO', 'DESAPRUEBA'].includes(riesgo) && 'Riesgo muy alto de desaprobación. ¡Consulta con tutoría de inmediato!'}
+                  {['ALTO'].includes(riesgo) && 'Riesgo alto de desaprobación. Te recomendamos buscar asesoría académica.'}
+                  {['MEDIO'].includes(riesgo) && 'Riesgo medio. Mejora tu desempeño en las próximas evaluaciones.'}
+                  {!['MUY ALTO', 'MUY_ALTO', 'DESAPRUEBA', 'ALTO', 'MEDIO'].includes(riesgo) && `Riesgo detectado: ${riesgo}.`}
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* Tarjeta interactiva de sugerencia automática */}
+          {!isUser && sugerencia && (
+            <div className={`mt-4 p-4 border rounded-2xl text-xs flex flex-col gap-3 transition-all duration-200 ${
+              sugEstado === 'ACEPTADA'
+                ? 'border-emerald-250 dark:border-emerald-900/50 bg-emerald-50/20 dark:bg-emerald-950/5 text-emerald-800 dark:text-emerald-300'
+                : sugEstado === 'IGNORADA'
+                  ? 'border-slate-200 dark:border-slate-800 opacity-60'
+                  : 'border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/10 dark:bg-indigo-950/5 text-slate-800 dark:text-slate-250'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-slate-200">
+                  <BookOpen className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+                  <span>Plan de Estudio Recomendado</span>
+                </div>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                  sugerencia.prioridad === 1 ? 'bg-red-50 text-red-600 dark:bg-red-950/35 dark:text-red-400 border border-red-200 dark:border-red-900/40' :
+                  sugerencia.prioridad === 2 ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/35 dark:text-amber-400 border border-amber-200 dark:border-amber-900/40' :
+                  'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/35 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40'
+                }`}>
+                  Prioridad {sugerencia.prioridad === 1 ? 'Alta' : sugerencia.prioridad === 2 ? 'Media' : 'Baja'}
+                </span>
+              </div>
+
+              <div>
+                <p className="font-bold text-slate-700 dark:text-slate-350 text-[13px] mb-1">
+                  Estudio para: {sugerencia.tema_o_evidencia}
+                </p>
+                <p className="text-slate-600 dark:text-slate-400 italic mb-2">
+                  "{sugerencia.justificacion}"
+                </p>
+                
+                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-450 mb-1.5 font-medium">
+                  <Clock className="w-3.5 h-3.5 shrink-0 text-slate-400 dark:text-slate-555" />
+                  <span>{sugerencia.horas_sugeridas} horas sugeridas</span>
+                </div>
+
+                {sugerencia.distribucion_sugerida && Object.keys(sugerencia.distribucion_sugerida).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {Object.entries(sugerencia.distribucion_sugerida).map(([tipo, hs]) => (
+                      <span key={tipo} className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-semibold text-slate-650 dark:text-slate-400 capitalize text-[10.5px]">
+                        {tipo}: {hs}h
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Acciones */}
+              <div className="flex items-center justify-end gap-2 mt-2 pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
+                {sugEstado === 'PENDIENTE' ? (
+                  <>
+                    <button
+                      onClick={() => handleUpdateSugerencia('IGNORADA')}
+                      disabled={loadingSug}
+                      className="px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-450 font-bold rounded-xl transition-colors disabled:opacity-50"
+                    >
+                      Ignorar
+                    </button>
+                    <button
+                      onClick={() => handleUpdateSugerencia('ACEPTADA')}
+                      disabled={loadingSug}
+                      className="px-3.5 py-1.5 bg-indigo-650 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white font-extrabold rounded-xl shadow-sm transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      Aceptar Plan
+                    </button>
+                  </>
+                ) : (
+                  <span className={`flex items-center gap-1 font-bold ${
+                    sugEstado === 'ACEPTADA' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'
+                  }`}>
+                    {sugEstado === 'ACEPTADA' ? (
+                      <>
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                        Plan Aceptado y Programado
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-3.5 h-3.5 text-slate-400" />
+                        Ignorada
+                      </>
+                    )}
+                  </span>
+                )}
               </div>
             </div>
           )}

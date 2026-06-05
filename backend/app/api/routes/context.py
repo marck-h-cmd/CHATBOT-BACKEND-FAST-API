@@ -123,8 +123,6 @@ async def actualizar_notas(
         contexto.pu2 = data.pu2
     if data.pu3 is not None:
         contexto.pu3 = data.pu3
-    if data.nota_final is not None:
-        contexto.nota_final = data.nota_final
         
     db.commit()
     db.refresh(contexto)

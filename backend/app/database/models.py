@@ -3,6 +3,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.database.connection import Base
 import enum
+from typing import Optional
 
 
 # ============================================
@@ -252,11 +253,16 @@ class ContextoCursoUsuario(Base):
     puntaje_confianza = Column(Float, default=0.0)
     
     # Datos académicos del estudiante en este curso
-    nota_final = Column(Float, nullable=True)
     asistencia = Column(Float, nullable=True)
     pu1 = Column(Float, nullable=True)
     pu2 = Column(Float, nullable=True)
     pu3 = Column(Float, nullable=True)
+    
+    @property
+    def nota_final(self) -> Optional[float]:
+        if self.pu1 is not None and self.pu2 is not None and self.pu3 is not None:
+            return round((self.pu1 + self.pu2 + self.pu3) / 3, 2)
+        return None
     
     fecha_creacion = Column(DateTime, default=func.now())
     fecha_actualizacion = Column(DateTime, default=func.now(), onupdate=func.now())

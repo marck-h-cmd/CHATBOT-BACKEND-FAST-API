@@ -23,6 +23,8 @@ class ChatResponse(BaseModel):
     fragmentos_usados: int
     tiempo_ms: int
     escalado: bool
+    riesgo: Optional[str] = None
+    sugerencia: Optional[Dict] = None
 
 @router.post("/consultar", response_model=ChatResponse)
 async def consultar_chat(

@@ -1581,6 +1581,7 @@ class UntSyllabusExtractor:
         bloques_unidad = cls._dividir_texto_por_unidades(seccion_prog)
 
         for num_unidad, bloque in bloques_unidad:
+            tiene_examen_parcial = bool(re.search(r'\b(?:examen\s+parcial|EP|examen\s+mixto)\b', bloque, re.IGNORECASE))
             # Buscar contenidos numerados en el bloque
             # Patrón: número. Tema de contenido (que NO sea estrategia)
             items_contenido = []

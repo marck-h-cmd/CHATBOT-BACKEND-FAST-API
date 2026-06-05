@@ -72,6 +72,7 @@ export const ChatProvider = ({ children }) => {
         content: response.respuesta,
         intent: response.intent,
         riesgo: response.riesgo,
+        sugerencia: response.sugerencia,
         fragmentos: response.fragmentos_usados,
         escalado: response.escalado,
         tiempoMs: response.tiempo_ms,
