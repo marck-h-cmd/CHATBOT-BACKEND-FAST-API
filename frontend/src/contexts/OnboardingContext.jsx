@@ -27,7 +27,7 @@ const STUDENT_STEPS = [
   {
     id: 'course-catalog',
     route: '/cursos',
-    title: 'Paso 1: Inscribete en un curso',
+    title: 'Paso 1: Inscribete en un ciclo',
     description:
       'Explora el catalogo, filtra por ciclo y usa "Inscribirse" para crear tu contexto academico.',
     target: '[data-tour="student-course-catalog"]',
@@ -37,7 +37,7 @@ const STUDENT_STEPS = [
     route: '/inscripcion',
     title: 'Paso 2: Confirma tu matricula',
     description:
-      'Selecciona periodo y curso para finalizar la inscripcion. Esto habilita tu trabajo por contexto.',
+      'Selecciona periodo y ciclo para finalizar la inscripcion. Esto habilita tu trabajo por contexto.',
     target: '[data-tour="student-enrollment"]',
   },
   {

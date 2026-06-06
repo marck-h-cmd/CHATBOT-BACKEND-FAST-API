@@ -13,7 +13,7 @@ const EnrollmentPage = () => {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCycle, setSelectedCycle] = useState(null);
-  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [selectedCourseIds, setSelectedCourseIds] = useState([]);
   const [enrolling, setEnrolling] = useState(false);
   const [enrollingCycle, setEnrollingCycle] = useState(null);
   const [error, setError] = useState(null);
@@ -44,7 +44,7 @@ const EnrollmentPage = () => {
       );
       await Promise.all(promises);
       await refreshData();
-      setSelectedCourse(null);
+      setSelectedCourseIds([]);
       setConfirmModalOpen(false);
     } catch (err) {
       alert("Ocurrió un error al procesar la inscripción del ciclo.");
@@ -83,7 +83,7 @@ const EnrollmentPage = () => {
 
   useEffect(() => {
     if (preSelectedCourseId) {
-      setSelectedCourse(preSelectedCourseId);
+      setSelectedCourseIds([preSelectedCourseId]);
       const course = courses.find(c => c.id_curso === preSelectedCourseId);
       if (course?.ciclo_referencial) {
         setSelectedCycle(course.ciclo_referencial);
@@ -92,8 +92,8 @@ const EnrollmentPage = () => {
   }, [preSelectedCourseId, courses]);
 
   const handleEnroll = async () => {
-    if (!selectedCourse) {
-      setError('Debes seleccionar un curso');
+    if (selectedCourseIds.length === 0) {
+      setError('Debes seleccionar al menos un curso');
       return;
     }
 
@@ -101,21 +101,27 @@ const EnrollmentPage = () => {
     setError(null);
 
     try {
-      const result = await enrollInCourse(selectedCourse, selectedPeriodId);
+      const enrollmentsResult = [];
+      for (const id of selectedCourseIds) {
+        const result = await enrollInCourse(id, selectedPeriodId);
+        if (result.success) {
+          enrollmentsResult.push({
+            id_curso: id,
+            id_periodo: selectedPeriodId,
+            ...result.data
+          });
+        }
+      }
       
-      if (result.success) {
-        navigate('/inscripcion-exitosa', {
+      if (enrollmentsResult.length > 0) {
+        navigate('/confirmacion-matricula', {
           state: {
-            enrollment: {
-              id_curso: selectedCourse,
-              id_periodo: selectedPeriodId,
-              ...result.data
-            }
+            enrollments: enrollmentsResult
           },
           replace: true
         });
       } else {
-        setError(result.error?.message || 'Error al inscribirse');
+        setError('Error al inscribirse en los cursos seleccionados');
       }
     } catch (err) {
       setError('Error al procesar la inscripción');
@@ -124,7 +130,7 @@ const EnrollmentPage = () => {
     }
   };
 
-  const selectedCourseData = courses.find(c => c.id_curso === selectedCourse);
+
   const availableCycles = getAvailableCycles();
 
   if (loading) {
@@ -237,10 +243,13 @@ const EnrollmentPage = () => {
                   <Button
                     size="sm"
                     className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold flex items-center gap-1.5 shadow-sm text-xs px-3.5 py-1.5 rounded-lg"
-                    onClick={() => handleEnrollCycleClick(selectedCycle, filteredCourses.filter(c => !isEnrolled(c.id_curso)))}
-                    disabled={enrollingCycle === selectedCycle}
+                    onClick={() => {
+                      const cycleCoursesIds = filteredCourses.filter(c => !isEnrolled(c.id_curso)).map(c => c.id_curso);
+                      const newSelection = [...new Set([...selectedCourseIds, ...cycleCoursesIds])];
+                      setSelectedCourseIds(newSelection);
+                    }}
                   >
-                    {enrollingCycle === selectedCycle ? 'Matriculando...' : `Matricular todo el Ciclo ${selectedCycle}`}
+                    Seleccionar todo el Ciclo {selectedCycle}
                   </Button>
                 )}
                 <span className="text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2.5 py-1.5 rounded-md text-slate-500 dark:text-slate-400">
@@ -261,11 +270,19 @@ const EnrollmentPage = () => {
                   return (
                     <div
                       key={course.id_curso}
-                      onClick={() => !enrolled && setSelectedCourse(course.id_curso)}
+                      onClick={() => {
+                        if (!enrolled) {
+                          setSelectedCourseIds(prev => 
+                            prev.includes(course.id_curso)
+                              ? prev.filter(id => id !== course.id_curso)
+                              : [...prev, course.id_curso]
+                          );
+                        }
+                      }}
                       className={`p-4 border-2 rounded-xl transition-all ${
                         enrolled
                           ? 'border-slate-105 dark:border-slate-800/80 bg-slate-50/40 dark:bg-slate-900/10 cursor-not-allowed opacity-70'
-                          : selectedCourse === course.id_curso
+                          : selectedCourseIds.includes(course.id_curso)
                             ? 'border-indigo-500 dark:border-indigo-550 bg-indigo-50/50 dark:bg-indigo-955/20 shadow-sm cursor-pointer'
                             : 'border-slate-100 dark:border-slate-800/80 bg-white dark:bg-slate-900/40 hover:border-indigo-300 dark:hover:border-indigo-800 cursor-pointer'
                       }`}
@@ -294,9 +311,9 @@ const EnrollmentPage = () => {
                             </span>
                           ) : (
                             <div className={`w-5 h-5 rounded-full flex items-center justify-center border transition-colors ${
-                              selectedCourse === course.id_curso ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900'
+                              selectedCourseIds.includes(course.id_curso) ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900'
                             }`}>
-                              {selectedCourse === course.id_curso && <Check className="w-3.5 h-3.5 text-white" />}
+                              {selectedCourseIds.includes(course.id_curso) && <Check className="w-3.5 h-3.5 text-white" />}
                             </div>
                           )}
                         </div>
@@ -309,19 +326,27 @@ const EnrollmentPage = () => {
           </div>
 
           {/* Confirmación */}
-          {selectedCourseData ? (
+          {selectedCourseIds.length > 0 ? (
             <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 rounded-2xl p-6 shadow-sm transition-colors duration-200">
               <h3 className="font-bold text-emerald-900 dark:text-emerald-400 mb-4 flex items-center gap-2">
-                <CheckCircle className="w-5 h-5" /> Curso Seleccionado para Matrícula
+                <CheckCircle className="w-5 h-5" /> Cursos Seleccionados para Matrícula
               </h3>
               
-              <div className="bg-white dark:bg-slate-900 rounded-xl p-4 mb-5 border border-emerald-100 dark:border-emerald-900/20 shadow-sm transition-colors duration-200">
-                <p className="font-bold text-slate-800 dark:text-white text-lg mb-1">{selectedCourseData.nombre_curso}</p>
-                <div className="flex flex-wrap gap-2 text-sm text-slate-650 dark:text-slate-400">
-                  <span className="bg-slate-50 dark:bg-slate-950 px-2 py-1 rounded border border-slate-100 dark:border-slate-800">{selectedCourseData.codigo_curso}</span>
-                  <span className="bg-slate-50 dark:bg-slate-950 px-2 py-1 rounded border border-slate-100 dark:border-slate-800">{selectedCourseData.creditos} créditos</span>
-                  <span className="bg-slate-50 dark:bg-slate-950 px-2 py-1 rounded border border-slate-100 dark:border-slate-800">{selectedCourseData.escuela}</span>
-                </div>
+              <div className="space-y-3 mb-5 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                {selectedCourseIds.map(id => {
+                  const courseData = courses.find(c => c.id_curso === id);
+                  if (!courseData) return null;
+                  return (
+                    <div key={id} className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-emerald-100 dark:border-emerald-900/20 shadow-sm transition-colors duration-200">
+                      <p className="font-bold text-slate-800 dark:text-white text-lg mb-1">{courseData.nombre_curso}</p>
+                      <div className="flex flex-wrap gap-2 text-sm text-slate-650 dark:text-slate-400">
+                        <span className="bg-slate-50 dark:bg-slate-950 px-2 py-1 rounded border border-slate-100 dark:border-slate-800">{courseData.codigo_curso}</span>
+                        <span className="bg-slate-50 dark:bg-slate-950 px-2 py-1 rounded border border-slate-100 dark:border-slate-800">{courseData.creditos} créditos</span>
+                        <span className="bg-slate-50 dark:bg-slate-950 px-2 py-1 rounded border border-slate-100 dark:border-slate-800">{courseData.escuela}</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               {error && (
@@ -351,7 +376,7 @@ const EnrollmentPage = () => {
       <Modal
         isOpen={confirmModalOpen}
         onClose={() => setConfirmModalOpen(false)}
-        title="Confirmar Matrícula Masiva"
+        title="Confirmar Matrícula"
         actions={
           <>
             <Button variant="outline" onClick={() => setConfirmModalOpen(false)}>

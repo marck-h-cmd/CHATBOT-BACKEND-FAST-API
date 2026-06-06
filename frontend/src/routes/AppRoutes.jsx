@@ -25,6 +25,7 @@ import ProfilePage from '../pages/ProfilePage';
 import CourseListPage from '../pages/CourseListPage';
 import EnrollmentPage from '../pages/EnrollmentPage';
 import EnrollmentSuccessPage from '../pages/EnrollmentSuccessPage';
+import EnrollmentConfirmationPage from '../pages/EnrollmentConfirmationPage';
 import MyCoursesPage from '../pages/MyCoursesPage';
 import SugerenciasPage from '../pages/SugerenciasPage';
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
@@ -132,6 +133,13 @@ const AppRoutes = () => {
                     <PrivateRoute requiredRole="estudiante">
                       <AppLayout>
                         <EnrollmentSuccessPage />
+                      </AppLayout>
+                    </PrivateRoute>
+                  } />
+                  <Route path="/confirmacion-matricula" element={
+                    <PrivateRoute requiredRole="estudiante">
+                      <AppLayout>
+                        <EnrollmentConfirmationPage />
                       </AppLayout>
                     </PrivateRoute>
                   } />

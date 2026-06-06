@@ -258,7 +258,7 @@ const CourseListPage = () => {
       <Modal
         isOpen={confirmModalOpen}
         onClose={() => setConfirmModalOpen(false)}
-        title="Confirmar Matrícula Masiva"
+        title="Confirmar Matrícula"
         actions={
           <>
             <Button variant="outline" onClick={() => setConfirmModalOpen(false)}>
