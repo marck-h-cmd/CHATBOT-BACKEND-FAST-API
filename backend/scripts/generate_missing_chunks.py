@@ -4,14 +4,13 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database.connection import SessionLocal
-from app.database.models import Silabo, SilaboChunk, TipoSeccionChunk
-from app.services.chunker import ChunkerService
-from app.services.embeddings import embedding_service
+from app.api.routes.syllabus import generar_y_guardar_chunks
+from app.database.models import Silabo
 
 def generate_missing_chunks():
     db = SessionLocal()
     try:
-        # Obtener todos los sílabos para regenerar sus chunks con la nueva regla (incluye general)
+        # Obtener todos los sílabos para regenerar sus chunks con la nueva regla
         silabos = db.query(Silabo).all()
         
         print(f"Se encontraron {len(silabos)} sílabos para regenerar chunks.")
@@ -23,40 +22,11 @@ def generate_missing_chunks():
                 
             print(f"Regenerando chunks para sílabo ID {silabo.id_silabo} ({silabo.nombre_archivo})...")
             
-            # Eliminar chunks existentes
-            db.query(SilaboChunk).filter(SilaboChunk.id_silabo == silabo.id_silabo).delete()
-            
-            metadata_base = {"nombre_curso": silabo.curso.nombre_curso if silabo.curso else "Curso Desconocido"}
-            chunks_creados = ChunkerService.crear_chunks(silabo.texto_extraido, metadata_base)
-            
-            for c in chunks_creados:
-                emb = embedding_service.generar_embedding(c["texto"])
-                
-                # Mapear tipo de sección a Enum válido
-                tipo_str = c["metadata"].get("tipo_seccion", "").upper()
-                tipo_enum = TipoSeccionChunk.CONTENIDOS
-                if "COMPETENCIA" in tipo_str:
-                    tipo_enum = TipoSeccionChunk.COMPETENCIAS
-                elif "EVALUA" in tipo_str or "CRITERIO" in tipo_str:
-                    tipo_enum = TipoSeccionChunk.EVALUACION
-                elif "TUTOR" in tipo_str:
-                    tipo_enum = TipoSeccionChunk.TUTORIA
-                elif "SUMILLA" in tipo_str:
-                    tipo_enum = TipoSeccionChunk.SUMILLA
-                elif "FORMULA" in tipo_str:
-                    tipo_enum = TipoSeccionChunk.FORMULA
-                
-                nuevo_chunk = SilaboChunk(
-                    id_silabo=silabo.id_silabo,
-                    contenido=c["texto"],
-                    tipo_seccion=tipo_enum,
-                    embedding=emb,
-                    metadata_json=c["metadata"]
-                )
-                db.add(nuevo_chunk)
-            
-            db.commit()
-            print(f"  -> {len(chunks_creados)} chunks generados exitosamente.")
+            if silabo.curso:
+                chunks_creados = generar_y_guardar_chunks(db, silabo, silabo.curso)
+                print(f"  -> {chunks_creados} chunks generados exitosamente.")
+            else:
+                print(f"  -> Saltado: No tiene curso asociado.")
             
     except Exception as e:
         print(f"Error: {e}")

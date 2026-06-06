@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from app.database.models import SugerenciaEstudio, ContextoCursoUsuario, TipoSugerencia, EstadoSugerencia
+from app.database.models import SugerenciaEstudio, ContextoCursoUsuario, TipoSugerencia, EstadoSugerencia, SilaboChunk, TipoSeccionChunk
 import json
 import re
 
@@ -89,26 +89,38 @@ class SugerenciaEstudioService:
 
     @staticmethod
     def formatear_respuesta(sugerencia: SugerenciaEstudio) -> str:
-        prioridad_texto = {1: "Alta 🔴", 2: "Media 🟡", 3: "Baja 🟢"}.get(sugerencia.prioridad, "Media")
+        prioridad_texto = {1: "Alta", 2: "Media", 3: "Baja"}.get(sugerencia.prioridad, "Media")
         
         dist = sugerencia.distribucion_sugerida or {}
+        
+        if isinstance(dist, list):
+            desglose = ""
+            for item in dist:
+                pri = {1: "Alta", 2: "Media", 3: "Baja"}.get(item.get("prioridad", 2), "Media")
+                desglose += f"- **Semana {item.get('semana', '?')}: {item.get('tema', 'Tema')}** - {item.get('horas', 0)} horas (Prioridad: {pri})\n  *Enfoque:* {item.get('enfoque', '')}\n"
+                
+            return f"""**Plan de Estudios Estratégico: {sugerencia.tema_o_evidencia}**
+**Tiempo Total:** {sugerencia.horas_sugeridas} horas
+
+### Desglose por Semanas
+{desglose}
+**Recomendación:** {sugerencia.justificacion}"""
+
         dist_texto = []
-        if dist.get("profunda"): dist_texto.append(f"{dist['profunda']}h profunda")
-        if dist.get("practica"): dist_texto.append(f"{dist['practica']}h práctica")
-        if dist.get("revision"): dist_texto.append(f"{dist['revision']}h revisión")
+        if isinstance(dist, dict):
+            if dist.get("profunda"): dist_texto.append(f"{dist['profunda']}h profunda")
+            if dist.get("practica"): dist_texto.append(f"{dist['practica']}h práctica")
+            if dist.get("revision"): dist_texto.append(f"{dist['revision']}h revisión")
         
         dist_str = " + ".join(dist_texto) if dist_texto else f"{sugerencia.horas_sugeridas}h en total"
         
-        return f"""📚 **Sugerencia de tiempo para {sugerencia.tema_o_evidencia}**
+        return f"""**Sugerencia de tiempo para {sugerencia.tema_o_evidencia}**
 
-⏱️ **Horas sugeridas:** {sugerencia.horas_sugeridas} horas
-📊 **Distribución sugerida:** {dist_str}
+**Horas sugeridas:** {sugerencia.horas_sugeridas} horas
+**Distribución:** {dist_str}
 
-💡 **Justificación:** {sugerencia.justificacion}
-
-🎯 **Prioridad:** {prioridad_texto}
-
-¿Quieres que ajuste esta sugerencia según tu disponibilidad real?"""
+**Justificación:** {sugerencia.justificacion}
+**Prioridad:** {prioridad_texto}"""
 
     @staticmethod
     def responder_consulta_tiempo(db: Session, id_usuario: int, id_contexto: int, pregunta: str) -> str:
@@ -119,6 +131,15 @@ class SugerenciaEstudioService:
         silabo = contexto.silabo_asignado
         reglas = silabo.reglas_json or {}
         
+        chunks_text = ""
+        if silabo:
+            chunks = db.query(SilaboChunk).filter(
+                SilaboChunk.id_silabo == silabo.id_silabo,
+                SilaboChunk.tipo_seccion == TipoSeccionChunk.CONTENIDOS
+            ).order_by(SilaboChunk.orden).all()
+            if chunks:
+                chunks_text = "Contenidos del curso:\n" + "\n".join([f"{c.titulo or 'Semana'}: {c.contenido}" for c in chunks])
+        
         from app.services.ai_parser import _init_gemini
         import app.services.ai_parser as ai_p
         
@@ -127,31 +148,31 @@ class SugerenciaEstudioService:
         if ai_p.GEMINI_DISPONIBLE and ai_p.MODEL:
             import google.generativeai as genai
             
-            prompt = f"""
-            Eres Sylia, una asistente académica experta en planificación de estudios.
-            Un estudiante te pregunta sobre cuánto tiempo debe estudiar o cómo distribuir su tiempo para un tema/evidencia en su curso de {contexto.curso.nombre_curso}.
-            
-            Información del sílabo (reglas de evaluación): {json.dumps(reglas)}
-            
-            Pregunta del estudiante: "{pregunta}"
-            
-            Instrucciones:
-            Genera una respuesta en formato JSON estrictamente, con las siguientes claves:
-            - "texto_conversacional": Un mensaje amigable, natural y empático. Actúa como un tutor de confianza, sé dinámico, no repitas frases robotizadas e incluye algún consejo extra. DEBE incluir OBLIGATORIAMENTE la sugerencia formateada exactamente con este formato en alguna parte de tu mensaje (usa los mismos emojis y saltos de línea):
-              "📚 **Sugerencia de tiempo para [Tema]**
+            prompt = f"""Eres Sylia, experta académica.
+Consulta del alumno: "{pregunta}"
+Curso: {contexto.curso.nombre_curso}.
+Reglas: {json.dumps(reglas)}
+{chunks_text}
 
-⏱️ **Horas sugeridas:** [X] horas
-📊 **Distribución sugerida:** [Y]h profunda + [Z]h práctica + [W]h revisión
-
-💡 **Justificación:** [Tu justificación]
-
-🎯 **Prioridad:** [Alta/Media/Baja]"
-            - "horas": Un número float con las horas totales recomendadas.
-            - "distribucion": Un objeto JSON con claves como "profunda", "practica", "revision" y valores numéricos float.
-            - "justificacion": La misma frase corta justificando la recomendación.
-            - "tema": El tema o evidencia detectada (ej: "ELD", "Examen Parcial").
-            - "prioridad": 1 (Alta), 2 (Media), o 3 (Baja).
-            """
+Instrucciones (Optimiza tokens):
+- Calcula inteligentemente horas por semana basado en la complejidad del contenido.
+- Usa muy pocos emojis.
+- Responde estrictamente un JSON con:
+  "texto_conversacional": Mensaje que INCLUYA EXACTAMENTE este formato Markdown:
+    "**Plan de Estudios Estratégico: [Unidad/Tema]**
+    **Tiempo Total:** [X] horas
+    
+    ### Desglose por Semanas
+    - **Semana X: [Tema]** - [H] horas (Prioridad: Alta/Media/Baja)
+      *Enfoque:* [Breve descripción, ej: Práctica intensiva en ejercicios]
+    
+    **Recomendación:** [Consejo]"
+  "horas": float total.
+  "tema": str (ej: "Unidad 1").
+  "prioridad": int (1=Alta, 2=Media, 3=Baja).
+  "distribucion_semanas": Lista [{{"semana": "X", "tema": "str", "horas": float, "prioridad": int, "enfoque": "str"}}].
+  "justificacion": str breve.
+"""
             
             try:
                 response = ai_p.MODEL.generate_content(
@@ -164,12 +185,16 @@ class SugerenciaEstudioService:
                 
                 res_json = json.loads(response.text)
                 
+                dist_sugerida = res_json.get("distribucion_semanas", [])
+                if not dist_sugerida and "distribucion" in res_json:
+                     dist_sugerida = res_json.get("distribucion")
+                
                 # Guardar en base de datos la sugerencia detectada
                 sugerencia = SugerenciaEstudioService._crear_o_actualizar_sugerencia(
                     db, id_usuario, id_contexto, TipoSugerencia.POR_PESO, 
                     res_json.get("tema", "Estudio General"),
                     float(res_json.get("horas", 2.0)),
-                    res_json.get("distribucion", {}),
+                    dist_sugerida,
                     res_json.get("justificacion", "Basado en tu consulta"),
                     int(res_json.get("prioridad", 2))
                 )

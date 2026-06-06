@@ -6,6 +6,7 @@ from typing import Optional, Any, List
 import datetime
 import os
 import uuid
+import re
 from app.database.connection import get_db
 from app.database.models import (
     Usuario, Silabo, Curso, PeriodoAcademico, SilaboChunk,
@@ -18,6 +19,7 @@ from app.services.chunker import ChunkerService
 from app.services.pdf_parser import PDFParserService
 from app.services.ai_parser import gemini_parser
 from app.services.itil_desk import ITILServiceDesk
+from app.services.embeddings import embedding_service
 from app.api.dependencies import get_current_user_from_token
 
 router = APIRouter(prefix="/silabo", tags=["Gestión de Sílabos"])
@@ -27,42 +29,289 @@ class RevisionRequest(BaseModel):
     id_periodo_nuevo: Optional[int] = None
 
 
-def _mapear_tipo_chunk(tipo_raw: str) -> TipoSeccionChunk:
-    """Mapea tipos de sección del chunker al enum de la base de datos."""
-    mapping = {
-        "general": TipoSeccionChunk.SUMILLA,
-        "competencias": TipoSeccionChunk.COMPETENCIAS,
-        "evaluacion": TipoSeccionChunk.EVALUACION,
-        "aplazados_susti": TipoSeccionChunk.CRITERIOS,
-        "contenidos": TipoSeccionChunk.CONTENIDOS,
-        "metodologia": TipoSeccionChunk.CONTENIDOS,
-        "tutoria": TipoSeccionChunk.TUTORIA,
-        "capacidades": TipoSeccionChunk.COMPETENCIAS,
-        "resultados": TipoSeccionChunk.COMPETENCIAS,
+from app.services.syllabus_extractor import UntSyllabusExtractor
+
+def generar_y_guardar_chunks(db: Session, silabo: Silabo, curso: Curso) -> int:
+    """
+    Genera chunks precisos y limpios para el sílabo y los guarda en silabo_chunk.
+    Elimina cualquier chunk previo.
+    Solo se deben quedar: Sumilla, Competencias, Evaluacion, Contenidos (dividido por Unidad I, II, III), y Tutoria.
+    """
+    # 1. Eliminar chunks anteriores
+    db.query(SilaboChunk).filter(SilaboChunk.id_silabo == silabo.id_silabo).delete(synchronize_session=False)
+
+    texto = silabo.texto_extraido or ""
+    if not texto.strip():
+        db.commit()
+        return 0
+
+    # 2. Segmentar el documento usando el divisor secuencial
+    patrones = {
+        "sumilla": [
+            r"(?:^|\n)\s*(?:II|2)\s*[\.:\s\-—]+(?:SUMILLA|FUNDAMENTACI[ÓO]N)\b",
+            r"(?:^|\n)\s*(?:SUMILLA|FUNDAMENTACI[ÓO]N)\s*[\.:\s]*(?:\n|$)"
+        ],
+        "competencias": [
+            r"(?:^|\n)\s*(?:III|3)\s*[\.:\s\-—]+(?:COMPETENCIAS?|COMPETENCIA\s+(?:DE\s+EGRESO|GENERALES?))\b",
+            r"(?:^|\n)\s*(?:COMPETENCIAS?|COMPETENCIA\s+DE\s+EGRESO|COMPETENCIAS?\s+GENERALES?)\s*[\.:\s]*(?:\n|$)"
+        ],
+        "programacion": [
+            r"(?:^|\n)\s*(?:IV|V|4|5)\s*[\.:\s\-—]+(?:PROGRAMACI[ÓO]N\s+ACAD[ÉE]MICA|ARTICULACI[ÓO]N|PROGRAMACI[ÓO]N)\b",
+            r"(?:^|\n)\s*(?:PROGRAMACI[ÓO]N\s+ACAD[ÉE]MICA|PROGRAMACI[ÓO]N)\s*[\.:\s]*(?:\n|$)"
+        ],
+        "evaluacion": [
+            r"(?:^|\n)\s*(?:V|VI|5|6)\s*[\.:\s\-—]+(?:SISTEMA\s+DE\s+EVALUACI[ÓO]N|EVALUACI[ÓO]N|SISTEMA\s+DE\s+CALIFICACI[ÓO]N|CRITERIOS\s+DE\s+EVALUACI[ÓO]N)\b",
+            r"(?:^|\n)\s*(?:SISTEMA\s+DE\s+EVALUACI[ÓO]N|EVALUACI[ÓO]N|SISTEMA\s+DE\s+CALIFICACI[ÓO]N|CRITERIOS\s+DE\s+EVALUACI[ÓO]N)\s*[\.:\s]*(?:\n|$)"
+        ],
+        "tutoria": [
+            r"(?:^|\n)\s*(?:VI|VII|VIII|6|7|8)\s*[\.:\s\-—]+(?:TUTOR[ÍI]A\s+ACAD[ÉE]MICA|TUTOR[ÍI]A|CONSEJER[ÍI]A\s+ACAD[ÉE]MICA|PLAN\s+DE\s+MEJORA)\b",
+            r"(?:^|\n)\s*(?:TUTOR[ÍI]A\s+ACAD[ÉE]MICA|TUTOR[ÍI]A|CONSEJER[ÍI]A\s+ACAD[ÉE]MICA|PLAN\s+DE\s+MEJORA)\s*[\.:\s]*(?:\n|$)"
+        ],
+        "referencias": [
+            r"(?:^|\n)\s*(?:VII|VIII|IX|7|8|9)\s*[\.:\s\-—]+(?:REFERENCIAS\s+BIBLIOGR[ÁA]FICAS|BIBLIOGR[ÁA]F[ÍI]A|REFERENCIAS)\b",
+            r"(?:^|\n)\s*(?:REFERENCIAS\s+BIBLIOGR[ÁA]FICAS|BIBLIOGR[ÁA]F[ÍI]A|REFERENCIAS)\s*[\.:\s]*(?:\n|$)"
+        ]
     }
-    return mapping.get(tipo_raw.lower(), TipoSeccionChunk.SUMILLA)
 
+    posiciones = {}
+    for seccion, pats in patrones.items():
+        for pat in pats:
+            m = re.search(pat, texto, re.IGNORECASE)
+            if m:
+                posiciones[seccion] = m.start()
+                break
 
-def _generar_y_guardar_chunks(db: Session, silabo_id: int, texto: str, metadata_base: dict) -> int:
-    """Genera chunks del texto y los guarda en silabo_chunk."""
-    # Eliminar chunks previos para evitar duplicados
-    db.query(SilaboChunk).filter(SilaboChunk.id_silabo == silabo_id).delete(synchronize_session=False)
+    # Ordenar las secciones encontradas por su posición
+    secciones_ordenadas = sorted(posiciones.items(), key=lambda x: x[1])
 
-    chunks = ChunkerService.crear_chunks(texto, metadata_base)
-    for chunk in chunks:
-        tipo_raw = chunk.get("metadata", {}).get("tipo_seccion", "general")
-        tipo_enum = _mapear_tipo_chunk(tipo_raw)
-        meta = chunk.get("metadata") or {}
-        meta.pop("unidad", None)
-        db.add(SilaboChunk(
-            id_silabo=silabo_id,
-            tipo_seccion=tipo_enum,
-            titulo=tipo_raw[:200],
-            contenido=chunk["texto"],
-            metadata_json=meta,
-        ))
+    segmentos = {}
+    for i, (seccion, pos_inicio) in enumerate(secciones_ordenadas):
+        if i + 1 < len(secciones_ordenadas):
+            pos_fin = secciones_ordenadas[i+1][1]
+        else:
+            pos_fin = len(texto)
+        segmentos[seccion] = texto[pos_inicio:pos_fin].strip()
+
+    def limpiar_texto(t: str, header_pat: str = None) -> str:
+        t = UntSyllabusExtractor._limpiar_artefactos_pdf(t)
+        if header_pat:
+            t = re.sub(header_pat, '', t, count=1, flags=re.IGNORECASE).strip()
+        # Normalizar espacios/nuevas líneas
+        t = re.sub(r'[ \t]+', ' ', t)
+        t = re.sub(r'\n\s*\n+', '\n\n', t)
+        return t.strip()
+
+    chunks_guardados = 0
+
+    # 3. Guardar Sumilla
+    if "sumilla" in segmentos:
+        content = limpiar_texto(segmentos["sumilla"], r'^(?:II\s*[\.:\s\-—]+)?(?:SUMILLA|FUNDAMENTACI[ÓO]N)\b')
+        if content and len(content) > 10:
+            db.add(SilaboChunk(
+                id_silabo=silabo.id_silabo,
+                tipo_seccion=TipoSeccionChunk.SUMILLA,
+                titulo="SUMILLA",
+                contenido=content,
+                embedding=embedding_service.generar_embedding(content),
+                metadata_json={"fuente": curso.nombre_curso}
+            ))
+            chunks_guardados += 1
+
+    # 4. Guardar Competencias
+    if "competencias" in segmentos:
+        content = limpiar_texto(segmentos["competencias"], r'^(?:III\s*[\.:\s\-—]+)?(?:COMPETENCIAS?|COMPETENCIA\s+(?:DE\s+EGRESO|GENERALES?))\b')
+        if content and len(content) > 10:
+            db.add(SilaboChunk(
+                id_silabo=silabo.id_silabo,
+                tipo_seccion=TipoSeccionChunk.COMPETENCIAS,
+                titulo="COMPETENCIAS",
+                contenido=content,
+                embedding=embedding_service.generar_embedding(content),
+                metadata_json={"fuente": curso.nombre_curso}
+            ))
+            chunks_guardados += 1
+
+    # 5. Guardar Evaluación
+    if "evaluacion" in segmentos:
+        content = limpiar_texto(segmentos["evaluacion"], r'^(?:V|VI\s*[\.:\s\-—]+)?(?:SISTEMA\s+DE\s+EVALUACI[ÓO]N|EVALUACI[ÓO]N|SISTEMA\s+DE\s+CALIFICACI[ÓO]N|CRITERIOS\s+DE\s+EVALUACI[ÓO]N)\b')
+        if content and len(content) > 10:
+            db.add(SilaboChunk(
+                id_silabo=silabo.id_silabo,
+                tipo_seccion=TipoSeccionChunk.EVALUACION,
+                titulo="EVALUACIÓN",
+                contenido=content,
+                embedding=embedding_service.generar_embedding(content),
+                metadata_json={"fuente": curso.nombre_curso}
+            ))
+            chunks_guardados += 1
+
+    # 6. Guardar Tutoría
+    if "tutoria" in segmentos:
+        content = limpiar_texto(segmentos["tutoria"], r'^(?:VI|VII|VIII\s*[\.:\s\-—]+)?(?:TUTOR[ÍI]A\s+ACAD[ÉE]MICA|TUTOR[ÍI]A|CONSEJER[ÍI]A\s+ACAD[ÉE]MICA|PLAN\s+DE\s+MEJORA)\b')
+        if content and len(content) > 10:
+            db.add(SilaboChunk(
+                id_silabo=silabo.id_silabo,
+                tipo_seccion=TipoSeccionChunk.TUTORIA,
+                titulo="TUTORÍA ACADÉMICA",
+                contenido=content,
+                embedding=embedding_service.generar_embedding(content),
+                metadata_json={"fuente": curso.nombre_curso}
+            ))
+            chunks_guardados += 1
+
+    # 7. Guardar Contenidos (Dividido por Unidades U1, U2, U3)
+    # Extraer de reglas_json (parsing_data)
+    parsing_data = silabo.reglas_json or {}
+    unidades = parsing_data.get("unidades", [])
+    
+    for uni in unidades:
+        uid = uni.get("id", "")
+        numero = uid.replace("U", "").strip()
+        nombre = uni.get("nombre", "").strip()
+        semanas = uni.get("semanas", "").strip()
+        
+        if not numero and "numero_unidad" in uni:
+            numero = str(uni.get("numero_unidad"))
+            uid = f"U{numero}"
+            
+        if not nombre and "titulo_unidad" in uni:
+            nombre = uni.get("titulo_unidad", "").strip()
+            
+        # Determinar número entero de unidad para filtrar semanas
+        num_entero = None
+        norm_num = str(numero).upper().strip()
+        if norm_num in {"1", "I"}:
+            num_entero = 1
+        elif norm_num in {"2", "II"}:
+            num_entero = 2
+        elif norm_num in {"3", "III"}:
+            num_entero = 3
+        else:
+            if "I" in norm_num:
+                if "III" in norm_num:
+                    num_entero = 3
+                elif "II" in norm_num:
+                    num_entero = 2
+                else:
+                    num_entero = 1
+            elif "1" in norm_num:
+                num_entero = 1
+            elif "2" in norm_num:
+                num_entero = 2
+            elif "3" in norm_num:
+                num_entero = 3
+
+        # Formatear la duración según la unidad requerida
+        semana_display = {
+            1: "Semana 1-4",
+            2: "Semana 6-9",
+            3: "Semana 11-14"
+        }.get(num_entero, semanas)
+
+        # Armar el contenido estructurado de la unidad
+        contenido_unidad = f"CURSO: {curso.nombre_curso}\n"
+        contenido_unidad += f"UNIDAD {numero}: {nombre}\n"
+        if semana_display:
+            contenido_unidad += f"Duración: {semana_display}\n"
+        contenido_unidad += "\n"
+        
+        # Helper para extraer el número de semana
+        def extraer_numero_semana(sem_val) -> Optional[int]:
+            if isinstance(sem_val, int):
+                return sem_val
+            if isinstance(sem_val, float):
+                return int(sem_val)
+            if isinstance(sem_val, str):
+                match = re.search(r'\d+', sem_val)
+                if match:
+                    return int(match.group(0))
+            return None
+
+        # Agregar sesiones/temas
+        sesiones = uni.get("sesiones", [])
+        tiene_sesiones = False
+        
+        semanas_permitidas = {
+            1: {1, 2, 3, 4},
+            2: {6, 7, 8, 9},
+            3: {11, 12, 13, 14}
+        }.get(num_entero, set())
+
+        if sesiones:
+            contenido_unidad += "Temas por Semana:\n"
+            for s in sesiones:
+                sem = s.get("semana", s.get("semana_num", ""))
+                num_sem = extraer_numero_semana(sem)
+                
+                # Solo procesar si el número de semana pertenece a las permitidas de la unidad
+                if num_sem is None or (num_entero in {1, 2, 3} and num_sem not in semanas_permitidas):
+                    continue
+                
+                cont = s.get("contenido", "").strip()
+                if cont:
+                    contenido_unidad += f"- Semana {sem}: {cont}\n"
+                    tiene_sesiones = True
+                    
+        # Agregar logros si existen en el JSON de la unidad (ej. extraído por Gemini)
+        logros = uni.get("logros_aprendizaje", "")
+        if logros:
+            contenido_unidad += f"\nLogros de Aprendizaje:\n{logros}\n"
+            
+        # Agregar competencias de la unidad
+        competencias_u = uni.get("competencias", [])
+        tiene_competencias = False
+        if competencias_u:
+            contenido_unidad += "\nCompetencias de la Unidad:\n"
+            for comp in competencias_u:
+                if isinstance(comp, str):
+                    contenido_unidad += f"- {comp.strip()}\n"
+                    tiene_competencias = True
+                elif isinstance(comp, dict) and comp.get("texto"):
+                    contenido_unidad += f"- {comp.get('texto').strip()}\n"
+                    tiene_competencias = True
+            
+        # Agregar capacidades de la unidad
+        capacidades = uni.get("capacidades", [])
+        if capacidades:
+            contenido_unidad += "\nCapacidades:\n"
+            for cap in capacidades:
+                if isinstance(cap, str):
+                    contenido_unidad += f"- {cap.strip()}\n"
+                elif isinstance(cap, dict) and cap.get("texto"):
+                    contenido_unidad += f"- {cap.get('texto').strip()}\n"
+                    
+        # Agregar resultados de la unidad
+        resultados = uni.get("resultados_aprendizaje", [])
+        if resultados:
+            contenido_unidad += "\nResultados de Aprendizaje:\n"
+            for res in resultados:
+                if isinstance(res, str):
+                    contenido_unidad += f"- {res.strip()}\n"
+                elif isinstance(res, dict) and res.get("texto"):
+                    contenido_unidad += f"- {res.get('texto').strip()}\n"
+
+        # Validar si tiene contenido real antes de guardarla
+        tiene_contenido = (tiene_sesiones or logros or capacidades or resultados or tiene_competencias)
+        es_nombre_sustancial = nombre and len(nombre.strip()) > 8 and not re.match(r'^unidad\s*\d+[\s.:]*$', nombre.strip(), re.IGNORECASE)
+        
+        if nombre and (tiene_contenido or es_nombre_sustancial):
+            content_str = contenido_unidad.strip()
+            db.add(SilaboChunk(
+                id_silabo=silabo.id_silabo,
+                tipo_seccion=TipoSeccionChunk.CONTENIDOS,
+                titulo=f"Unidad {numero}: {nombre}"[:200],
+                contenido=content_str,
+                embedding=embedding_service.generar_embedding(content_str),
+                metadata_json={
+                    "fuente": "Gemini_Extracted_Units",
+                    "unidad": f"U{numero}",
+                    "es_unidad_completa": True
+                }
+            ))
+            chunks_guardados += 1
+
     db.commit()
-    return len(chunks)
+    return chunks_guardados
 
 
 def _validar_archivo_pdf(archivo: UploadFile):
@@ -197,10 +446,7 @@ async def subir_silabo(
     db.refresh(nuevo_silabo)
 
     # Generar chunks para RAG
-    _generar_y_guardar_chunks(
-        db, nuevo_silabo.id_silabo, texto,
-        {"nombre_curso": curso.nombre_curso, "codigo_curso": curso.codigo_curso}
-    )
+    generar_y_guardar_chunks(db, nuevo_silabo, curso)
 
     # Actualizar el contexto del estudiante que acaba de subir el sílabo
     contexto_usuario = db.query(ContextoCursoUsuario).filter(
@@ -363,10 +609,8 @@ async def aprobar_silabo(
     db.commit()
 
     # Generar chunks para RAG (si no existían)
-    if silabo.texto_extraido:
-        curso = db.query(Curso).filter(Curso.id_curso == silabo.id_curso).first()
-        metadata = {"nombre_curso": curso.nombre_curso, "codigo_curso": curso.codigo_curso} if curso else {}
-        _generar_y_guardar_chunks(db, silabo.id_silabo, silabo.texto_extraido, metadata)
+    if silabo.texto_extraido and curso:
+        generar_y_guardar_chunks(db, silabo, curso)
 
     return {
         "message": f"Sílabo aprobado y publicado. Se actualizaron {len(contextos_actualizados)} contextos.",
@@ -416,80 +660,103 @@ async def test_cors():
         }
     )
 
-@router.post("/test-formdata")
-async def test_formdata(
-    id_curso: str = Form(None),
-    id_periodo: str = Form(None),
-    archivo: UploadFile = File(None)
-):
-    """Endpoint de prueba para verificar FormData"""
-    print(f"TEST: id_curso={id_curso}, id_periodo={id_periodo}, archivo={archivo.filename if archivo else None}")
-    return {
-        "id_curso": id_curso,
-        "id_periodo": id_periodo,
-        "archivo": archivo.filename if archivo else None,
-        "archivo_size": archivo.size if archivo else None
-    }
-
-@router.post("/upload-simple")
-async def upload_simple(request: Request):
-    """Endpoint ultra simple para probar upload"""
-    print("UPLOAD SIMPLE: Iniciando")
-    try:
-        form = await request.form()
-        print(f"UPLOAD SIMPLE: Form recibido con {len(form)} campos")
-        for key, value in form.items():
-            print(f"  {key}: {value}")
-        return {"status": "ok", "fields": len(form)}
-    except Exception as e:
-        print(f"UPLOAD SIMPLE ERROR: {e}")
-        return {"status": "error", "message": str(e)}
-
-@router.options("/upload-oficial")
-async def options_upload_oficial():
-    """Manejo manual de OPTIONS para CORS"""
-    from fastapi.responses import Response
-    return Response(
-        status_code=200,
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Max-Age": "3600"
-        }
-    )
-
 @router.post("/upload-oficial")
-async def subir_silabo_oficial(request: Request):
-    """Endpoint simplificado para pruebas"""
-    print("UPLOAD OFICIAL: Iniciando")
-    try:
-        form = await request.form()
-        print(f"UPLOAD OFICIAL: Form recibido con {len(form)} campos")
-        for key, value in form.items():
-            print(f"  {key}: {value}")
-        return {"status": "ok", "fields": len(form)}
-    except Exception as e:
-        print(f"UPLOAD OFICIAL ERROR: {e}")
-        import traceback
-        traceback.print_exc()
-        return {"status": "error", "message": str(e)}
+async def subir_silabo_oficial(
+    id_curso: int = Form(...),
+    id_periodo: int = Form(...),
+    archivo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_from_token)
+):
+    """Subida de sílabo oficial por el Administrador"""
+    
+    if current_user.rol != RolUsuario.ADMIN:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden subir sílabos oficiales")
+        
+    # 1. Validar que no exista sílabo oficial publicado para este curso/periodo
+    oficial = db.query(Silabo).filter(
+        Silabo.id_curso == id_curso,
+        Silabo.id_periodo == id_periodo,
+        Silabo.tipo_silabo == TipoSilabo.OFICIAL,
+    ).first()
+    
+    if oficial:
+        raise HTTPException(status_code=400, detail="Ya existe un sílabo oficial para este curso y periodo. Elimínelo primero si desea reemplazarlo.")
 
-@router.post("/upload-syllabus-test")
-async def upload_syllabus_test(request: Request):
-    """Endpoint de prueba con nombre completamente diferente"""
-    print("UPLOAD TEST: Iniciando")
-    try:
-        form = await request.form()
-        print(f"UPLOAD TEST: Form recibido con {len(form)} campos")
-        for key, value in form.items():
-            print(f"  {key}: {value}")
-        return {"status": "ok", "fields": len(form)}
-    except Exception as e:
-        print(f"UPLOAD TEST ERROR: {e}")
-        import traceback
-        traceback.print_exc()
-        return {"status": "error", "message": str(e)}
+    # 2. Validar el archivo PDF
+    _validar_archivo_pdf(archivo)
+
+    # 3. Procesar PDF
+    contenido = await archivo.read()
+    
+    # Guardar archivo físico
+    filename = f"oficial_{uuid.uuid4()}_{archivo.filename}"
+    filepath = os.path.join("app", "static", "uploads", "syllabi", filename)
+    with open(filepath, "wb") as f:
+        f.write(contenido)
+    
+    relative_path = f"/static/uploads/syllabi/{filename}"
+    texto = PDFParserService.extraer_texto(contenido)
+    
+    curso = db.query(Curso).filter(Curso.id_curso == id_curso).first()
+    periodo = db.query(PeriodoAcademico).filter(PeriodoAcademico.id_periodo == id_periodo).first()
+    
+    if not curso or not periodo:
+        raise HTTPException(status_code=404, detail="Curso o Periodo no encontrado")
+
+    # 4. Parsing Gemini + Confidence Score
+    parsing_data = gemini_parser.extraer_estructura_completa(
+        texto, curso.nombre_curso, periodo.nombre
+    )
+    
+    score = parsing_data.get("puntaje_confianza", 100)
+    
+    # 5. Guardar Sílabo Oficial
+    nuevo_silabo = Silabo(
+        id_curso=id_curso,
+        id_periodo=id_periodo,
+        id_usuario_subida=current_user.id,
+        nombre_archivo=archivo.filename,
+        ruta_pdf=relative_path,
+        texto_extraido=texto,
+        tipo_silabo=TipoSilabo.OFICIAL,
+        ambito_uso=AmbitoUso.PUBLICADO,
+        estado_validacion=EstadoVerificacion.APROBADO,
+        puntaje_confianza=score,
+        coincidencia_periodo=parsing_data.get("coincidencias", {}).get("periodo", CoincidenciaPeriodo.ACTUAL),
+        reglas_json=parsing_data
+    )
+    
+    db.add(nuevo_silabo)
+    db.commit()
+    db.refresh(nuevo_silabo)
+
+    # 6. Generar chunks estándar y específicos
+    generar_y_guardar_chunks(db, nuevo_silabo, curso)
+
+    # 7. Sincronizar todos los contextos de estudiantes matriculados en este curso y periodo
+    contextos = db.query(ContextoCursoUsuario).filter(
+        ContextoCursoUsuario.id_curso == id_curso,
+        ContextoCursoUsuario.id_periodo == id_periodo
+    ).all()
+
+    for contexto in contextos:
+        contexto.id_silabo_asignado = nuevo_silabo.id_silabo
+        contexto.origen_contexto = OrigenContexto.OFICIAL
+        contexto.estado_verificacion = EstadoVerificacion.OFICIAL
+        contexto.puntaje_confianza = score
+    db.commit()
+    
+    # 8. Procesar agrupamiento ITIL
+    ITILServiceDesk.procesar_agrupamiento_conocimiento(db, id_curso, id_periodo)
+    
+    return {
+        "success": True,
+        "id_silabo": nuevo_silabo.id_silabo,
+        "message": "Sílabo oficial subido y publicado correctamente.",
+        "score": score,
+        "contextos_sincronizados": len(contextos)
+    }
 
 @router.delete("/oficial/{id_silabo}")
 async def eliminar_silabo_oficial(
@@ -517,7 +784,7 @@ async def eliminar_silabo_oficial(
     ).all()
     for ctx in contextos:
         ctx.id_silabo_asignado = None
-        ctx.origen_contexto = OrigenContexto.SIN_SILABO
+        ctx.origen_contexto = OrigenContexto.DECLARADO_USUARIO
         ctx.estado_verificacion = EstadoVerificacion.PENDIENTE_CONFIRMACION
 
     # 4. Eliminar chunks relacionados
@@ -721,6 +988,8 @@ async def resolver_incidente_servicio(
         silabo.puntaje_confianza = score
         silabo.estado_validacion = EstadoVerificacion.APROBADO
         silabo.ambito_uso = AmbitoUso.PUBLICADO
+        
+        generar_y_guardar_chunks(db, silabo, curso)
         
     elif accion == "MANTENER":
         # Forzar aprobación del sílabo actual

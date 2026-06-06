@@ -117,8 +117,10 @@ export const uploadOfficialSyllabus = async (file, id_curso, id_periodo) => {
     console.log(`  ${key}:`, value, typeof value);
   }
   
-  // TEMPORAL: Usar endpoint de prueba con nombre diferente
-  const response = await apiClient.post('/silabo/upload-syllabus-test', formData);
+  // Llamar al endpoint oficial
+  const response = await apiClient.post('/silabo/upload-oficial', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
   return response.data;
 };
 

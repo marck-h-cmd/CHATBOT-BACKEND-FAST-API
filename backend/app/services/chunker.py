@@ -10,13 +10,60 @@ class ChunkerService:
     def crear_chunks(texto: str, metadata_base: Dict = None ) -> List[Dict]:
         """Divide el texto en chunks con metadata"""
         chunks = []
-        palabras = texto.split()
         
         # Detectar secciones por palabras clave
         secciones = ChunkerService._detectar_secciones(texto)
         
         # Crear chunks por sección
         for nombre_seccion, contenido in secciones.items():
+            if not contenido.strip():
+                continue
+                
+            if nombre_seccion == "contenidos":
+                # Intentar separar por unidades explícitamente
+                unidades_split = re.split(r'(?i)\b(I\s+UNIDAD|UNIDAD\s+I|II\s+UNIDAD|UNIDAD\s+II|III\s+UNIDAD|UNIDAD\s+III)\b', contenido)
+                
+                if len(unidades_split) > 1:
+                    current_u = "GENERAL"
+                    for part in unidades_split:
+                        part_strip = part.strip()
+                        if not part_strip:
+                            continue
+                            
+                        # Detectar si esta parte es un separador de unidad
+                        if re.match(r'(?i)\b(I\s+UNIDAD|UNIDAD\s+I)\b', part_strip):
+                            current_u = "U1"
+                            continue
+                        elif re.match(r'(?i)\b(II\s+UNIDAD|UNIDAD\s+II)\b', part_strip):
+                            current_u = "U2"
+                            continue
+                        elif re.match(r'(?i)\b(III\s+UNIDAD|UNIDAD\s+III)\b', part_strip):
+                            current_u = "U3"
+                            continue
+                            
+                        if len(part_strip) > 50:
+                            chunk_metadata = {
+                                "tipo_seccion": nombre_seccion,
+                                "fuente": metadata_base.get("nombre_curso", "Silabo") if metadata_base else "Silabo",
+                                "unidad": current_u
+                            }
+                            
+                            # Dividir si es muy largo
+                            if len(part_strip) > ChunkerService.CHUNK_SIZE:
+                                sub_chunks = ChunkerService._dividir_texto(part_strip)
+                                for i, sub in enumerate(sub_chunks):
+                                    chunks.append({
+                                        "texto": sub,
+                                        "metadata": {**chunk_metadata, "parte": i+1, "total_partes": len(sub_chunks)}
+                                    })
+                            else:
+                                chunks.append({
+                                    "texto": part_strip,
+                                    "metadata": chunk_metadata
+                                })
+                    continue # Saltar la lógica por defecto ya que lo manejamos aquí
+
+            # Lógica por defecto para otras secciones
             chunk_metadata = {
                 "tipo_seccion": nombre_seccion,
                 "fuente": metadata_base.get("nombre_curso", "Silabo") if metadata_base else "Silabo",
@@ -46,13 +93,14 @@ class ChunkerService:
         
         # Patrones de secciones comunes en sílabos UNT
         patrones = {
-            "competencias": r"(COMPETENCIAS|COMPETENCIA GENERAL|RESULTADOS DEL ESTUDIANTE)[\s\S]*?(?=(?:\n\s*(?:IV\.?|SUMARIO|EVALUACIÓN)|$))",
-            "evaluacion": r"(EVALUACIÓN|SISTEMA DE EVALUACIÓN|CRITERIOS DE EVALUACIÓN)[\s\S]*?(?=(?:\n\s*(?:V\.?|VI\.?|BIBLIOGRAFÍA|ANEXOS|EXÁ?MENES SUSTITUTORIOS|EXAMEN DE APLAZADOS)|$))",
+            "sumilla": r"(SUMILLA|FUNDAMENTACIÓN)[\s\S]*?(?=(?:\n\s*(?:II\.?|COMPETENCIAS|COMPETENCIA GENERAL)|$))",
+            "competencias": r"(COMPETENCIAS|COMPETENCIA GENERAL|RESULTADOS DEL ESTUDIANTE)[\s\S]*?(?=(?:\n\s*(?:IV\.?|SUMARIO|EVALUACIÓN|PROGRAMACIÓN ACADÉMICA)|$))",
+            "evaluacion": r"(EVALUACIÓN|SISTEMA DE EVALUACIÓN|CRITERIOS DE EVALUACIÓN)[\s\S]*?(?=(?:\n\s*(?:V\.?|VI\.?|BIBLIOGRAFÍA|ANEXOS|EXÁ?MENES SUSTITUTORIOS|EXAMEN DE APLAZADOS|TUTORÍA|CONSEJERÍA ACADÉMICA)|$))",
             "aplazados_susti": r"(EXÁ?MENES SUSTITUTORIOS|EXAMEN DE APLAZADOS)[\s\S]*?(?=(?:\n\s*(?:VI\.?|VII\.?|BIBLIOGRAFÍA|ANEXOS)|$))",
-            "contenidos": r"(CONTENIDOS|PROGRAMACIÓN ACADÉMICA|UNIDADES)[\s\S]*?(?=(?:\n\s*(?:EVALUACIÓN|IV\.?)|$))",
-            "metodologia": r"(METODOLOGÍA|ESTRATEGIAS DIDÁCTICAS)[\s\S]*?(?=(?:\n\s*(?:EVALUACIÓN|V\.?)|$))",
-            "tutoria": r"(CONSEJERÍA ACADÉMICA|TUTORÍA)[\s\S]*?(?=(?:\n\s*(?:VI\.?)|$))",
-            "capacidades": r"(CAPACIDADES|RESULTADOS DE APRENDIZAJE)[\s\S]*?(?=(?:\n\s*(?:CONTENIDOS|ESTRATEGIAS|IV\.?)|$))",
+            "contenidos": r"(CONTENIDOS|PROGRAMACIÓN ACADÉMICA|UNIDADES)[\s\S]*?(?=(?:\n\s*(?:EVALUACIÓN|SISTEMA DE EVALUACIÓN|V\.?|METODOLOGÍA|ESTRATEGIAS DIDÁCTICAS)|$))",
+            "metodologia": r"(METODOLOGÍA|ESTRATEGIAS DIDÁCTICAS)[\s\S]*?(?=(?:\n\s*(?:EVALUACIÓN|SISTEMA DE EVALUACIÓN|V\.?|VI\.?)|$))",
+            "tutoria": r"(CONSEJERÍA ACADÉMICA|TUTORÍA)[\s\S]*?(?=(?:\n\s*(?:VI\.?|VII\.?|VIII\.?|BIBLIOGRAFÍA|REFERENCIAS)|$))",
+            "capacidades": r"(CAPACIDADES|RESULTADOS DE APRENDIZAJE)[\s\S]*?(?=(?:\n\s*(?:CONTENIDOS|ESTRATEGIAS|IV\.?|PROGRAMACIÓN ACADÉMICA)|$))",
         }
         
         for nombre, patron in patrones.items():
