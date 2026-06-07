@@ -90,6 +90,29 @@ class SugerenciaEstudioService:
 
     @staticmethod
     def _crear_o_actualizar_sugerencia(db: Session, id_usuario: int, id_contexto: int, tipo: TipoSugerencia, tema: str, horas: float, distribucion: dict, justificacion: str, prioridad: int):
+        from app.database.models import NotificacionProgramada, EstadoNotificacion
+        from datetime import datetime
+        
+        # Validar si ya hay un plan aceptado y activo (con notificación pendiente a futuro) para este curso
+        plan_aceptado = db.query(SugerenciaEstudio).join(NotificacionProgramada).filter(
+            SugerenciaEstudio.id_contexto == id_contexto,
+            SugerenciaEstudio.id_usuario == id_usuario,
+            SugerenciaEstudio.estado == EstadoSugerencia.ACEPTADA,
+            NotificacionProgramada.estado == EstadoNotificacion.PENDIENTE,
+            NotificacionProgramada.fecha_programada > datetime.now()
+        ).first()
+        if plan_aceptado:
+            return None
+            
+        # Validar límite de planes pendientes (no vistos) para este curso
+        pendientes_count = db.query(SugerenciaEstudio).filter(
+            SugerenciaEstudio.id_contexto == id_contexto,
+            SugerenciaEstudio.id_usuario == id_usuario,
+            SugerenciaEstudio.estado == EstadoSugerencia.PENDIENTE
+        ).count()
+        if pendientes_count >= 5:
+            return None
+
         contexto = db.query(ContextoCursoUsuario).filter(ContextoCursoUsuario.id_contexto == id_contexto).first()
         
         sugerencia = SugerenciaEstudio(

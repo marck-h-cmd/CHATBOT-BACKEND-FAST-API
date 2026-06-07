@@ -118,11 +118,16 @@ async def actualizar_notas(
         raise HTTPException(status_code=404, detail="Curso no encontrado para este usuario")
         
     if data.pu1 is not None:
+        if not (0 <= data.pu1 <= 20): raise HTTPException(status_code=400, detail="La nota debe estar entre 0 y 20")
         contexto.pu1 = data.pu1
     if data.pu2 is not None:
+        if not (0 <= data.pu2 <= 20): raise HTTPException(status_code=400, detail="La nota debe estar entre 0 y 20")
         contexto.pu2 = data.pu2
     if data.pu3 is not None:
+        if not (0 <= data.pu3 <= 20): raise HTTPException(status_code=400, detail="La nota debe estar entre 0 y 20")
         contexto.pu3 = data.pu3
+    if data.nota_final is not None:
+        if not (0 <= data.nota_final <= 20): raise HTTPException(status_code=400, detail="La nota debe estar entre 0 y 20")
         
     db.commit()
     db.refresh(contexto)

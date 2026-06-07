@@ -43,15 +43,27 @@ const DashboardPage = () => {
     }
   }, [incidents]);
 
-  const stats = useMemo(() => ({
-    total: enrollments.length,
-    validados: enrollments.filter(e => e.silabo_validado).length,
-    pendientes: enrollments.filter(e => !e.silabo_validado).length,
-    alertas: recentIncidents.filter(i => i.estado !== 'RESUELTO').length,
-    promedioGeneral: enrollments.length
-      ? (enrollments.reduce((s, e) => s + (e.promedio || 0), 0) / enrollments.length).toFixed(1)
-      : '—'
-  }), [enrollments, recentIncidents]);
+  const stats = useMemo(() => {
+    const completedCourses = enrollments.filter(e => 
+      e.notas && 
+      e.notas.pu1 !== null && e.notas.pu1 !== undefined && 
+      e.notas.pu2 !== null && e.notas.pu2 !== undefined && 
+      e.notas.pu3 !== null && e.notas.pu3 !== undefined
+    );
+    
+    const sum = completedCourses.reduce((s, e) => s + (e.notas.nota_final || 0), 0);
+    const promedioGeneral = completedCourses.length
+      ? (sum / completedCourses.length).toFixed(1)
+      : '—';
+
+    return {
+      total: enrollments.length,
+      validados: enrollments.filter(e => e.silabo_validado).length,
+      pendientes: enrollments.filter(e => !e.silabo_validado).length,
+      alertas: recentIncidents.filter(i => i.estado !== 'RESUELTO').length,
+      promedioGeneral
+    };
+  }, [enrollments, recentIncidents]);
 
   const QuickLink = ({ to, icon: Icon, title, description, tourId = null }) => (
     <Link to={to} className="group block h-full" data-tour={tourId || undefined}>

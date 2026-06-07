@@ -17,7 +17,7 @@ class DashboardService:
         # New metrics calculation
         total_estudiantes = db.query(Usuario).filter(Usuario.rol == RolUsuario.ESTUDIANTE).count()
         total_inscripciones = db.query(ContextoCursoUsuario).count()
-        total_consultas = db.query(MensajeChat).filter(MensajeChat.remitente == "USUARIO").count()
+        total_consultas = db.query(MensajeChat).filter(func.lower(MensajeChat.remitente) == "usuario").count()
         solicitudes_abiertas = db.query(SolicitudServicio).filter(SolicitudServicio.estado == EstadoSolicitud.ABIERTA).count()
         solicitudes_resueltas = db.query(SolicitudServicio).filter(SolicitudServicio.estado == EstadoSolicitud.RESUELTA).count()
         incidentes_activos = db.query(IncidenteAcademico).filter(IncidenteAcademico.estado == EstadoIncidente.ACTIVO).count() + db.query(IncidenteServicio).filter(IncidenteServicio.estado == EstadoIncidente.ACTIVO).count()
@@ -34,6 +34,17 @@ class DashboardService:
         tiempo_promedio_respuesta = db.query(func.avg(SolicitudServicio.tiempo_respuesta_ms)).scalar() or 0
         tasa_resolucion = DashboardService._calcular_tasa_resolucion(db)
         
+        # Dynamic calculation of CSAT Estimado (satisfaccion)
+        solicitudes_totales = db.query(SolicitudServicio).count()
+        if solicitudes_totales > 0:
+            solicitudes_resueltas_count = db.query(SolicitudServicio).filter(SolicitudServicio.estado == EstadoSolicitud.RESUELTA).count()
+            solicitudes_escaladas = db.query(SolicitudServicio).filter(SolicitudServicio.escalada_a_docente == True).count()
+            # Dynamic CSAT: ratio of resolved to total, with a slight penalty for escalations
+            factor_satisfaccion = (solicitudes_resueltas_count - (solicitudes_escaladas * 0.2)) / solicitudes_totales
+            satisfaccion = max(0.0, min(100.0, round(factor_satisfaccion * 100, 1)))
+        else:
+            satisfaccion = 95.0
+
         return {
             "total_estudiantes": total_estudiantes,
             "total_inscripciones": total_inscripciones,
@@ -49,7 +60,7 @@ class DashboardService:
             "tiempo_promedio_respuesta": int(tiempo_promedio_respuesta),
             "tasa_escalamiento": round(100.0 - tasa_resolucion, 2),
             "tasa_resolucion_sin_escalar": tasa_resolucion,
-            "satisfaccion": 95.0
+            "satisfaccion": satisfaccion
         }
 
     @staticmethod

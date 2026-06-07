@@ -16,6 +16,13 @@ const MyCoursesPage = () => {
   const [notasForm, setNotasForm] = useState({ pu1: '', pu2: '', pu3: '', nota_final: '' });
 
   const handleNotaChange = (field, value) => {
+    if (value !== '') {
+      if (value.startsWith('-')) return;
+      const num = parseFloat(value);
+      if (!isNaN(num) && num > 20) {
+        return;
+      }
+    }
     setNotasForm(prev => {
       const updated = { ...prev, [field]: value };
       if (updated.pu1 !== '' && updated.pu2 !== '' && updated.pu3 !== '') {
@@ -65,8 +72,17 @@ const MyCoursesPage = () => {
       const payload = {
         pu1: parseVal(notasForm.pu1),
         pu2: parseVal(notasForm.pu2),
-        pu3: parseVal(notasForm.pu3)
+        pu3: parseVal(notasForm.pu3),
+        nota_final: parseVal(notasForm.nota_final)
       };
+      
+      // Validar notas entre 0 y 20
+      for (const val of Object.values(payload)) {
+        if (val !== null && (val < 0 || val > 20)) {
+          alert("Las notas deben estar entre 0 y 20.");
+          return;
+        }
+      }
       
       await contextAPI.updateGrades(selectedContextId, payload);
       setModalOpen(false);
