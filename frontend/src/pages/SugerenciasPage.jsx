@@ -95,7 +95,8 @@ const SugerenciasPage = () => {
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedSugId, setSelectedSugId] = useState(null);
-  const [diasAntes, setDiasAntes] = useState(1);
+  const [fechaProgramada, setFechaProgramada] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('TODAS');
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -117,9 +118,18 @@ const SugerenciasPage = () => {
     }
   };
 
-  const handleUpdateEstado = async (id, nuevoEstado, dias = 1) => {
+  const handleUpdateEstado = async (id, nuevoEstado, fechaProg = null) => {
     try {
-      await sugerenciasAPI.updateSugerenciaEstado(id, nuevoEstado, dias);
+      let isoDate = null;
+      if (nuevoEstado === 'ACEPTADA') {
+        if (!fechaProg) {
+          alert("Por favor selecciona una fecha y hora para el recordatorio.");
+          return;
+        }
+        isoDate = new Date(fechaProg).toISOString();
+      }
+      
+      await sugerenciasAPI.updateSugerenciaEstado(id, nuevoEstado, isoDate);
       // Actualizar localmente
       setSugerencias(prev => prev.map(s => s.id_sugerencia === id ? { ...s, estado: nuevoEstado } : s));
       setModalOpen(false);
@@ -130,7 +140,7 @@ const SugerenciasPage = () => {
 
   const openAcceptModal = (id) => {
     setSelectedSugId(id);
-    setDiasAntes(1);
+    setFechaProgramada('');
     setModalOpen(true);
   };
 
@@ -148,9 +158,9 @@ const SugerenciasPage = () => {
 
   const getPriorityColor = (prioridad) => {
     switch (prioridad) {
-      case 1: return 'text-red-500 bg-red-50 dark:bg-red-950/20 border-red-100 dark:border-red-900/50';
-      case 2: return 'text-amber-500 bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/50';
-      default: return 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/50';
+      case 1: return 'text-red-600 bg-red-50 dark:bg-red-950/20 border-red-150 dark:border-red-900/30';
+      case 2: return 'text-amber-600 bg-amber-50 dark:bg-amber-950/20 border-amber-150 dark:border-amber-900/30';
+      default: return 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-150 dark:border-emerald-900/30';
     }
   };
 
@@ -172,7 +182,24 @@ const SugerenciasPage = () => {
             </div>
             Mis Sugerencias de Estudio
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2">Recomendaciones personalizadas basadas en tus consultas al chatbot.</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-2">
+            <p className="text-slate-500 dark:text-slate-400">Recomendaciones personalizadas basadas en tus consultas al chatbot.</p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">Filtro:</span>
+              <select
+                value={filtroEstado}
+                onChange={(e) => setFiltroEstado(e.target.value)}
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 dark:text-slate-200 outline-none"
+              >
+                <option value="TODAS">Todas</option>
+                <option value="PENDIENTE">Sin visualizar</option>
+                <option value="ACEPTADA">Aceptadas</option>
+                <option value="CANCELADA">Canceladas</option>
+                <option value="IGNORADA">Ignoradas</option>
+                <option value="EXPIRADA">Expiradas</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         {loading ? (
@@ -189,14 +216,17 @@ const SugerenciasPage = () => {
           </div>
         ) : (
           <div className="grid gap-4">
-            {sugerencias.map((sugerencia) => (
+            {sugerencias.filter(s => filtroEstado === 'TODAS' || s.estado === filtroEstado).map((sugerencia) => (
               <motion.div
                 key={sugerencia.id_sugerencia}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`bg-white dark:bg-[#131A2C] p-6 rounded-2xl shadow-sm border ${
-                  sugerencia.estado === 'ACEPTADA' ? 'border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/30 dark:bg-emerald-950/5' :
-                  sugerencia.estado === 'IGNORADA' ? 'border-slate-200 dark:border-slate-800 opacity-60' : 'border-indigo-100 dark:border-indigo-900/50'
+                className={`bg-white dark:bg-[#131A2C] p-6 rounded-2xl shadow-sm border transition-shadow hover:shadow-md ${
+                  sugerencia.estado === 'ACEPTADA' ? 'border-emerald-250 dark:border-emerald-900/50 bg-emerald-50/10 dark:bg-emerald-950/5' :
+                  sugerencia.estado === 'IGNORADA' ? 'border-slate-200 dark:border-slate-800 opacity-60' :
+                  sugerencia.estado === 'EXPIRADA' ? 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/30 opacity-75' :
+                  sugerencia.estado === 'CANCELADA' ? 'border-rose-100 dark:border-rose-900/40 bg-rose-50/30 dark:bg-rose-950/10 opacity-80' :
+                  'border-indigo-100 dark:border-indigo-900/50'
                 }`}
               >
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -215,7 +245,7 @@ const SugerenciasPage = () => {
                     </h3>
                     
                     <div className="mb-4">
-                      <p className="text-sm text-slate-600 dark:text-slate-300 mb-2"><strong>Justificación:</strong> {sugerencia.justificacion}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-300 mb-2"> {sugerencia.justificacion}</p>
                       
                       {renderDistribucion(sugerencia.distribucion_sugerida)}
                     </div>
@@ -230,23 +260,44 @@ const SugerenciasPage = () => {
                       <>
                         <button
                           onClick={() => openAcceptModal(sugerencia.id_sugerencia)}
-                          className="flex items-center gap-1.5 px-4 py-2 bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/40 rounded-lg font-medium text-sm transition-colors"
+                          className="flex items-center gap-1.5 px-4 py-2 bg-emerald-100 dark:bg-emerald-950/30 text-emerald-750 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 rounded-lg font-bold text-sm transition-colors shadow-sm"
                         >
                           <CheckCircle className="w-4 h-4" /> Aceptar
                         </button>
                         <button
                           onClick={() => handleUpdateEstado(sugerencia.id_sugerencia, 'IGNORADA')}
-                          className="flex items-center gap-1.5 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg font-medium text-sm transition-colors"
+                          className="flex items-center gap-1.5 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg font-bold text-sm transition-colors shadow-sm"
                         >
                           <XCircle className="w-4 h-4" /> Ignorar
                         </button>
                       </>
+                    ) : sugerencia.estado === 'ACEPTADA' ? (
+                      <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                        <div className="px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 text-emerald-700 dark:text-emerald-400 bg-emerald-100/50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40">
+                          <CheckCircle className="w-4 h-4" /> ACEPTADA
+                        </div>
+                        <button
+                          onClick={() => openAcceptModal(sugerencia.id_sugerencia)}
+                          className="flex items-center gap-1 px-3 py-2 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-650 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-lg font-semibold text-sm transition-colors"
+                          title="Reprogramar"
+                        >
+                          <Calendar className="w-4 h-4" /> Reprogramar
+                        </button>
+                        <button
+                          onClick={() => handleUpdateEstado(sugerencia.id_sugerencia, 'CANCELADA')}
+                          className="flex items-center gap-1 px-3 py-2 bg-rose-50 dark:bg-rose-950/20 text-rose-650 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 rounded-lg font-semibold text-sm transition-colors"
+                          title="Cancelar Programación"
+                        >
+                          <XCircle className="w-4 h-4" /> Cancelar
+                        </button>
+                      </div>
                     ) : (
                       <div className={`px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 ${
-                        sugerencia.estado === 'ACEPTADA' ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20' : 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800'
+                        sugerencia.estado === 'CANCELADA' ? 'text-rose-500 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30' :
+                        sugerencia.estado === 'EXPIRADA' ? 'text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800' : 
+                        'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800'
                       }`}>
-                        {sugerencia.estado === 'ACEPTADA' ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-                        {sugerencia.estado}
+                        <XCircle className="w-4 h-4" /> {sugerencia.estado}
                       </div>
                     )}
                   </div>
@@ -269,25 +320,24 @@ const SugerenciasPage = () => {
             >
               <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">Programar Recordatorio</h3>
               <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">
-                Te enviaremos un correo para recordarte estudiar. ¿Cuántos días antes de la entrega deseas recibirlo?
+                Te enviaremos un correo para recordarte estudiar. ¿En qué fecha y hora deseas recibirlo?
               </p>
               
               <div className="mb-6">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Días antes del examen/entrega:</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Fecha y hora del recordatorio:</label>
                 <input 
-                  type="number" 
-                  min="0" 
-                  max="14" 
-                  value={diasAntes} 
-                  onChange={(e) => setDiasAntes(parseInt(e.target.value) || 0)}
+                  type="datetime-local" 
+                  min={new Date().toISOString().slice(0, 16)}
+                  value={fechaProgramada} 
+                  onChange={(e) => setFechaProgramada(e.target.value)}
                   className="w-full border border-slate-300 dark:border-slate-800 rounded-lg px-4 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-500/40 focus:border-indigo-500"
                 />
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Ej: 1 = un día antes. 0 = Hoy mismo.</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Selecciona un momento a partir de hoy.</p>
               </div>
 
               <div className="flex gap-3">
                 <button 
-                  onClick={() => handleUpdateEstado(selectedSugId, 'ACEPTADA', diasAntes)}
+                  onClick={() => handleUpdateEstado(selectedSugId, 'ACEPTADA', fechaProgramada)}
                   className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
                 >
                   Guardar

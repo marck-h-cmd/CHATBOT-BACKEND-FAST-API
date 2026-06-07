@@ -95,16 +95,38 @@ const ChatMessage = ({ message }) => {
 
   const [sugEstado, setSugEstado] = useState(sugerencia?.estado || 'PENDIENTE');
   const [loadingSug, setLoadingSug] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [fechaProgramada, setFechaProgramada] = useState('');
 
   const handleUpdateSugerencia = async (nuevoEstado) => {
     if (!sugerencia?.id_sugerencia) return;
     setLoadingSug(true);
     try {
-      await sugerenciasAPI.updateSugerenciaEstado(sugerencia.id_sugerencia, nuevoEstado, 1);
+      await sugerenciasAPI.updateSugerenciaEstado(sugerencia.id_sugerencia, nuevoEstado, null);
       setSugEstado(nuevoEstado);
     } catch (err) {
       console.error("Error al actualizar estado de sugerencia desde chat:", err);
       alert("No se pudo actualizar la sugerencia.");
+    } finally {
+      setLoadingSug(false);
+    }
+  };
+
+  const confirmAcceptPlan = async () => {
+    if (!sugerencia?.id_sugerencia) return;
+    if (!fechaProgramada) {
+      alert("Por favor selecciona una fecha y hora para el recordatorio.");
+      return;
+    }
+    setLoadingSug(true);
+    try {
+      const isoDate = new Date(fechaProgramada).toISOString();
+      await sugerenciasAPI.updateSugerenciaEstado(sugerencia.id_sugerencia, 'ACEPTADA', isoDate);
+      setSugEstado('ACEPTADA');
+      setModalOpen(false);
+    } catch (err) {
+      console.error("Error al aceptar sugerencia desde chat:", err);
+      alert("No se pudo aceptar la sugerencia.");
     } finally {
       setLoadingSug(false);
     }
@@ -220,8 +242,7 @@ const ChatMessage = ({ message }) => {
                 {renderDistribucion(sugerencia.distribucion_sugerida)}
               </div>
 
-              {/* Acciones */}
-              <div className="flex items-center justify-end gap-2 mt-2 pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
+              <div className="flex flex-wrap items-center justify-end gap-2 mt-2 pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
                 {sugEstado === 'PENDIENTE' ? (
                   <>
                     <button
@@ -232,28 +253,40 @@ const ChatMessage = ({ message }) => {
                       Ignorar
                     </button>
                     <button
-                      onClick={() => handleUpdateSugerencia('ACEPTADA')}
+                      onClick={() => setModalOpen(true)}
                       disabled={loadingSug}
                       className="px-3.5 py-1.5 bg-indigo-650 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white font-extrabold rounded-xl shadow-sm transition-colors flex items-center gap-1.5 disabled:opacity-50"
                     >
                       Aceptar Plan
                     </button>
                   </>
+                ) : sugEstado === 'ACEPTADA' ? (
+                  <>
+                    <span className="flex items-center gap-1 font-bold text-emerald-650 dark:text-emerald-400 mr-auto pl-1">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      Programado
+                    </span>
+                    <button
+                      onClick={() => setModalOpen(true)}
+                      disabled={loadingSug}
+                      className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-bold text-[11px] rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
+                    >
+                      <Clock className="w-3 h-3" /> Reprogramar
+                    </button>
+                    <button
+                      onClick={() => handleUpdateSugerencia('CANCELADA')}
+                      disabled={loadingSug}
+                      className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 font-bold text-[11px] rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
+                    >
+                      <XCircle className="w-3 h-3" /> Cancelar
+                    </button>
+                  </>
                 ) : (
                   <span className={`flex items-center gap-1 font-bold ${
-                    sugEstado === 'ACEPTADA' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'
+                    sugEstado === 'CANCELADA' ? 'text-rose-500 dark:text-rose-400' : 'text-slate-400 dark:text-slate-500'
                   }`}>
-                    {sugEstado === 'ACEPTADA' ? (
-                      <>
-                        <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-                        Plan Aceptado y Programado
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="w-3.5 h-3.5 text-slate-400" />
-                        Ignorada
-                      </>
-                    )}
+                    <XCircle className="w-3.5 h-3.5" />
+                    {sugEstado === 'CANCELADA' ? 'Cancelada' : sugEstado}
                   </span>
                 )}
               </div>
@@ -282,6 +315,47 @@ const ChatMessage = ({ message }) => {
           )}
         </div>
       </div>
+
+      {/* Modal para Días Antes */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 dark:bg-slate-950/60 p-4">
+          <div className="bg-white dark:bg-[#131A2C] border dark:border-slate-800 rounded-2xl shadow-xl max-w-sm w-full p-6 relative overflow-hidden">
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">Programar Recordatorio</h3>
+            <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">
+              Te enviaremos un correo para recordarte estudiar. ¿En qué fecha y hora deseas recibirlo?
+            </p>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Fecha y hora del recordatorio:</label>
+              <input 
+                type="datetime-local" 
+                min={new Date().toISOString().slice(0, 16)}
+                value={fechaProgramada} 
+                onChange={(e) => setFechaProgramada(e.target.value)}
+                className="w-full border border-slate-300 dark:border-slate-800 rounded-lg px-4 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-500/40 focus:border-indigo-500"
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Selecciona un momento a partir de hoy.</p>
+            </div>
+
+            <div className="flex gap-3">
+              <button 
+                onClick={() => confirmAcceptPlan()}
+                disabled={loadingSug}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {loadingSug ? 'Guardando...' : 'Guardar'}
+              </button>
+              <button 
+                onClick={() => setModalOpen(false)}
+                disabled={loadingSug}
+                className="flex-1 bg-slate-100 dark:bg-slate-850 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

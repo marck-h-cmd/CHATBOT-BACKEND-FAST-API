@@ -6,10 +6,9 @@ from app.services.email_service import EmailService
 
 class NotificacionService:
     @staticmethod
-    def programar_recordatorio(db: Session, id_sugerencia: int, dias_antes: int = 1) -> NotificacionProgramada:
+    def programar_recordatorio(db: Session, id_sugerencia: int, fecha_programada: datetime) -> NotificacionProgramada:
         """
-        Programa un recordatorio de estudio para 'dias_antes' días antes de una supuesta fecha de entrega.
-        Como es dinámico y a pedido, simulamos que la entrega será mañana + dias_antes.
+        Programa un recordatorio de estudio para la fecha y hora indicadas por el usuario.
         """
         sugerencia = db.query(SugerenciaEstudio).filter(SugerenciaEstudio.id_sugerencia == id_sugerencia).first()
         if not sugerencia:
@@ -19,15 +18,8 @@ class NotificacionService:
         if not usuario:
             raise ValueError("Usuario no encontrado")
 
-        # Calculamos cuándo debe enviarse el correo
-        # El usuario en el frontend elige cuántos días antes de la entrega quiere el recordatorio.
-        # Si la entrega está a X días, programaremos que se envíe "fecha_entrega - dias_antes".
-        # Para simular sin fecha real, diremos que se envía AHORA si quiere 0 días, o programado para el futuro.
-        # En la práctica simulada, si dice "dias_antes", programaremos el envío para dentro de unos minutos/horas 
-        # (para prueba rápida pondremos que ya debe enviarse, o se programa exactamente en N días).
-        
-        # Como es una simulación de fechas, programamos la notificación para ENVIARSE en:
-        fecha_programada = datetime.now() # Por defecto, ahora para que el job lo coja y veamos que funciona.
+        # Asignamos la fecha elegida por el usuario
+        # fecha_programada ya viene calculada/asignada desde el endpoint
         
         asunto = f"📚 Recordatorio de estudio: {sugerencia.tema_o_evidencia}"
         

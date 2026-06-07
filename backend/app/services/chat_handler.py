@@ -383,28 +383,52 @@ class ChatHandler:
             if nivel_riesgo in ["ALTO", "MUY ALTO", "DESAPRUEBA"]:
                 
                 # Check for recent suggestions to avoid spamming alerts in every chat message
-                from app.database.models import SugerenciaEstudio
+                from app.database.models import SugerenciaEstudio, NotificacionProgramada, EstadoSugerencia, EstadoNotificacion
                 from datetime import datetime, timedelta
                 
-                sugerencia_reciente = db.query(SugerenciaEstudio).filter(
+                # Check if there is already an accepted plan that is not yet completed (pending notification)
+                sugerencia_activa = db.query(SugerenciaEstudio).join(NotificacionProgramada).filter(
+                    SugerenciaEstudio.id_usuario == id_usuario,
+                    SugerenciaEstudio.id_contexto == id_contexto,
+                    SugerenciaEstudio.estado == EstadoSugerencia.ACEPTADA,
+                    NotificacionProgramada.estado == EstadoNotificacion.PENDIENTE,
+                    NotificacionProgramada.fecha_programada > datetime.now()
+                ).first()
+
+                # Check recent suggestions (max 5 in the last 7 days)
+                sugerencias_recientes = db.query(SugerenciaEstudio).filter(
+                    SugerenciaEstudio.id_usuario == id_usuario,
+                    SugerenciaEstudio.id_contexto == id_contexto,
+                    SugerenciaEstudio.fecha_generacion > datetime.now() - timedelta(days=7)
+                ).count()
+                
+                sugerencia_muy_reciente = db.query(SugerenciaEstudio).filter(
                     SugerenciaEstudio.id_usuario == id_usuario,
                     SugerenciaEstudio.id_contexto == id_contexto,
                     SugerenciaEstudio.tipo_sugerencia == "POR_RIESGO"
                 ).order_by(SugerenciaEstudio.fecha_generacion.desc()).first()
                 
                 mostrar_alerta = True
-                if sugerencia_reciente and sugerencia_reciente.fecha_generacion > datetime.now() - timedelta(hours=24):
-                    # Saltar restricción si el estudiante pide explícitamente generar, ajustar o mejorar el plan o recibir consejos de estudio
-                    palabras_clave = [
-                        "plan", "rescate", "sugerencia", "ajust", "gener", "mejor", 
-                        "estudio", "horas", "estudiar", "recomiend", "consejo", "ayuda", 
-                        "riesgo", "alerta", "susti", "aplazado", "recupera", "tutor", 
-                        "horario", "cronograma", "organiz", "calendario", "estrate", "accion"
-                    ]
-                    if any(palabra in pregunta.lower() for palabra in palabras_clave):
-                        mostrar_alerta = True
-                    else:
+                
+                if sugerencia_activa:
+                    # Bloqueo estricto: Si ya hay un plan aceptado pendiente, no sugerimos otro.
+                    mostrar_alerta = False
+                else:
+                    if sugerencias_recientes >= 5:
                         mostrar_alerta = False
+                    elif sugerencia_muy_reciente and sugerencia_muy_reciente.fecha_generacion > datetime.now() - timedelta(hours=24):
+                        mostrar_alerta = False
+                    
+                    if not mostrar_alerta:
+                        # Saltar restricción (throttle) si el estudiante pide explícitamente generar o hablar del plan
+                        palabras_clave = [
+                            "plan", "rescate", "sugerencia", "ajust", "gener", "mejor", 
+                            "estudio", "horas", "estudiar", "recomiend", "consejo", "ayuda", 
+                            "riesgo", "alerta", "susti", "aplazado", "recupera", "tutor", 
+                            "horario", "cronograma", "organiz", "calendario", "estrate", "accion"
+                        ]
+                        if any(palabra in pregunta.lower() for palabra in palabras_clave):
+                            mostrar_alerta = True
                 
                 if mostrar_alerta:
                     riesgo_detectado = nivel_riesgo

@@ -113,11 +113,14 @@ class EstadoSugerencia(str, enum.Enum):
     PENDIENTE = "PENDIENTE"
     ACEPTADA = "ACEPTADA"
     IGNORADA = "IGNORADA"
+    EXPIRADA = "EXPIRADA"
+    CANCELADA = "CANCELADA"
 
 class EstadoNotificacion(str, enum.Enum):
     PENDIENTE = "PENDIENTE"
     ENVIADO = "ENVIADO"
     FALLIDO = "FALLIDO"
+    CANCELADA = "CANCELADA"
 
 
 # ============================================
