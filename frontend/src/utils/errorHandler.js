@@ -74,6 +74,12 @@ export const handleApiError = (error) => {
         message: detail || 'Algunos campos no cumplen el formato requerido.',
         status,
       };
+    case 429:
+      return {
+        title: 'Límite Excedido',
+        message: detail || 'Has superado el límite de mensajes permitidos. Intenta más tarde.',
+        status,
+      };
     case 500:
       return {
         title: 'Error del servidor',

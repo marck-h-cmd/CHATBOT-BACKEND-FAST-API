@@ -6,7 +6,7 @@ from datetime import datetime
 
 from app.database.connection import get_db
 from app.core.security import SecurityService
-from app.database.models import Usuario
+from app.database.models import Usuario, MensajeChat, SesionChat
 
 security = HTTPBearer()
 
@@ -103,4 +103,47 @@ async def get_current_docente(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acceso denegado. Se requiere rol de docente o administrador"
         )
+    return current_user
+
+async def check_chat_rate_limit(
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> Usuario:
+    """Dependencia para verificar el límite de mensajes en el chat (configurable por env)"""
+    from datetime import timedelta
+    from app.config import Config
+    
+    now = datetime.now()
+    three_hours_ago = now - timedelta(hours=3)
+    twenty_four_hours_ago = now - timedelta(hours=24)
+    
+    limit_24h = Config.CHAT_RATE_LIMIT_24H
+    limit_3h = Config.CHAT_RATE_LIMIT_3H
+    
+    # 1. Límite de 24 horas
+    count_24h = db.query(MensajeChat).join(SesionChat).filter(
+        SesionChat.id_usuario == current_user.id,
+        MensajeChat.remitente == "usuario",
+        MensajeChat.fecha_envio >= twenty_four_hours_ago
+    ).count()
+
+    if count_24h >= limit_24h:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Has superado el límite diario de {limit_24h} mensajes. Podrás seguir conversando mañana."
+        )
+
+    # 2. Límite de 3 horas
+    count_3h = db.query(MensajeChat).join(SesionChat).filter(
+        SesionChat.id_usuario == current_user.id,
+        MensajeChat.remitente == "usuario",
+        MensajeChat.fecha_envio >= three_hours_ago
+    ).count()
+
+    if count_3h >= limit_3h:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Has superado el límite de {limit_3h} mensajes por cada 3 horas. Por favor, intenta más tarde."
+        )
+
     return current_user

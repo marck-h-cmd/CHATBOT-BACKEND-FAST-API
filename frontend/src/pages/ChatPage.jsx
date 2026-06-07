@@ -9,6 +9,9 @@ import TypingIndicator from '../components/chat/TypingIndicator';
 import QuickReplies from '../components/chat/QuickReplies';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, CheckCircle, Clock, Info, ShieldAlert, Zap, Menu, X, Search } from 'lucide-react';
+import Modal from '../components/ui/Modal';
+import Button from '../components/ui/Button';
+import { handleApiError } from '../utils/errorHandler';
 
 const ChatPage = () => {
   const { messages, loading, sendMessage, currentResponse, loadHistory } = useChat();
@@ -21,6 +24,7 @@ const ChatPage = () => {
   const [selectedContext, setSelectedContext] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '' });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -55,10 +59,17 @@ const ChatPage = () => {
 
   const handleSend = async (text) => {
     if (!selectedContextId) {
-      alert('Por favor selecciona un curso/periodo antes de preguntar.');
+      setAlertModal({ isOpen: true, title: 'Atención', message: 'Por favor selecciona un curso/periodo antes de preguntar.' });
       return;
     }
-    await sendMessage(text, selectedContextId);
+    try {
+      await sendMessage(text, selectedContextId);
+    } catch (error) {
+      const errorInfo = handleApiError(error);
+      if (errorInfo.status === 429) {
+        setAlertModal({ isOpen: true, title: errorInfo.title, message: errorInfo.message });
+      }
+    }
   };
 
   const handleContextSelect = (contexto) => {
@@ -311,6 +322,23 @@ const ChatPage = () => {
           </div>
         </div>
       </div>
+      
+      {/* Modal de Alertas (Rate Limit, etc) */}
+      <Modal 
+        isOpen={alertModal.isOpen} 
+        onClose={() => setAlertModal({ isOpen: false, title: '', message: '' })}
+        title={alertModal.title}
+        size="sm"
+        actions={
+          <Button onClick={() => setAlertModal({ isOpen: false, title: '', message: '' })} variant="primary">
+            Entendido
+          </Button>
+        }
+      >
+        <div className="text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+          {alertModal.message}
+        </div>
+      </Modal>
     </div>
   );
 };

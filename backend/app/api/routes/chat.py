@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from app.database.connection import get_db
 from app.services.chat_handler import ChatHandler
-from app.api.dependencies import get_current_active_user
+from app.api.dependencies import get_current_active_user, check_chat_rate_limit
 from app.database.models import Usuario, ContextoCursoUsuario
 
 router = APIRouter(prefix="/chat", tags=["Chat & Service Desk"])
@@ -29,7 +29,7 @@ class ChatResponse(BaseModel):
 @router.post("/consultar", response_model=ChatResponse)
 async def consultar_chat(
     request: ChatRequest,
-    current_user: Usuario = Depends(get_current_active_user),
+    current_user: Usuario = Depends(check_chat_rate_limit),
     db: Session = Depends(get_db)
 ):
     # Verificar que el contexto pertenece al usuario

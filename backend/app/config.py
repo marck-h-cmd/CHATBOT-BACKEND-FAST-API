@@ -58,3 +58,7 @@ class Config:
     SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
     SMTP_FROM = os.getenv("SMTP_FROM", "")
     SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
+    
+    # Límites de Mensajes de Chat
+    CHAT_RATE_LIMIT_3H = int(os.getenv("CHAT_RATE_LIMIT_3H", "50"))
+    CHAT_RATE_LIMIT_24H = int(os.getenv("CHAT_RATE_LIMIT_24H", "150"))

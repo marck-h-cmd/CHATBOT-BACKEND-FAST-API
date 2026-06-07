@@ -84,13 +84,17 @@ export const ChatProvider = ({ children }) => {
       return response;
     } catch (error) {
       const errorInfo = handleApiError(error);
-      const errorMessage = {
-        role: 'assistant',
-        content: `❌ Error: ${errorInfo.message}`,
-        isError: true,
-        timestamp: new Date().toISOString(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      
+      // No agregar burbuja de chat para errores de límite de tasa, se manejará con Modal
+      if (errorInfo.status !== 429) {
+        const errorMessage = {
+          role: 'assistant',
+          content: `❌ Error: ${errorInfo.message}`,
+          isError: true,
+          timestamp: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      }
       throw error;
     } finally {
       setLoading(false);
