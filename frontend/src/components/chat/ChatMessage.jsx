@@ -5,6 +5,87 @@ import remarkGfm from 'remark-gfm';
 import { Clock, CheckCircle, BookOpen, XCircle } from 'lucide-react';
 import * as sugerenciasAPI from '../../api/sugerencias';
 
+const renderDistribucion = (distribucion) => {
+  if (!distribucion) return null;
+
+  let parsedDist = distribucion;
+  if (typeof distribucion === 'string') {
+    try {
+      parsedDist = JSON.parse(distribucion);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  if (Array.isArray(parsedDist)) {
+    return (
+      <div className="mt-3 space-y-2 w-full">
+        <p className="font-bold text-slate-700 dark:text-slate-350 text-[11px] uppercase tracking-wider">
+          Plan de Estudio por Semanas
+        </p>
+        <div className="grid grid-cols-1 gap-2">
+          {parsedDist.map((item, idx) => {
+            const priorityVal = item.prioridad;
+            const isUrgent = priorityVal === 1 || String(priorityVal).toLowerCase() === 'alta';
+            const isMedium = priorityVal === 2 || String(priorityVal).toLowerCase() === 'media';
+            const prioColor = isUrgent
+              ? 'text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 border-red-150 dark:border-red-900/30'
+              : isMedium
+                ? 'text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20 border-amber-150 dark:border-amber-900/30'
+                : 'text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-150 dark:border-emerald-900/30';
+            const prioLabel = isUrgent ? 'Alta' : isMedium ? 'Media' : 'Baja';
+            const semanaLabel = /^\d+$/.test(String(item.semana)) ? `Semana ${item.semana}` : item.semana;
+            
+            return (
+              <div key={idx} className="p-3 rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/30 dark:bg-slate-900/30 text-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                      {semanaLabel}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className={`px-1.5 py-0.5 rounded border text-[9px] font-extrabold uppercase ${prioColor}`}>
+                        Prio: {prioLabel}
+                      </span>
+                      <span className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded font-extrabold text-[9px]">
+                        {item.horas}h
+                      </span>
+                    </div>
+                  </div>
+                  {item.tema && (
+                    <p className="text-slate-750 dark:text-slate-300 font-semibold text-[12px] mb-1 leading-snug">
+                      {item.tema}
+                    </p>
+                  )}
+                </div>
+                {item.enfoque && (
+                  <p className="text-slate-550 dark:text-slate-400 text-[10.5px] italic leading-relaxed mt-1 border-t border-slate-100/50 dark:border-slate-800/30 pt-1">
+                    {item.enfoque}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  if (typeof parsedDist === 'object' && Object.keys(parsedDist).length > 0) {
+    return (
+      <div className="flex flex-wrap gap-1.5 mt-2">
+        {Object.entries(parsedDist).map(([tipo, hs]) => (
+          <span key={tipo} className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-semibold text-slate-650 dark:text-slate-400 capitalize text-[10.5px]">
+            {tipo}: {hs}h
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  return null;
+};
+
 const ChatMessage = ({ message }) => {
   const isUser = message.role === 'user';
   const isError = message.isError;
@@ -136,15 +217,7 @@ const ChatMessage = ({ message }) => {
                   <span>{sugerencia.horas_sugeridas} horas sugeridas</span>
                 </div>
 
-                {sugerencia.distribucion_sugerida && Object.keys(sugerencia.distribucion_sugerida).length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {Object.entries(sugerencia.distribucion_sugerida).map(([tipo, hs]) => (
-                      <span key={tipo} className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-semibold text-slate-650 dark:text-slate-400 capitalize text-[10.5px]">
-                        {tipo}: {hs}h
-                      </span>
-                    ))}
-                  </div>
-                )}
+                {renderDistribucion(sugerencia.distribucion_sugerida)}
               </div>
 
               {/* Acciones */}

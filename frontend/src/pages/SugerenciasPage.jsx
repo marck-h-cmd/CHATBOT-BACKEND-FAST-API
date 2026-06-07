@@ -5,6 +5,87 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, CheckCircle, Clock, XCircle, AlertCircle, Calendar } from 'lucide-react';
 import { handleApiError } from '../utils/errorHandler';
 
+const renderDistribucion = (distribucion) => {
+  if (!distribucion) return null;
+
+  let parsedDist = distribucion;
+  if (typeof distribucion === 'string') {
+    try {
+      parsedDist = JSON.parse(distribucion);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  if (Array.isArray(parsedDist)) {
+    return (
+      <div className="mt-3 space-y-2 w-full">
+        <p className="font-bold text-slate-700 dark:text-slate-350 text-[11px] uppercase tracking-wider">
+          Plan de Estudio por Semanas
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {parsedDist.map((item, idx) => {
+            const priorityVal = item.prioridad;
+            const isUrgent = priorityVal === 1 || String(priorityVal).toLowerCase() === 'alta';
+            const isMedium = priorityVal === 2 || String(priorityVal).toLowerCase() === 'media';
+            const prioColor = isUrgent
+              ? 'text-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 border-red-150 dark:border-red-900/30'
+              : isMedium
+                ? 'text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20 border-amber-150 dark:border-amber-900/30'
+                : 'text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-150 dark:border-emerald-900/30';
+            const prioLabel = isUrgent ? 'Alta' : isMedium ? 'Media' : 'Baja';
+            const semanaLabel = /^\d+$/.test(String(item.semana)) ? `Semana ${item.semana}` : item.semana;
+            
+            return (
+              <div key={idx} className="p-3.5 rounded-xl border border-slate-105 dark:border-slate-800/80 bg-slate-50/40 dark:bg-slate-900/40 text-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                      {semanaLabel}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className={`px-1.5 py-0.5 rounded border text-[9px] font-extrabold uppercase ${prioColor}`}>
+                        Prio: {prioLabel}
+                      </span>
+                      <span className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-350 rounded font-extrabold text-[9px]">
+                        {item.horas}h
+                      </span>
+                    </div>
+                  </div>
+                  {item.tema && (
+                    <p className="text-slate-750 dark:text-slate-300 font-semibold text-[12.5px] mb-1 leading-snug">
+                      {item.tema}
+                    </p>
+                  )}
+                </div>
+                {item.enfoque && (
+                  <p className="text-slate-500 dark:text-slate-450 text-[10.5px] italic leading-relaxed mt-1.5 border-t border-slate-150 dark:border-slate-800/30 pt-1.5">
+                    {item.enfoque}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  if (typeof parsedDist === 'object' && Object.keys(parsedDist).length > 0) {
+    return (
+      <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-lg border border-slate-100 dark:border-slate-800 text-sm flex gap-4">
+        {Object.entries(parsedDist).map(([tipo, horas]) => (
+          <span key={tipo} className="capitalize text-slate-650 dark:text-slate-350">
+            <span className="font-semibold text-indigo-650 dark:text-indigo-400">{horas}h</span> {tipo}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  return null;
+};
+
 const SugerenciasPage = () => {
   const { isAuthenticated } = useAuth();
   const [sugerencias, setSugerencias] = useState([]);
@@ -136,15 +217,7 @@ const SugerenciasPage = () => {
                     <div className="mb-4">
                       <p className="text-sm text-slate-600 dark:text-slate-300 mb-2"><strong>Justificación:</strong> {sugerencia.justificacion}</p>
                       
-                      {sugerencia.distribucion_sugerida && Object.keys(sugerencia.distribucion_sugerida).length > 0 && (
-                        <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-lg border border-slate-100 dark:border-slate-800 text-sm flex gap-4">
-                          {Object.entries(sugerencia.distribucion_sugerida).map(([tipo, horas]) => (
-                            <span key={tipo} className="capitalize text-slate-650 dark:text-slate-350">
-                              <span className="font-semibold text-indigo-650 dark:text-indigo-400">{horas}h</span> {tipo}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      {renderDistribucion(sugerencia.distribucion_sugerida)}
                     </div>
                     
                     <div className="text-xs text-slate-400 dark:text-slate-500">

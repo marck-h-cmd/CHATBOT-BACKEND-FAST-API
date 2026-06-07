@@ -46,24 +46,46 @@ class SugerenciaEstudioService:
             
         riesgo = RuleEngine.evaluar_riesgo(contexto.pu1, contexto.pu2, contexto.pu3, contexto.silabo_asignado)
         
+        # Determinar qué unidad está en curso para personalizar los temas
+        unidad_actual = "Desconocida"
+        if contexto.pu1 is None:
+            unidad_actual = "Unidad 1"
+        elif contexto.pu2 is None:
+            unidad_actual = "Unidad 2"
+        elif contexto.pu3 is None:
+            unidad_actual = "Unidad 3"
+        else:
+            unidad_actual = "Sustitutorio/Final"
+
+        tema_urgente = f"Recuperación {unidad_actual}" if unidad_actual != "Sustitutorio/Final" else "Preparación Sustitutorio"
+
         if riesgo["nivel"] == "ALTA":
-            horas = 6.0
-            distribucion = {"profunda": 3.0, "practica": 2.0, "revision": 1.0}
-            justificacion = "Detectamos un riesgo académico. Necesitas asegurar una nota alta en tus próximas evaluaciones para aprobar."
+            horas = 8.0
+            distribucion = [
+                {"semana": "Actual", "tema": f"Diagnóstico de fallas en temas pasados", "horas": 2.0, "prioridad": 1, "enfoque": "Identificar ejercicios y conceptos críticos que causaron el bajo rendimiento anterior para no repetirlos."},
+                {"semana": "Próxima", "tema": f"Estudio Intensivo: {tema_urgente}", "horas": 4.0, "prioridad": 1, "enfoque": "Resolución exhaustiva de ejercicios tipo examen y memorización de fórmulas clave."},
+                {"semana": "Pre-Examen", "tema": "Simulacro y Tutoría", "horas": 2.0, "prioridad": 1, "enfoque": "Realizar un simulacro de examen con límite de tiempo y asistir a asesoría con el docente."}
+            ]
+            justificacion = f"Riesgo académico ALTO detectado. Para aprobar necesitas asegurar una nota alta en {unidad_actual}. Este plan de rescate intensivo está diseñado para maximizar tus puntos."
             prioridad = 1
         elif riesgo["nivel"] == "MEDIA":
-            horas = 4.0
-            distribucion = {"profunda": 2.0, "practica": 1.5, "revision": 0.5}
-            justificacion = "Estás cerca del límite aprobatorio. Un esfuerzo extra te dará un margen de seguridad."
+            horas = 5.0
+            distribucion = [
+                {"semana": "Actual", "tema": "Consolidación de teoría básica", "horas": 2.0, "prioridad": 2, "enfoque": "Revisar la teoría y notas de clase asegurando que no queden dudas fundamentales."},
+                {"semana": "Próxima", "tema": f"Práctica enfocada: {unidad_actual}", "horas": 3.0, "prioridad": 2, "enfoque": "Resolver los ejercicios propuestos y tareas pendientes de la unidad en curso."}
+            ]
+            justificacion = f"Estás en el límite. Un esfuerzo extra en {unidad_actual} te dará un margen de seguridad para no caer en riesgo alto y asegurar tu aprobación."
             prioridad = 2
         else:
-            horas = 2.0
-            distribucion = {"profunda": 1.0, "practica": 0.5, "revision": 0.5}
-            justificacion = "Tu rendimiento es bueno, mantén el ritmo de estudio para las próximas evaluaciones."
+            horas = 3.0
+            distribucion = [
+                {"semana": "Actual", "tema": f"Avance continuo: {unidad_actual}", "horas": 3.0, "prioridad": 3, "enfoque": "Mantenimiento del ritmo de estudio, revisando lecturas anticipadas y repasos cortos."}
+            ]
+            justificacion = "Tu rendimiento es sólido. Sigue manteniendo este buen ritmo constante para asegurar el éxito en las siguientes evaluaciones."
             prioridad = 3
             
         return SugerenciaEstudioService._crear_o_actualizar_sugerencia(
-            db, id_usuario, id_contexto, TipoSugerencia.POR_RIESGO, "Próxima Evaluación", horas, distribucion, justificacion, prioridad
+            db, id_usuario, id_contexto, TipoSugerencia.POR_RIESGO, f"Plan de Acción Académico ({unidad_actual})", horas, distribucion, justificacion, prioridad
         )
 
     @staticmethod
@@ -155,6 +177,7 @@ Reglas: {json.dumps(reglas)}
 {chunks_text}
 
 Instrucciones (Optimiza tokens):
+- El sistema de calificación es de 0 a 20 (escala vigesimal). La nota máxima es 20 y la nota mínima aprobatoria es 14. Ten esto presente al hablar de requerimientos de notas o promedios.
 - Calcula inteligentemente horas por semana basado en la complejidad del contenido.
 - Usa muy pocos emojis.
 - Responde estrictamente un JSON con:
@@ -183,7 +206,15 @@ Instrucciones (Optimiza tokens):
                     )
                 )
                 
-                res_json = json.loads(response.text)
+                text_resp = response.text.strip()
+                if text_resp.startswith("```json"):
+                    text_resp = text_resp[7:]
+                elif text_resp.startswith("```"):
+                    text_resp = text_resp[3:]
+                if text_resp.endswith("```"):
+                    text_resp = text_resp[:-3]
+                    
+                res_json = json.loads(text_resp.strip())
                 
                 dist_sugerida = res_json.get("distribucion_semanas", [])
                 if not dist_sugerida and "distribucion" in res_json:

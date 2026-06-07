@@ -72,24 +72,11 @@ class ChatHandler:
 
         # Si el intent es de cálculo pero no tiene acceso
         if intent in ["calcular_promedio", "simular_notas", "evaluar_riesgo"] and not puede_calcular:
-            respuesta = "🔒 **Cálculos Deshabilitados**: El sílabo no ha sido validado oficialmente. Solo puedo responder consultas teóricas generales."
+            respuesta = "🔒 **Cálculos Deshabilitados**: Hola. Por el momento, la opción de simulación y cálculo de promedios está deshabilitada ya que el sílabo de tu curso aún no cuenta con la validación oficial. ¡Pero con gusto puedo ayudarte con cualquier consulta sobre los temas o lecturas del curso!"
             intent = "consulta_bloqueada"
             
-        elif intent == "evaluar_riesgo" and puede_calcular:
-            riesgo = RuleEngine.evaluar_riesgo(contexto.pu1, contexto.pu2, contexto.pu3, silabo)
-            respuesta = f"Tu riesgo actual es: **{riesgo['nivel']}**.\n{riesgo['recomendacion']}"
-            
-            print("Riesgo: ", riesgo)
-            if riesgo["nivel"] == "DESAPRUEBA":
-                ITILServiceDesk.registrar_incidente_academico(
-                    db, id_usuario, id_contexto, silabo.id_silabo if silabo else None,
-                    "ALTA", "Riesgo académico detectado por sistema", 
-                    pp_proyectado=riesgo.get("pp_proyectado", 0.0),
-                    recomendacion=riesgo.get("recomendacion", "Asistir a tutoría académica.")
-                )
-                
         elif intent == "saludar":
-            respuesta = "¡Hola! Soy Sylia, tu Asistente Académico. Estoy aquí para resolver tus dudas sobre el sílabo, fechas y simular tus promedios. ¿En qué te ayudo hoy?"
+            respuesta = "¡Hola! Soy Sylia, tu asesora académica de confianza. Estoy aquí para ayudarte a organizarte con el sílabo, explicarte los temas más complejos del curso y simular tus notas de manera sencilla y clara. ¿En qué te gustaría enfocarse hoy?"
             
         elif intent == "sugerir_tiempo":
             from app.services.sugerencia_estudio_service import SugerenciaEstudioService
@@ -140,7 +127,7 @@ class ChatHandler:
                     historial_text += "\n"
 
                 instruccion_extra = ""
-                if intent in ["calcular_promedio", "simular_notas"] and puede_calcular:
+                if intent in ["calcular_promedio", "simular_notas", "evaluar_riesgo"] and puede_calcular:
                     instruccion_extra = f"""
                     [MODO CÁLCULO ACTIVO]
                     USA OBLIGATORIAMENTE LAS FÓRMULAS: {formulas}. Realiza el cálculo paso a paso. Nota mínima: {nota_min}.
@@ -150,6 +137,30 @@ class ChatHandler:
                       Promedio Aplazado = (Promedio Final (calculado incluyendo el reemplazo de la nota de sustitutorio en la unidad más baja, si es que lo dio) + Nota del Aplazado) / 2.
                     Ten esto muy en cuenta para simular escenarios de notas y responder al estudiante.
                     """
+
+                if intent == "evaluar_riesgo" and puede_calcular:
+                    try:
+                        riesgo = RuleEngine.evaluar_riesgo(contexto.pu1, contexto.pu2, contexto.pu3, silabo)
+                        if riesgo["nivel"] == "DESAPRUEBA":
+                            ITILServiceDesk.registrar_incidente_academico(
+                                db, id_usuario, id_contexto, silabo.id_silabo if silabo else None,
+                                "ALTA", f"Riesgo académico {riesgo['nivel']} detectado por consulta explícita.", 
+                                pp_proyectado=riesgo.get("pp_proyectado", 0.0),
+                                recomendacion=riesgo.get("recomendacion", "Asistir a tutoría académica.")
+                            )
+                        
+                        instruccion_extra += f"""
+                        [MODO EVALUACIÓN DE RIESGO ACTIVO]
+                        El sistema determinista ha calculado la siguiente información de riesgo para el alumno:
+                        - Nivel de riesgo académico: {riesgo['nivel']}
+                        - Mensaje del sistema: {riesgo['mensaje']}
+                        - Recomendación oficial: {riesgo['recomendacion']}
+                        
+                        Por favor, comunícale al alumno su nivel de riesgo y la recomendación correspondiente de forma muy humana, empática, natural y detallada.
+                        Aliéntalo a seguir adelante y explícale claramente qué pasos puede tomar (revisar su plan de estudios, agendar tutoría, etc.) para revertir o mejorar su situación de manera de confianza.
+                        """
+                    except Exception as e:
+                        print(f"Error evaluando riesgo en instrucciones extra: {e}")
 
                 info_susti = ""
                 if (contexto.pu1 is not None and contexto.pu2 is not None and contexto.pu3 is not None):
@@ -190,6 +201,12 @@ class ChatHandler:
 
                 prompt = f"""Eres Sylia, una asistente académica y asesora amigable, empática y natural.
                         Tu objetivo es ayudar al estudiante a entender su curso, planificar su estudio y responder sus dudas, pero hazlo como si fueras un tutor humano de confianza: sé flexible, no repitas siempre las mismas frases, y siéntete libre de dar consejos breves y proactivos cuando lo veas conveniente.
+                        
+                        [REGLAS DE CALIFICACIÓN CRÍTICAS]
+                        - El sistema de calificación es vigesimal, de 0 a 20. La nota máxima posible es 20.
+                        - La nota mínima aprobatoria es 14.
+                        - Si el alumno te pide calcular qué nota necesita o simular un escenario, nunca sugieras ni calcules notas mayores a 20. Si matemáticamente requiere más de 20 para aprobar, indícale de manera empática pero realista que es imposible aprobar por la vía ordinaria y explícale la opción del Examen Sustitutorio o de Aplazados.
+
                         Usa la siguiente información como base para tus respuestas, pero puedes adaptarla para que suene más conversacional:
 
                         [CURSO] {nombre_curso} ({nombre_periodo})
@@ -213,6 +230,7 @@ class ChatHandler:
                             "pu1": null,
                             "pu2": null,
                             "pu3": null,
+                            "susti": null,
                             "pfd": null,
                             "tad": null,
                             "eld": null,
@@ -221,8 +239,10 @@ class ChatHandler:
                         }}
 
                         Si el estudiante menciona calificaciones obtenidas o supuestas, colócalas en "notas_detectadas". Si no menciona calificaciones, pon los campos en null.
+                        Las notas detectadas deben estar estrictamente dentro del rango de 0 a 20. Ignora o no registres valores fuera de este rango.
                         Ejemplo de mención de nota: "Saqué 12 en mi examen de laboratorio (ELD) de la unidad 1" -> {{"notas_detectadas": {{"eld": 12.0, "unidad_evidencia": 1}}}}.
                         Ejemplo de promedio de unidad: "Mi promedio en PU1 es 10.5" -> {{"notas_detectadas": {{"pu1": 10.5}}}}.
+                        Ejemplo de examen sustitutorio: "Mi nota de sustitutorio es 15" o "Saqué 14 en el susti" -> {{"notas_detectadas": {{"susti": 14.0}}}}.
 
                         <student_question>
                         {pregunta}
@@ -265,21 +285,51 @@ class ChatHandler:
             try:
                 actualizado = False
                 
-                # 1. Extraer notas directas de unidades
+                # 1. Extraer notas directas de unidades (dentro del rango 0-20)
                 pu1_val = notas_detectadas.get("pu1")
                 pu2_val = notas_detectadas.get("pu2")
                 pu3_val = notas_detectadas.get("pu3")
                 
                 if pu1_val is not None:
-                    contexto.pu1 = float(pu1_val)
-                    actualizado = True
+                    val = float(pu1_val)
+                    if 0.0 <= val <= 20.0:
+                        contexto.pu1 = val
+                        actualizado = True
                 if pu2_val is not None:
-                    contexto.pu2 = float(pu2_val)
-                    actualizado = True
+                    val = float(pu2_val)
+                    if 0.0 <= val <= 20.0:
+                        contexto.pu2 = val
+                        actualizado = True
                 if pu3_val is not None:
-                    contexto.pu3 = float(pu3_val)
-                    actualizado = True
+                    val = float(pu3_val)
+                    if 0.0 <= val <= 20.0:
+                        contexto.pu3 = val
+                        actualizado = True
                 
+                # 1.5 Extraer nota de examen sustitutorio (susti)
+                susti_val = notas_detectadas.get("susti")
+                if susti_val is not None:
+                    val = float(susti_val)
+                    if 0.0 <= val <= 20.0:
+                        # Lógica: Reemplazar en la unidad más baja solo si las 3 unidades están completas y se encuentra desaprobado (< 14)
+                        if (contexto.pu1 is not None and contexto.pu2 is not None and contexto.pu3 is not None):
+                            promedio_actual = (contexto.pu1 + contexto.pu2 + contexto.pu3) / 3
+                            if promedio_actual < 14.0:
+                                notas_unidades = {
+                                    1: contexto.pu1,
+                                    2: contexto.pu2,
+                                    3: contexto.pu3
+                                }
+                                unidad_mas_baja = min(notas_unidades, key=notas_unidades.get)
+                                
+                                if unidad_mas_baja == 1:
+                                    contexto.pu1 = val
+                                elif unidad_mas_baja == 2:
+                                    contexto.pu2 = val
+                                elif unidad_mas_baja == 3:
+                                    contexto.pu3 = val
+                                actualizado = True
+
                 # 2. Extraer notas de evidencias e indicar unidad
                 unidad_ev = notas_detectadas.get("unidad_evidencia")
                 pfd_val = notas_detectadas.get("pfd")
@@ -292,11 +342,19 @@ class ChatHandler:
                     tad_final = float(tad_val) if tad_val is not None else 0.0
                     eld_final = float(eld_val) if eld_val is not None else 0.0
                     
+                    # Validar y restringir al rango 0-20
+                    pfd_final = max(0.0, min(20.0, pfd_final))
+                    tad_final = max(0.0, min(20.0, tad_final))
+                    eld_final = max(0.0, min(20.0, eld_final))
+                    
                     try:
                         promedio_u = RuleEngine.calcular_promedio_unidad(f"U{unidad_ev}", pfd_final, tad_final, eld_final, silabo)
                     except PermissionError:
                         promedio_u = RuleEngine.calcular_promedio_unidad(f"U{unidad_ev}", pfd_final, tad_final, eld_final, None)
                         
+                    # Asegurar que el promedio también esté en el rango
+                    promedio_u = max(0.0, min(20.0, promedio_u))
+                    
                     if unidad_ev == 1:
                         contexto.pu1 = promedio_u
                     elif unidad_ev == 2:
@@ -323,44 +381,59 @@ class ChatHandler:
                 
             nivel_riesgo = riesgo_info.get("nivel")
             if nivel_riesgo in ["ALTO", "MUY ALTO", "DESAPRUEBA"]:
-                riesgo_detectado = nivel_riesgo
                 
-                # 1. Registrar incidente académico en la BD si no hay uno activo
-                from app.database.models import IncidenteAcademico, EstadoIncidente
-                incidente_existente = db.query(IncidenteAcademico).filter(
-                    IncidenteAcademico.id_usuario == id_usuario,
-                    IncidenteAcademico.id_contexto == id_contexto,
-                    IncidenteAcademico.estado == EstadoIncidente.ACTIVO
-                ).first()
+                # Check for recent suggestions to avoid spamming alerts in every chat message
+                from app.database.models import SugerenciaEstudio
+                from datetime import datetime, timedelta
                 
-                if not incidente_existente:
-                    ITILServiceDesk.registrar_incidente_academico(
-                        db=db,
-                        id_usuario=id_usuario,
-                        id_contexto=id_contexto,
-                        id_silabo=silabo.id_silabo if silabo else None,
-                        severidad="ALTA" if nivel_riesgo in ["MUY ALTO", "DESAPRUEBA"] else "MEDIA",
-                        descripcion=f"Riesgo académico {nivel_riesgo} detectado proactivamente durante la charla.",
-                        pp_proyectado=riesgo_info.get("pp_proyectado"),
-                        recomendacion=riesgo_info.get("recomendacion")
-                    )
-                
-                # 2. Generar sugerencia de estudio proactiva si no hay sugerencias pendientes
-                from app.database.models import SugerenciaEstudio, EstadoSugerencia
-                sugerencia_existente = db.query(SugerenciaEstudio).filter(
+                sugerencia_reciente = db.query(SugerenciaEstudio).filter(
                     SugerenciaEstudio.id_usuario == id_usuario,
                     SugerenciaEstudio.id_contexto == id_contexto,
-                    SugerenciaEstudio.estado == EstadoSugerencia.PENDIENTE
-                ).first()
+                    SugerenciaEstudio.tipo_sugerencia == "POR_RIESGO"
+                ).order_by(SugerenciaEstudio.fecha_generacion.desc()).first()
                 
-                if not sugerencia_existente:
+                mostrar_alerta = True
+                if sugerencia_reciente and sugerencia_reciente.fecha_generacion > datetime.now() - timedelta(hours=24):
+                    # Saltar restricción si el estudiante pide explícitamente generar, ajustar o mejorar el plan o recibir consejos de estudio
+                    palabras_clave = [
+                        "plan", "rescate", "sugerencia", "ajust", "gener", "mejor", 
+                        "estudio", "horas", "estudiar", "recomiend", "consejo", "ayuda", 
+                        "riesgo", "alerta", "susti", "aplazado", "recupera", "tutor", 
+                        "horario", "cronograma", "organiz", "calendario", "estrate", "accion"
+                    ]
+                    if any(palabra in pregunta.lower() for palabra in palabras_clave):
+                        mostrar_alerta = True
+                    else:
+                        mostrar_alerta = False
+                
+                if mostrar_alerta:
+                    riesgo_detectado = nivel_riesgo
+                    
+                    # 1. Registrar incidente académico en la BD si no hay uno activo
+                    from app.database.models import IncidenteAcademico, EstadoIncidente
+                    incidente_existente = db.query(IncidenteAcademico).filter(
+                        IncidenteAcademico.id_usuario == id_usuario,
+                        IncidenteAcademico.id_contexto == id_contexto,
+                        IncidenteAcademico.estado == EstadoIncidente.ACTIVO
+                    ).first()
+                    
+                    if not incidente_existente:
+                        ITILServiceDesk.registrar_incidente_academico(
+                            db=db,
+                            id_usuario=id_usuario,
+                            id_contexto=id_contexto,
+                            id_silabo=silabo.id_silabo if silabo else None,
+                            severidad="ALTA" if nivel_riesgo in ["MUY ALTO", "DESAPRUEBA"] else "MEDIA",
+                            descripcion=f"Riesgo académico {nivel_riesgo} detectado proactivamente durante la charla.",
+                            pp_proyectado=riesgo_info.get("pp_proyectado"),
+                            recomendacion=riesgo_info.get("recomendacion")
+                        )
+                    
+                    # 2. Generar sugerencia de estudio proactiva
                     from app.services.sugerencia_estudio_service import SugerenciaEstudioService
                     sug_nueva = SugerenciaEstudioService.generar_sugerencia_por_riesgo(db, id_usuario, id_contexto)
                     if sug_nueva:
                         sugerencia_automatica = SugerenciaEstudioService.serializar_sugerencia(sug_nueva)
-                else:
-                    from app.services.sugerencia_estudio_service import SugerenciaEstudioService
-                    sugerencia_automatica = SugerenciaEstudioService.serializar_sugerencia(sugerencia_existente)
         except Exception as risk_err:
             print(f"Error en evaluación de riesgo proactiva: {risk_err}")
         

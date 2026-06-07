@@ -146,6 +146,11 @@ class ITILServiceDesk:
         if total_solicitudes > 0:
             tasa_resolucion_n1 = (total_solicitudes - solicitudes_escaladas) / total_solicitudes * 100
         
+        # Intentar extraer tutoría del sílabo oficial
+        silabo_oficial = db.query(Silabo).filter(Silabo.es_oficial == True).first()
+        from app.services.rule_engine import RuleEngine
+        t_info = RuleEngine.obtener_tutoria_info(silabo_oficial)
+
         return {
             "total_solicitudes": total_solicitudes,
             "total_incidentes": total_incidentes,
@@ -154,10 +159,10 @@ class ITILServiceDesk:
             "fallos_ingestion": fallos_ingestion,
             "tasa_resolucion_nivel1": round(tasa_resolucion_n1, 2),
             "info_tutoria": {
-                "dia": Config.TUTORIA_DIA,
-                "horario": Config.TUTORIA_HORARIO,
-                "email": Config.TUTORIA_EMAIL,
-                "canales": Config.TUTORIA_CANALES
+                "dia": t_info["dia"],
+                "horario": t_info["horario"],
+                "email": t_info["email"],
+                "canales": t_info["canales"]
             }
         }
 

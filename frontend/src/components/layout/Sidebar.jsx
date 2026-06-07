@@ -1,14 +1,35 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { LayoutDashboard, MessageSquare, BookMarked, Layers, BarChart3, Settings, LogOut, FileText } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, BookMarked, Layers, BarChart3, Settings, LogOut, FileText, Lightbulb } from 'lucide-react';
+import * as sugerenciasAPI from '../../api/sugerencias';
 
 const Sidebar = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isAuthenticated } = useAuth();
+  const [pendingSuggestions, setPendingSuggestions] = useState(0);
+
+  useEffect(() => {
+    if (isAuthenticated && !isAdmin) {
+      const fetchSuggestions = async () => {
+        try {
+          const data = await sugerenciasAPI.getSugerencias();
+          const pendingCount = data.filter(s => s.estado === 'PENDIENTE').length;
+          setPendingSuggestions(pendingCount);
+        } catch (err) {
+          console.error("Error fetching suggestions for sidebar:", err);
+        }
+      };
+      fetchSuggestions();
+      
+      const interval = setInterval(fetchSuggestions, 30000); // Actualiza cada 30 segundos
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, isAdmin]);
 
   const studentNavItems = [
     { to: '/dashboard', label: 'Mi Panel', icon: LayoutDashboard },
     { to: '/chat', label: 'Sylia', icon: MessageSquare },
+    { to: '/sugerencias', label: 'Sugerencias', icon: Lightbulb, badge: pendingSuggestions },
     { to: '/mis-cursos', label: 'Mis Cursos', icon: BookMarked },
     { to: '/cursos', label: 'Catálogo', icon: Layers },
     { to: '/profile', label: 'Configuración', icon: Settings },
@@ -51,7 +72,12 @@ const Sidebar = () => {
                   <item.icon className={`w-5 h-5 transition-colors ${
                     isActive ? 'text-white dark:text-slate-100' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300'
                   }`} />
-                  <span>{item.label}</span>
+                  <span className="flex-1">{item.label}</span>
+                  {item.badge > 0 && (
+                    <span className="bg-red-500 dark:bg-red-600 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full min-w-[20px] text-center ml-auto">
+                      {item.badge}
+                    </span>
+                  )}
                 </>
               )}
             </NavLink>

@@ -118,6 +118,8 @@ class RuleEngine:
                 "pp_proyectado": 0.0
             }
 
+        t_info = RuleEngine.obtener_tutoria_info(silabo)
+
         # Caso 1: Solo PU1
         if pu1 is not None and pu2 is None and pu3 is None:
             if pu1 < Config.UMBRAL_RIESGO_ALTO:
@@ -125,7 +127,7 @@ class RuleEngine:
                     "nivel": "ALTO",
                     "color": "🔴",
                     "mensaje": f"PU1 = {pu1} está muy bajo",
-                    "recomendacion": "Asiste a tutoría inmediatamente. Revisa los TAD que tienen mayor peso.",
+                    "recomendacion": f"Asiste a tutoría inmediatamente ({t_info['dia']} {t_info['horario']}). Revisa los TAD que tienen mayor peso.",
                     "pp_proyectado": pu1
                 }
             elif pu1 < Config.UMBRAL_RIESGO_MEDIO:
@@ -133,7 +135,7 @@ class RuleEngine:
                     "nivel": "MEDIO",
                     "color": "🟡",
                     "mensaje": f"PU1 = {pu1} necesita mejora",
-                    "recomendacion": "Enfócate en U2 donde TAD pesa 2.",
+                    "recomendacion": f"Enfócate en U2 donde TAD pesa 2. Agenda con el docente al correo: {t_info['email']}",
                     "pp_proyectado": pu1
                 }
             else:
@@ -156,7 +158,7 @@ class RuleEngine:
                     "nivel": "MUY ALTO",
                     "color": "🔴🔴",
                     "mensaje": f"Necesitas {necesita} en PU3 - IMPOSIBLE",
-                    "recomendacion": f"Considera aplazados. Tutoría: {Config.TUTORIA_DIA} {Config.TUTORIA_HORARIO}",
+                    "recomendacion": f"Considera aplazados. Coordina tutoría los {t_info['dia']} {t_info['horario']} vía {', '.join(t_info['canales'])}.",
                     "pp_proyectado": pp_est
                 }
             elif necesita > 15:
@@ -164,7 +166,7 @@ class RuleEngine:
                     "nivel": "ALTO",
                     "color": "🔴",
                     "mensaje": f"Necesitas {necesita} en PU3",
-                    "recomendacion": "Esfuérzate en U3. TAD y ELD tienen peso 2.",
+                    "recomendacion": f"Esfuérzate en U3. TAD y ELD tienen peso 2. Solicita apoyo al email {t_info['email']}",
                     "pp_proyectado": pp_est
                 }
             elif necesita > 11:
@@ -172,7 +174,7 @@ class RuleEngine:
                     "nivel": "MEDIO",
                     "color": "🟡",
                     "mensaje": f"Necesitas {necesita} en PU3",
-                    "recomendacion": "Concéntrate en evidencias de mayor peso.",
+                    "recomendacion": f"Concéntrate en evidencias de mayor peso. Asiste a tutoría: {t_info['dia']} {t_info['horario']}",
                     "pp_proyectado": pp_est
                 }
             else:
@@ -202,7 +204,7 @@ class RuleEngine:
                     "nivel": "DESAPRUEBA",
                     "color": "❌",
                     "mensaje": f"Promedio final = {pp} (mínimo {Config.NOTA_APROBACION})",
-                    "recomendacion": f"Revisa opción de aplazados. Tutoría: {Config.TUTORIA_EMAIL}",
+                    "recomendacion": f"Revisa opción de aplazados. Tutoría con el docente: {t_info['email']} o asiste los {t_info['dia']} {t_info['horario']}",
                     "pp_proyectado": pp
                 }
         
@@ -227,3 +229,49 @@ class RuleEngine:
         """Obtiene la fórmula de una unidad"""
         reglas = RuleEngine.REGLAS_OFICIALES.get(unidad.upper())
         return reglas["formula"] if reglas else None
+
+    @staticmethod
+    def obtener_tutoria_info(silabo: Optional[Silabo] = None) -> Dict:
+        """Obtiene la información de tutoría académica de los chunks del sílabo, sin fallback a Config"""
+        # Valores por defecto si no se encuentra información en el sílabo
+        dia = "No especificado en el sílabo"
+        horario = "No especificado en el sílabo"
+        email = "No especificado en el sílabo"
+        canales = []
+        texto_completo = ""
+        
+        if silabo and silabo.chunks:
+            for chunk in silabo.chunks:
+                if chunk.tipo_seccion == "TUTORIA" or getattr(chunk.tipo_seccion, "value", None) == "TUTORIA":
+                    texto_completo = chunk.contenido
+                    break
+                    
+        if texto_completo:
+            import re
+            # Intentar extraer Día
+            m_dia = re.search(r'(?:D[ií]a|D[IÍ]A)\s*[:\-—]?\s*([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+?)(?:\n|,|$)', texto_completo, re.IGNORECASE)
+            if m_dia:
+                dia = m_dia.group(1).strip()
+            
+            # Intentar extraer Horario
+            m_horario = re.search(r'(?:Horario|HORARIO|Hora|HORA)\s*[:\-—]?\s*([\d\w\s\-:apmpm\.–]+?)(?:\n|,|$)', texto_completo, re.IGNORECASE)
+            if m_horario:
+                horario = m_horario.group(1).strip()
+                
+            # Intentar extraer Email
+            m_email = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', texto_completo)
+            if m_email:
+                email = m_email.group(0).strip()
+                
+            # Intentar extraer Canales
+            m_canales = re.search(r'(?:Canales|CANALES|Medios|MEDIOS)\s*[:\-—]?\s*([a-zA-ZáéíóúÁÉÍÓÚñÑ\s,\.\/\(\)ZoomMeet]+?)(?:\n|$)', texto_completo, re.IGNORECASE)
+            if m_canales:
+                canales = [c.strip() for c in re.split(r'[,;]|\by\b', m_canales.group(1)) if c.strip()]
+        
+        return {
+            "dia": dia,
+            "horario": horario,
+            "email": email,
+            "canales": canales,
+            "texto_completo": texto_completo
+        }
