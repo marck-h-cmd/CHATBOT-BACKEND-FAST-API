@@ -3,9 +3,13 @@ FROM public.ecr.aws/lambda/python:3.11
 # Copiar requirements
 COPY requirements.txt ${LAMBDA_TASK_ROOT}
 
-# Instalar dependencias de Python
-# Se usa --no-cache-dir para mantener el tamaño de la imagen lo más pequeño posible
-RUN pip install --no-cache-dir -r requirements.txt
+# Instalar herramientas de compilación, actualizar pip y luego instalar dependencias
+# Se usa --no-cache-dir y dnf clean all para mantener el tamaño de la imagen pequeño
+RUN dnf update -y && \
+    dnf install -y gcc gcc-c++ make && \
+    pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    dnf clean all
 
 # Copiar el código fuente de la aplicación (solo la carpeta app)
 COPY app/ ${LAMBDA_TASK_ROOT}/app/
