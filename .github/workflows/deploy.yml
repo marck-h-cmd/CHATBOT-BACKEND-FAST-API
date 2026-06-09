@@ -45,18 +45,18 @@ jobs:
         
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-    - name: Update AWS Lambda Function
-      env:
-        LAMBDA_FUNCTION_NAME: ${{ secrets.LAMBDA_FUNCTION_NAME }}
-        IMAGE_URI: ${{ steps.build-image.outputs.image }}
-      run: |
-        echo "Actualizando función Lambda con la nueva imagen..."
-        aws lambda update-function-code \
-          --function-name $LAMBDA_FUNCTION_NAME \
-          --image-uri $IMAGE_URI
+    # - name: Update AWS Lambda Function
+    #   env:
+    #     LAMBDA_FUNCTION_NAME: ${{ secrets.LAMBDA_FUNCTION_NAME }}
+    #     IMAGE_URI: ${{ steps.build-image.outputs.image }}
+    #   run: |
+    #     echo "Actualizando función Lambda con la nueva imagen..."
+    #     aws lambda update-function-code \
+    #       --function-name $LAMBDA_FUNCTION_NAME \
+    #       --image-uri $IMAGE_URI
         
-        echo "Esperando a que la función se actualice correctamente..."
-        aws lambda wait function-updated \
-          --function-name $LAMBDA_FUNCTION_NAME
+    #     echo "Esperando a que la función se actualice correctamente..."
+    #     aws lambda wait function-updated \
+    #       --function-name $LAMBDA_FUNCTION_NAME
         
-        echo "¡Despliegue Serverless completado!"
+    #     echo "¡Despliegue Serverless completado!"
