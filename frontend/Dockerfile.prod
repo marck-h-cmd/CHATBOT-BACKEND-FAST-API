@@ -1,0 +1,29 @@
+# Etapa de construcción (Build stage)
+FROM node:20-alpine as build
+
+WORKDIR /app
+
+# Instalar dependencias
+COPY package*.json ./
+RUN npm ci
+
+# Copiar el código fuente y construir
+COPY . .
+RUN npm run build
+
+# Etapa de producción (Production stage)
+FROM nginx:alpine
+
+# Limpiar directorio de nginx
+RUN rm -rf /usr/share/nginx/html/*
+
+# Copiar configuración personalizada de Nginx
+# NOTA: Asegúrate de que este archivo nginx.conf exista en frontend/nginx/
+COPY nginx/nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copiar artefactos construidos desde la etapa anterior
+COPY --from=build /app/dist /usr/share/nginx/html
+
+EXPOSE 80 443
+
+CMD ["nginx", "-g", "daemon off;"]

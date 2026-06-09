@@ -30,7 +30,18 @@ while True:
 "
 
 echo "🌱 Ejecutando inicialización y seeds..."
-python scripts/seed_all.py
+if [ "$ENVIRONMENT" = "production" ]; then
+    python scripts/seed_prod.py
+else
+    python scripts/seed_all.py
+fi
 
 echo "🚀 Iniciando servidor backend..."
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+if [ "$ENVIRONMENT" = "production" ]; then
+    echo "Modo Producción: Iniciando con múltiples workers..."
+    exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+else
+    echo "Modo Desarrollo: Iniciando con reload activado..."
+    exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+fi
