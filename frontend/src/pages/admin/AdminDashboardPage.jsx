@@ -140,17 +140,19 @@ const AdminDashboardPage = () => {
               {resolvedTheme === 'dark' ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
             </button>
 
-            <div className="flex flex-col items-end mr-1">
-              <span className="text-sm font-bold text-[#0B0F19] dark:text-white leading-tight">
-                {user?.nombres?.split(' ')[0] || 'Administrador'}
-              </span>
-              <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider hidden sm:block">
-                Administrador
-              </span>
-            </div>
-            <div className="w-9 h-9 bg-primary-600 text-white rounded-full flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
-              {user?.nombres?.charAt(0) || 'A'}
-            </div>
+            <Link to="/profile" className="flex items-center gap-3 hover:bg-slate-100 dark:hover:bg-slate-800 px-3 py-1.5 rounded-xl transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700 group">
+              <div className="flex flex-col items-end mr-1">
+                <span className="text-sm font-bold text-[#0B0F19] dark:text-white leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-450 transition-colors">
+                  {user?.nombres?.split(' ')[0] || 'Administrador'}
+                </span>
+                <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider hidden sm:block">
+                  Administrador
+                </span>
+              </div>
+              <div className="w-9 h-9 bg-primary-600 text-white rounded-full flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
+                {user?.nombres?.charAt(0) || 'A'}
+              </div>
+            </Link>
           </div>
         </header>
 

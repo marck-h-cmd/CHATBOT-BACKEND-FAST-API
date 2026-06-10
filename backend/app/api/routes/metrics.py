@@ -27,6 +27,69 @@ async def debug_endpoint(current_user: Usuario = Depends(get_current_user_from_t
         "es_activo": current_user.es_activo
     }
 
+@router.get("/my-activity")
+async def get_my_activity(
+    current_user: Usuario = Depends(get_current_user_from_token),
+    db: Session = Depends(get_db)
+):
+    """Obtiene la actividad semanal de consultas al asistente del usuario actual"""
+    import datetime
+    from sqlalchemy import func
+    from app.database.models import MensajeChat, SesionChat
+    
+    # Obtener los últimos 7 días (incluyendo hoy)
+    hoy = datetime.date.today()
+    dias = []
+    # Generar los últimos 7 días terminando hoy
+    for i in range(6, -1, -1):
+        dia = hoy - datetime.timedelta(days=i)
+        dias.append(dia)
+        
+    actividad_por_dia = {}
+    trad = {
+        "Mon": "Lun", "Tue": "Mar", "Wed": "Mie", 
+        "Thu": "Jue", "Fri": "Vie", "Sat": "Sab", "Sun": "Dom"
+    }
+    for d in dias:
+        name_eng = d.strftime("%a")
+        name_esp = trad.get(name_eng, name_eng)
+        actividad_por_dia[d] = {"name": name_esp, "actividad": 0}
+        
+    # Obtener el inicio del rango (hace 6 días a las 00:00)
+    inicio = datetime.datetime.combine(dias[0], datetime.time.min)
+    
+    # Hacer el query
+    mensajes = db.query(
+        func.date(MensajeChat.fecha_envio).label("fecha"),
+        func.count(MensajeChat.id_mensaje).label("cantidad")
+    ).join(SesionChat).filter(
+        SesionChat.id_usuario == current_user.id,
+        MensajeChat.remitente == "usuario",
+        MensajeChat.fecha_envio >= inicio
+    ).group_by(func.date(MensajeChat.fecha_envio)).all()
+    
+    for m in mensajes:
+        if not m.fecha:
+            continue
+            
+        if isinstance(m.fecha, str):
+            try:
+                # SQLite returns date as string, e.g. "2026-06-10"
+                f_date = datetime.datetime.strptime(m.fecha.split()[0], "%Y-%m-%d").date()
+            except Exception:
+                continue
+        elif isinstance(m.fecha, datetime.date):
+            f_date = m.fecha
+        elif isinstance(m.fecha, datetime.datetime):
+            f_date = m.fecha.date()
+        else:
+            continue
+            
+        if f_date in actividad_por_dia:
+            actividad_por_dia[f_date]["actividad"] = m.cantidad
+            
+    return [actividad_por_dia[d] for d in dias]
+
 @router.get("/dashboard")
 async def get_dashboard_summary(
     current_user: Usuario = Depends(get_current_user_from_token),

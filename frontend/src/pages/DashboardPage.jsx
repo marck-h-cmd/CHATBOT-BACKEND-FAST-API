@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCourse } from '../contexts/CourseContext';
 import { useServiceDesk } from '../contexts/ServiceDeskContext';
 import Button from '../components/ui/Button';
+import { getMyActivity } from '../api/metrics';
 import {
   MessageSquare, BookOpen, Clock, Settings, User as UserIcon,
   BarChart3, LayoutDashboard, AlertTriangle, BookMarked, Layers,
@@ -36,12 +37,32 @@ const DashboardPage = () => {
   const { enrollments, loading: coursesLoading } = useCourse();
   const { incidents } = useServiceDesk();
   const [recentIncidents, setRecentIncidents] = useState([]);
+  const [activityData, setActivityData] = useState([
+    { name: 'Lun', actividad: 0 }, { name: 'Mar', actividad: 0 }, { name: 'Mie', actividad: 0 },
+    { name: 'Jue', actividad: 0 }, { name: 'Vie', actividad: 0 }, { name: 'Sab', actividad: 0 }, { name: 'Dom', actividad: 0 }
+  ]);
 
   useEffect(() => {
     if (incidents && incidents.length > 0) {
       setRecentIncidents(incidents.slice(0, 3));
     }
   }, [incidents]);
+
+  useEffect(() => {
+    if (user && user.rol !== 'admin') {
+      const fetchActivity = async () => {
+        try {
+          const data = await getMyActivity();
+          if (data && Array.isArray(data)) {
+            setActivityData(data);
+          }
+        } catch (error) {
+          console.error('Error fetching weekly activity:', error);
+        }
+      };
+      fetchActivity();
+    }
+  }, [user]);
 
   const stats = useMemo(() => {
     const completedCourses = enrollments.filter(e => 
@@ -202,7 +223,7 @@ const DashboardPage = () => {
             </div>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                <AreaChart data={activityData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorAct" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#2563eb" stopOpacity={0.08}/>

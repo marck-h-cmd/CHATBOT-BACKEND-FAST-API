@@ -42,3 +42,8 @@ export const getMetricsHealth = async () => {
   const response = await apiClient.get('/metrics/health');
   return response.data;
 };
+
+export const getMyActivity = async () => {
+  const response = await apiClient.get('/metrics/my-activity');
+  return response.data;
+};

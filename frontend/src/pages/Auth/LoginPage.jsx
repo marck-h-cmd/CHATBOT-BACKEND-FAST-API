@@ -26,7 +26,7 @@ const LoginPage = () => {
       if (role === 'admin') navigate('/admin');
       else navigate('/dashboard');
     } else {
-      const msg = result.error?.message || 'Credenciales incorrectas. Verifica tu correo institucional y contraseña.';
+      const msg = result.error?.message || 'Error al iniciar sesión. Verifica tu correo institucional y contraseña.';
       // Si el backend indica que la cuenta no está verificada, redirigir a verificación
       if (msg.toLowerCase().includes('no verificada') || msg.toLowerCase().includes('código de verificación')) {
         navigate('/verify-email', { state: { email, message: 'Tu cuenta aún no ha sido verificada. Ingresa el código de 6 dígitos enviado a tu correo.' } });
@@ -240,9 +240,9 @@ const LoginPage = () => {
                 <label htmlFor="password" className="block text-[13px] font-bold text-slate-700 dark:text-slate-300 tracking-tight">
                   Contraseña
                 </label>
-                <a href="#" className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-all">
+                <Link to="/forgot-password" state={{ email }} className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-all">
                   ¿Olvidaste tu contraseña?
-                </a>
+                </Link>
               </div>
               <div className="relative group">
                 <input

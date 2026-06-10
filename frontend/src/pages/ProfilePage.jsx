@@ -75,18 +75,20 @@ const ProfilePage = () => {
           
           <div className="p-8 md:w-2/3">
             <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-4">
-              <User className="w-5 h-5 text-indigo-600 dark:text-indigo-400" /> Datos de la Cuenta
+              <User className="w-5 h-5 text-indigo-650 dark:text-indigo-400" /> Datos de la Cuenta
             </h3>
             
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
-              <div>
-                <dt className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-slate-450 dark:text-slate-500" /> Código Universitario
-                </dt>
-                <dd className="font-semibold text-slate-800 dark:text-slate-200 font-mono bg-slate-50 dark:bg-slate-900/60 px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-800">
-                  {user?.codigo_universitario}
-                </dd>
-              </div>
+              {user?.codigo_universitario && (
+                <div>
+                  <dt className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-slate-450 dark:text-slate-500" /> Código Universitario
+                  </dt>
+                  <dd className="font-semibold text-slate-800 dark:text-slate-200 font-mono bg-slate-50 dark:bg-slate-900/60 px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                    {user?.codigo_universitario}
+                  </dd>
+                </div>
+              )}
               <div>
                 <dt className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-2">
                   <Mail className="w-4 h-4 text-slate-450 dark:text-slate-500" /> Correo Electrónico

@@ -262,8 +262,8 @@ const AdminSummaryPage = () => {
         {/* Incidentes por Severidad */}
         <div className="bg-white dark:bg-[#131A2C] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-card transition-colors duration-200">
           <SectionHeader icon={AlertTriangle} title="Incidentes por Severidad" />
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-56 w-full min-h-[224px]">
+            <ResponsiveContainer width="100%" height="100%" minHeight={224}>
               <BarChart data={severityData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }} barSize={40}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'var(--chart-text)', fontWeight: 600 }} axisLine={false} tickLine={false} />
@@ -301,8 +301,8 @@ const AdminSummaryPage = () => {
         {/* Distribución Sílabos */}
         <div className="bg-white dark:bg-[#131A2C] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-card transition-colors duration-200">
           <SectionHeader icon={BookMarked} title="Distribución de Sílabos" />
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-56 w-full min-h-[224px]">
+            <ResponsiveContainer width="100%" height="100%" minHeight={224}>
               <PieChart>
                 <Pie
                   data={silabosData}

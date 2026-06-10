@@ -65,3 +65,17 @@ export const resendOTP = async (email) => {
   const response = await apiClient.post('/auth/reenviar-otp', { email });
   return response.data;
 };
+
+export const requestPasswordReset = async (email) => {
+  const response = await apiClient.post('/auth/recuperar-password', { email });
+  return response.data;
+};
+
+export const resetPassword = async (email, otpCode, newPassword) => {
+  const response = await apiClient.post('/auth/reset-password', {
+    email,
+    otp_code: otpCode,
+    new_password: newPassword,
+  });
+  return response.data;
+};

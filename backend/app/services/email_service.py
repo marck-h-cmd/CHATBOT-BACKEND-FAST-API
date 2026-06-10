@@ -134,3 +134,83 @@ UNT • Ingeniería de Sistemas
             contenido=contenido_texto,
             html_contenido=contenido_html
         )
+
+    @staticmethod
+    async def enviar_email_recuperacion_password(destinatario: str, nombres: str, codigo_otp: str) -> bool:
+        """
+        Envía el código OTP de recuperación de contraseña con formato institucional.
+        """
+        asunto = "Sylia AI - Recuperación de contraseña"
+
+        contenido_texto = f"""Hola {nombres},
+
+Has solicitado restablecer tu contraseña en Sylia AI.
+
+Tu código de verificación es: {codigo_otp}
+
+Este código es válido por 10 minutos. Por favor, ingrésalo en la aplicación para restablecer tu contraseña.
+
+Si no solicitaste este código, puedes ignorar este mensaje de forma segura y tu contraseña no cambiará.
+
+Atentamente,
+Equipo Sylia AI
+UNT • Ingeniería de Sistemas
+"""
+
+        contenido_html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Recuperación de contraseña - Sylia AI</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f5;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+        <tr>
+            <td align="center" style="padding:40px 0;">
+                <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.05);">
+                    <tr>
+                        <td style="background:#0B0F19;padding:32px 40px;text-align:center;">
+                            <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700;">Sylia AI</h1>
+                            <p style="color:#94a3b8;margin:8px 0 0;font-size:13px;">Recuperación de contraseña</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:40px;">
+                            <h2 style="color:#0f172a;margin:0 0 16px;font-size:18px;font-weight:600;">Hola, {nombres}</h2>
+                            <p style="color:#475569;margin:0 0 24px;font-size:14px;line-height:1.6;">
+                                Recibimos una solicitud para restablecer tu contraseña en <strong>Sylia AI</strong>. Ingresa el siguiente código de verificación de 6 dígitos en la aplicación:
+                            </p>
+                            <div style="text-align:center;margin:32px 0;">
+                                <div style="display:inline-block;background:#f8fafc;border:2px dashed #cbd5e1;border-radius:12px;padding:20px 40px;">
+                                    <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#0B0F19;font-family:'Courier New',monospace;">{codigo_otp}</span>
+                                </div>
+                            </div>
+                            <p style="color:#64748b;margin:0 0 8px;font-size:13px;text-align:center;">
+                                Este código expira en <strong>10 minutos</strong>.
+                            </p>
+                            <p style="color:#94a3b8;margin:24px 0 0;font-size:12px;text-align:center;">
+                                Si no solicitaste este cambio, puedes ignorar este mensaje de forma segura y tu cuenta permanecerá protegida.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background:#f8fafc;padding:20px 40px;text-align:center;border-top:1px solid #e2e8f0;">
+                            <p style="color:#94a3b8;margin:0;font-size:11px;">
+                                UNT • Ingeniería de Sistemas &copy; {datetime.now().year}<br>
+                                <span style="color:#cbd5e1;">Este es un mensaje automático, por favor no respondas.</span>
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>"""
+
+        return await EmailService.enviar_email(
+            destinatario=destinatario,
+            asunto=asunto,
+            contenido=contenido_texto,
+            html_contenido=contenido_html
+        )

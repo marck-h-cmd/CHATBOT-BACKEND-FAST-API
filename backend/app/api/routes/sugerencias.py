@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/sugerencias", tags=["Sugerencias de Estudio"])
 
-@router.get("/", response_model=List[Dict[str, Any]])
+@router.get("", response_model=List[Dict[str, Any]])
 async def get_sugerencias(
     current_user: Usuario = Depends(get_current_active_user),
     db: Session = Depends(get_db)

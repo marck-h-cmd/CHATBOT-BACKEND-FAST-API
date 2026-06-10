@@ -124,6 +124,26 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const requestPasswordReset = async (email) => {
+    try {
+      const data = await authAPI.requestPasswordReset(email);
+      return { success: true, message: data.message };
+    } catch (error) {
+      const errorInfo = handleApiError(error);
+      return { success: false, error: errorInfo };
+    }
+  };
+
+  const resetPassword = async (email, otpCode, newPassword) => {
+    try {
+      const data = await authAPI.resetPassword(email, otpCode, newPassword);
+      return { success: true, message: data.message };
+    } catch (error) {
+      const errorInfo = handleApiError(error);
+      return { success: false, error: errorInfo };
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -131,6 +151,8 @@ export const AuthProvider = ({ children }) => {
     register,
     verifyOTP,
     resendOTP,
+    requestPasswordReset,
+    resetPassword,
     logout,
     sessions,
     loadSessions,

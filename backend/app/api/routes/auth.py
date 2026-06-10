@@ -173,6 +173,43 @@ async def cambiar_password(
     )
 
 
+from app.schemas.auth import SolicitarRecuperacionRequest, ResetPasswordRequest
+
+@router.post("/recuperar-password", response_model=ApiResponse)
+async def solicitar_recuperacion_password(
+    data: SolicitarRecuperacionRequest,
+    db: Session = Depends(get_db)
+):
+    """Solicita un OTP para recuperar la contraseña"""
+    await AuthService.solicitar_recuperacion_password(db=db, email=data.email)
+        
+    return ApiResponse(
+        success=True,
+        message="Código de recuperación enviado. Revisa tu correo institucional."
+    )
+
+
+
+@router.post("/reset-password", response_model=ApiResponse)
+async def reset_password(
+    data: ResetPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """Restablece la contraseña utilizando el OTP"""
+    
+    AuthService.reset_password(
+        db=db,
+        email=data.email,
+        otp_code=data.otp_code,
+        new_password=data.new_password
+    )
+    
+    return ApiResponse(
+        success=True,
+        message="Contraseña restablecida correctamente. Ya puedes iniciar sesión con tu nueva contraseña."
+    )
+
+
 @router.get("/me", response_model=UsuarioResponse)
 async def get_current_user_info(
     current_user: Usuario = Depends(get_current_active_user)

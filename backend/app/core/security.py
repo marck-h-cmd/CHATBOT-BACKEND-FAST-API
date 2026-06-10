@@ -332,14 +332,14 @@ class AuthService:
         if not usuario:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Credenciales incorrectas"
+                detail="No existe una cuenta con el email asociado."
             )
 
         # Verificar contraseña
         if not SecurityService.verify_password(password, usuario.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Credenciales incorrectas"
+                detail="La contraseña ingresada es incorrecta."
             )
 
         # Validar que la cuenta esté verificada
@@ -519,3 +519,64 @@ class AuthService:
     @staticmethod
     def get_usuario_by_id(db: Session, user_id: int) -> Optional[Usuario]:
         return db.query(Usuario).filter(Usuario.id == user_id, Usuario.es_activo == True).first()
+
+    @staticmethod
+    async def solicitar_recuperacion_password(db: Session, email: str) -> bool:
+        """Genera un OTP y envía un email para la recuperación de contraseña."""
+        usuario = db.query(Usuario).filter(Usuario.email == email, Usuario.es_activo == True).first()
+        if not usuario:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No existe una cuenta registrada con este correo institucional o está inactiva."
+            )
+
+        otp_code = AuthService._generar_otp()
+        usuario.otp_code = otp_code
+        usuario.otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
+        db.commit()
+
+        await EmailService.enviar_email_recuperacion_password(
+            destinatario=email,
+            nombres=usuario.nombres,
+            codigo_otp=otp_code
+        )
+        return True
+
+    @staticmethod
+    def reset_password(db: Session, email: str, otp_code: str, new_password: str) -> bool:
+        """Verifica el OTP de recuperación y establece la nueva contraseña."""
+        usuario = db.query(Usuario).filter(Usuario.email == email, Usuario.es_activo == True).first()
+        if not usuario:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuario no encontrado"
+            )
+
+        if not usuario.otp_code or not usuario.otp_expires_at:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No hay un código de recuperación pendiente"
+            )
+
+        if datetime.utcnow() > usuario.otp_expires_at:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El código de recuperación ha expirado. Solicita uno nuevo."
+            )
+
+        if usuario.otp_code != otp_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Código de verificación incorrecto"
+            )
+
+        # Restablecer contraseña
+        usuario.hashed_password = SecurityService.hash_password(new_password)
+        usuario.fecha_actualizacion = datetime.utcnow()
+        
+        # Limpiar OTP
+        usuario.otp_code = None
+        usuario.otp_expires_at = None
+        
+        db.commit()
+        return True

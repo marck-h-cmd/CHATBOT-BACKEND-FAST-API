@@ -87,3 +87,25 @@ class ReenviarOTPRequest(BaseModel):
         if not re.match(r'^[a-zA-Z0-9._%+-]+@unitru\.edu\.pe$', v):
             raise ValueError('El email debe ser institucional (@unitru.edu.pe)')
         return v
+
+
+class SolicitarRecuperacionRequest(BaseModel):
+    email: EmailStr
+
+    @validator('email')
+    def validar_dominio_unitru(cls, v):
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@unitru\.edu\.pe$', v):
+            raise ValueError('El email debe ser institucional (@unitru.edu.pe)')
+        return v
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    otp_code: str = Field(..., min_length=6, max_length=6)
+    new_password: str = Field(..., min_length=6, max_length=100)
+
+    @validator('email')
+    def validar_dominio_unitru(cls, v):
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@unitru\.edu\.pe$', v):
+            raise ValueError('El email debe ser institucional (@unitru.edu.pe)')
+        return v

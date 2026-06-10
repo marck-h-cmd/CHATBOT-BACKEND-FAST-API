@@ -17,6 +17,8 @@ import { Navigate } from 'react-router-dom';
 import LoginPage from '../pages/Auth/LoginPage';
 import RegisterPage from '../pages/Auth/RegisterPage';
 import VerifyEmailPage from '../pages/Auth/VerifyEmailPage';
+import ForgotPasswordPage from '../pages/Auth/ForgotPasswordPage';
+import ResetPasswordPage from '../pages/Auth/ResetPasswordPage';
 import DashboardPage from '../pages/DashboardPage';
 import ChatPage from '../pages/ChatPage';
 import SyllabusManagerPage from '../pages/SyllabusManagerPage';
@@ -83,6 +85,8 @@ const AppRoutes = () => {
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/register" element={<RegisterPage />} />
                   <Route path="/verify-email" element={<VerifyEmailPage />} />
+                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
 
                   {/* Rutas protegidas (con layout Navbar/Footer) */}
                   <Route path="/" element={
@@ -181,6 +185,7 @@ const AppRoutes = () => {
                     <Route path="incidentes" element={<IncidentsManagementPage />} />
                     <Route path="incidentes-servicio" element={<ServiceIncidentsPage />} />
                     <Route path="metricas" element={<MetricsAdminPage />} />
+                    <Route path="profile" element={<ProfilePage />} />
                   </Route>
                   <Route path="/profile" element={
                     <PrivateRoute>

@@ -41,7 +41,7 @@ const Sidebar = () => {
     { to: '/admin/silabos/pendientes', label: 'Sílabos', icon: FileText },
     { to: '/admin/service-desk', label: 'Service Desk', icon: MessageSquare },
     { to: '/metrics', label: 'Métricas RAG', icon: BarChart3 },
-    { to: '/profile', label: 'Perfil Admin', icon: Settings },
+    { to: '/admin/profile', label: 'Perfil Admin', icon: Settings },
   ];
 
   const navItems = isAdmin ? adminNavItems : studentNavItems;
