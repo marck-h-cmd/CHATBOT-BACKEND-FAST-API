@@ -19,6 +19,7 @@ class EmbeddingService:
     _instance = None
     _model = None
     _gemini_model = None
+    _inicializado = False
     
     def __new__(cls):
         if cls._instance is None:
@@ -27,14 +28,21 @@ class EmbeddingService:
         return cls._instance
     
     def _inicializar(self):
-        """Inicializa el modelo de embeddings"""
+        """Inicializa la configuración básica de los embeddings"""
         self.dimension = Config.PG_VECTOR_DIM
+        self._inicializado = False
         
+    def _asegurar_modelo(self):
+        """Carga el modelo correspondiente bajo demanda (lazy loading)"""
+        if self._inicializado:
+            return
+            
         # Inicializar Gemini si está configurado
         if Config.USE_GEMINI and Config.GEMINI_API_KEY and genai:
             try:
                 genai.configure(api_key=Config.GEMINI_API_KEY)
                 self._gemini_model = genai.GenerativeModel('embedding-001')
+                self._inicializado = True
                 return
             except Exception:
                 self._gemini_model = None
@@ -42,11 +50,16 @@ class EmbeddingService:
         # Fallback a sentence-transformers
         if SentenceTransformer is None:
             self._model = None
+            self._inicializado = True
             return
         try:
+            # En AWS Lambda, redireccionar el cache de Hugging Face a /tmp (único directorio con permisos de escritura)
+            import os
+            os.environ["HF_HOME"] = "/tmp/huggingface"
             self._model = SentenceTransformer(Config.EMBEDDING_MODEL)
         except Exception:
             self._model = None
+        self._inicializado = True
 
     def _fallback_embedding(self, texto: str) -> List[float]:
         if not texto:
@@ -65,6 +78,9 @@ class EmbeddingService:
         """Genera embedding para un texto"""
         if not texto:
             return [0.0] * self.dimension
+        
+        # Asegurar que el modelo esté cargado en memoria
+        self._asegurar_modelo()
         
         # Usar Gemini si está configurado
         if self._gemini_model:
@@ -93,6 +109,10 @@ class EmbeddingService:
         """Genera embeddings para múltiples textos"""
         if not textos:
             return []
+            
+        # Asegurar que el modelo esté cargado en memoria
+        self._asegurar_modelo()
+        
         if self._model is None:
             return [self._fallback_embedding(t) for t in textos]
         embeddings = self._model.encode(textos)

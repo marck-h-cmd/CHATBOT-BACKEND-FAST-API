@@ -12,8 +12,8 @@ from app.database.connection import engine, Base
 from app.config import Config
 import os
 
-# Crear tablas
-Base.metadata.create_all(bind=engine)
+# Las tablas de la base de datos se crean externamente usando scripts de migración/seeder
+# para evitar sobrecargar el inicio en frío (Cold Start) de la función Lambda.
 
 app = FastAPI(
     title="Chatbot Académico ITIL 4",
