@@ -14,9 +14,7 @@ from app.database.models import (
     ContextoCursoUsuario, OrigenContexto, EstadoVerificacion,
     IncidenteServicio, TipoIncidenteServicio, EstadoIncidente
 )
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from app.core.security import SecurityService
 
 ESTUDIANTES = [
     # Ciclo I
@@ -84,7 +82,7 @@ def seed_all():
         for est_data in ESTUDIANTES:
             estudiante = db.query(Usuario).filter(Usuario.email == est_data["email"]).first()
             if not estudiante:
-                hashed_pw = pwd_context.hash(est_data["password"])
+                hashed_pw = SecurityService.hash_password(est_data["password"])
                 estudiante = Usuario(
                     nombres=est_data["nombres"],
                     apellidos=est_data["apellidos"],

@@ -10,9 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.database.models import Usuario, RolUsuario
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from app.core.security import SecurityService
 
 ADMIN_USER = {
     "nombres": "Administrador",
@@ -38,9 +36,8 @@ def seed_admin():
             return
         
         # Crear nuevo admin
-        # Truncar contraseña a 72 bytes (límite bcrypt)
-        password = ADMIN_USER["password"][:72]
-        hashed_password = pwd_context.hash(password)
+        password = ADMIN_USER["password"]
+        hashed_password = SecurityService.hash_password(password)
         new_admin = Usuario(
             nombres=ADMIN_USER["nombres"],
             apellidos=ADMIN_USER["apellidos"],

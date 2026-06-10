@@ -3,7 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: pgvector/pgvector:pg15
-    container_name: chatbot_postgres
+    container_name: chatbot_postgres_dev
     environment:
       POSTGRES_USER: chatbot_user
       POSTGRES_PASSWORD: chatbot_password
@@ -13,14 +13,14 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U chatbot_user"]
+      test: ["CMD-SHELL", "pg_isready -U chatbot_user -d chatbot_academico"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   pgadmin:
     image: dpage/pgadmin4
-    container_name: chatbot_pgadmin
+    container_name: chatbot_pgadmin_dev
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@chatbot.com
       PGADMIN_DEFAULT_PASSWORD: admin123
@@ -34,13 +34,12 @@ services:
     build: 
       context: ./backend
       dockerfile: Dockerfile
-    container_name: chatbot_backend
+    container_name: chatbot_backend_dev
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app
     environment:
-      - DATABASE_URL=postgresql://chatbot_user:chatbot_password@postgres:5432/chatbot_academico?schema=public
       - ENVIRONMENT=development
     env_file:
       - ./backend/.env
@@ -52,7 +51,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: chatbot_frontend
+    container_name: chatbot_frontend_dev
     ports:
       - "5173:5173"
     volumes:
@@ -61,7 +60,7 @@ services:
     env_file:
       - ./frontend/.env
     environment:
-      - VITE_API_URL=http://backend:8000
+      - VITE_API_URL=http://localhost:8000
     depends_on:
       - backend
 

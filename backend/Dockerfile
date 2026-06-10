@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.11-slim
 
 # Instalar dependencias del sistema necesarias para compilar paquetes (psycopg2, pgvector, etc)
 RUN apt-get update && apt-get install -y \

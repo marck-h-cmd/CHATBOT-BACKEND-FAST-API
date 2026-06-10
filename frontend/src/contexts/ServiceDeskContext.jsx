@@ -23,10 +23,18 @@ export const ServiceDeskProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Cargar datos de Service Desk al iniciar
+  // Cargar datos de Service Desk al iniciar o cuando cambie el usuario
   useEffect(() => {
-    loadData();
-  }, []);
+    if (user) {
+      loadData();
+    } else {
+      setRequests([]);
+      setIncidents([]);
+      setMetrics(null);
+      setEscalations([]);
+      setLoading(false);
+    }
+  }, [user]);
 
   const loadData = async (showSpinner = true) => {
     if (showSpinner) setLoading(true);

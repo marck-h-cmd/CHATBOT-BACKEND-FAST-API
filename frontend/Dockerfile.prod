@@ -9,6 +9,8 @@ RUN npm ci
 
 # Copiar el código fuente y construir
 COPY . .
+ARG VITE_API_URL=/api
+ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
 # Etapa de producción (Production stage)

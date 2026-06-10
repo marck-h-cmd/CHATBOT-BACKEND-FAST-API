@@ -80,7 +80,7 @@ Sylia AI es una plataforma integral de asistencia académica basada en inteligen
 
 ---
 
-## Instalación Rápida (Docker)
+## Instalación (Desarrollo Local con Docker)
 
 ```bash
 # Clonar el repositorio
@@ -104,6 +104,18 @@ Servicios disponibles tras el setup:
 | Backend API | http://localhost:8000 |
 | Documentación API | http://localhost:8000/docs |
 | PgAdmin | http://localhost:5050 |
+
+---
+
+## Despliegue en Producción (AWS EC2)
+
+Para entornos de producción, el proyecto cuenta con un archivo dedicado `docker-compose.prod.yml` y una guía detallada paso a paso que cubre:
+- Configuración de instancias AWS EC2 y Security Groups
+- Configuración de dominio y certificados SSL automatizados con Certbot/Let's Encrypt
+- Proxy inverso con Nginx
+- CI/CD automatizado con GitHub Actions
+
+👉 **Consulta la guía completa de producción aquí: [DEPLOY_AWS.md](./DEPLOY_AWS.md)**
 
 ---
 
