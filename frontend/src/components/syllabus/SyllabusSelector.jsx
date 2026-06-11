@@ -10,6 +10,7 @@ const SyllabusSelector = () => {
   const { courses } = useCourse();
 
   const [selectedCiclo, setSelectedCiclo] = useState('');
+  const [selectedOrigen, setSelectedOrigen] = useState(''); // '', 'oficial', 'subido'
   const ciclos = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 
   // Construir lista de opciones
@@ -21,7 +22,7 @@ const SyllabusSelector = () => {
       const course = courses?.find(c => String(c.id_curso) === String(courseId));
       list.push({
         id: preloadedSyllabus.id,
-        name: `📘 ${preloadedSyllabus.curso?.nombre || 'Gestión de Servicios TIC'} (Oficial)`,
+        name: `📘 [OFICIAL] ${preloadedSyllabus.curso?.nombre || 'Gestión de Servicios TIC'}`,
         isOfficial: true,
         id_curso: courseId,
         ciclo: course?.ciclo_referencial || '',
@@ -34,10 +35,12 @@ const SyllabusSelector = () => {
         const course = courses?.find(c => String(c.id_curso) === String(courseId));
         list.push({
           id: s.id,
-          name: `📄 ${s.nombre_archivo} (Subido)`,
-          isOfficial: false,
+          name: s.es_oficial 
+            ? `📘 [OFICIAL] ${s.nombre_curso}` 
+            : `📄 [SUBIDO] ${s.nombre_curso} — ${s.nombre_archivo}`,
+          isOfficial: s.es_oficial,
           id_curso: courseId,
-          ciclo: course?.ciclo_referencial || '',
+          ciclo: s.ciclo || course?.ciclo_referencial || '',
         });
       });
     }
@@ -45,14 +48,25 @@ const SyllabusSelector = () => {
     return list;
   }, [preloadedSyllabus, userSyllabi, courses]);
 
-  // Filtrar las opciones por el ciclo seleccionado
+  // Filtrar las opciones por ciclo y origen
   const filteredOptions = useMemo(() => {
-    if (!selectedCiclo) return allOptions;
-    return allOptions.filter(opt => 
-      opt.ciclo === selectedCiclo || 
-      opt.ciclo?.toUpperCase() === selectedCiclo.toUpperCase()
-    );
-  }, [allOptions, selectedCiclo]);
+    let result = allOptions;
+    
+    if (selectedCiclo) {
+      result = result.filter(opt => 
+        opt.ciclo === selectedCiclo || 
+        opt.ciclo?.toUpperCase() === selectedCiclo.toUpperCase()
+      );
+    }
+    
+    if (selectedOrigen === 'oficial') {
+      result = result.filter(opt => opt.isOfficial);
+    } else if (selectedOrigen === 'subido') {
+      result = result.filter(opt => !opt.isOfficial);
+    }
+    
+    return result;
+  }, [allOptions, selectedCiclo, selectedOrigen]);
 
   // Formatear opciones para el componente SearchableSelect
   const searchableOptions = useMemo(() => {
@@ -85,14 +99,14 @@ const SyllabusSelector = () => {
         <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
           Filtrar por ciclo
         </label>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           <button
             type="button"
             onClick={() => handleCicloChange('')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
               !selectedCiclo
                 ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-850 hover:border-slate-350 dark:hover:border-slate-700'
             }`}
           >
             Todos
@@ -102,15 +116,57 @@ const SyllabusSelector = () => {
               key={c}
               type="button"
               onClick={() => handleCicloChange(c)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
                 selectedCiclo === c
                   ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-850 hover:border-slate-350 dark:hover:border-slate-700'
               }`}
             >
               {c}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Filtro por origen (Oficial vs Subido) */}
+      <div>
+        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+          Filtrar por tipo de sílabo
+        </label>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setSelectedOrigen('')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+              !selectedOrigen
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-850 hover:border-slate-355 dark:hover:border-slate-700'
+            }`}
+          >
+            Todos
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedOrigen('oficial')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+              selectedOrigen === 'oficial'
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-850 hover:border-slate-355 dark:hover:border-slate-700'
+            }`}
+          >
+            📘 Oficiales
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedOrigen('subido')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+              selectedOrigen === 'subido'
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-850 hover:border-slate-355 dark:hover:border-slate-700'
+            }`}
+          >
+            📄 Subidos
+          </button>
         </div>
       </div>
 

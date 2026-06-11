@@ -6,8 +6,8 @@ import Modal from '../ui/Modal';
 import SearchableSelect from '../ui/SearchableSelect';
 
 const SyllabusUploader = () => {
-  const { uploadSyllabus, uploadStatus, clearUploadStatus } = useSyllabus();
-  const { courses, periods, getCurrentPeriod } = useCourse();
+  const { uploadSyllabus, uploadStatus, clearUploadStatus, loadUserSyllabi } = useSyllabus();
+  const { courses, periods, getCurrentPeriod, enrollments } = useCourse();
   const [file, setFile] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -18,12 +18,22 @@ const SyllabusUploader = () => {
   const ciclos = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 
   const filteredCourses = React.useMemo(() => {
-    if (!selectedCiclo) return courses;
-    return courses?.filter(c => 
+    let baseCourses = courses || [];
+    
+    // Filtrar para que solo salgan los cursos matriculados por el estudiante
+    if (enrollments && enrollments.length > 0) {
+      const enrolledIds = new Set(enrollments.map(e => String(e.id_curso)));
+      baseCourses = baseCourses.filter(c => enrolledIds.has(String(c.id_curso)));
+    } else {
+      baseCourses = [];
+    }
+
+    if (!selectedCiclo) return baseCourses;
+    return baseCourses.filter(c => 
       c.ciclo_referencial === selectedCiclo || 
       c.ciclo_referencial?.toUpperCase() === selectedCiclo.toUpperCase()
     );
-  }, [courses, selectedCiclo]);
+  }, [courses, enrollments, selectedCiclo]);
 
   const courseOptions = React.useMemo(() => {
     return filteredCourses?.map(c => ({
@@ -84,6 +94,9 @@ const SyllabusUploader = () => {
     if (result.success) {
       setFile(null);
       setIsModalOpen(true);
+      if (typeof loadUserSyllabi === 'function') {
+        loadUserSyllabi();
+      }
     } else {
       alert('Error al subir: ' + (result.error?.message || 'Error desconocido'));
     }

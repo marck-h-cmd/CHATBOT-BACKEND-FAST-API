@@ -395,35 +395,24 @@ async def subir_silabo(
     estado = EstadoVerificacion.PENDIENTE_CONFIRMACION
     ambito = AmbitoUso.PRIVADO
     
-    # 5.1 Caso: El periodo coincide exactamente con el actual
-    if coincidencias["periodo"] == CoincidenciaPeriodo.ACTUAL:
-        if score >= 70 and coincidencias["estructura"]:
-            estado = EstadoVerificacion.APROBADO
-        elif score < 40:
-            estado = EstadoVerificacion.RECHAZADO
-        else:
-            estado = EstadoVerificacion.PENDIENTE_CONFIRMACION
-            
-    # 5.2 Caso: Es un sílabo de un periodo anterior (2025 vs 2026)
-    elif coincidencias["periodo"] == CoincidenciaPeriodo.ANTERIOR:
-        # Nunca aprobamos automáticamente periodos antiguos
-        estado = EstadoVerificacion.PENDIENTE_CONFIRMACION
-        
-    # 5.3 Caso: Periodo no coincide en absoluto o es desconocido
+    # Aprobación automática si el puntaje de confianza es mayor o igual al 70%
+    if score >= 70:
+        estado = EstadoVerificacion.APROBADO
+        ambito = AmbitoUso.COMPARTIBLE if score >= 80 else AmbitoUso.PRIVADO
     else:
-        if score < 60:
+        if score < 40:
             estado = EstadoVerificacion.RECHAZADO
         else:
             estado = EstadoVerificacion.PENDIENTE_CONFIRMACION
-            
-    if estado == EstadoVerificacion.APROBADO and score > 80:
-        ambito = AmbitoUso.COMPARTIBLE # Candidato a revisión por ser altamente confiable
+        ambito = AmbitoUso.PRIVADO
 
     # 5.4 Validar fórmulas y evidencias con ITILServiceDesk
     errores_formulas = ITILServiceDesk.validar_formulas_evidencias(parsing_data)
     if errores_formulas:
-        estado = EstadoVerificacion.PENDIENTE_CONFIRMACION
-        score = max(10, score - 30) # Penalizar score por inconsistencia
+        # Se penaliza el score pero mantenemos el estado APROBADO si sigue siendo >= 70
+        score = max(10, score - 30)
+        if score < 70:
+            estado = EstadoVerificacion.PENDIENTE_CONFIRMACION
 
     # 6. Guardar Sílabo (Guardamos parsing_data completo en reglas_json para mejor RAG)
     nuevo_silabo = Silabo(
@@ -609,8 +598,8 @@ async def aprobar_silabo(
     db.commit()
 
     # Generar chunks para RAG (si no existían)
-    if silabo.texto_extraido and curso:
-        generar_y_guardar_chunks(db, silabo, curso)
+    if silabo.texto_extraido and silabo.curso:
+        generar_y_guardar_chunks(db, silabo, silabo.curso)
 
     return {
         "message": f"Sílabo aprobado y publicado. Se actualizaron {len(contextos_actualizados)} contextos.",
@@ -858,6 +847,56 @@ async def listar_silabos_oficiales(
         } for s in silabos
     ]
 
+@router.get("/mis-silabos")
+async def listar_mis_silabos(
+    current_user: Usuario = Depends(get_current_user_from_token),
+    db: Session = Depends(get_db)
+):
+    """
+    Lista todos los sílabos a los que tiene acceso el estudiante actual.
+    Esto incluye:
+    1. Sílabos oficiales de cursos en los que está matriculado.
+    2. Sílabos propios (subidos por él).
+    """
+    # 1. Obtener cursos en los que está matriculado
+    contextos = db.query(ContextoCursoUsuario).filter(
+        ContextoCursoUsuario.id_usuario == current_user.id
+    ).all()
+    id_cursos_matriculados = [ctx.id_curso for ctx in contextos]
+    
+    # 2. Obtener sílabos oficiales publicados de esos cursos
+    silabos_oficiales = db.query(Silabo).filter(
+        Silabo.id_curso.in_(id_cursos_matriculados),
+        Silabo.tipo_silabo == TipoSilabo.OFICIAL,
+        Silabo.ambito_uso == AmbitoUso.PUBLICADO
+    ).all()
+    
+    # 3. Obtener sílabos subidos por el propio estudiante
+    silabos_propios = db.query(Silabo).filter(
+        Silabo.id_usuario_subida == current_user.id
+    ).all()
+    
+    # Combinar y evitar duplicados por id_silabo
+    todos_silabos = {s.id_silabo: s for s in silabos_oficiales + silabos_propios}.values()
+    
+    return [
+        {
+            "id_silabo": s.id_silabo,
+            "id_curso": s.id_curso,
+            "id_periodo": s.id_periodo,
+            "nombre_archivo": s.nombre_archivo,
+            "nombre_curso": s.curso.nombre_curso if s.curso else "N/A",
+            "codigo_curso": s.curso.codigo_curso if s.curso else "N/A",
+            "periodo": s.periodo.nombre if s.periodo else "N/A",
+            "score": s.puntaje_confianza,
+            "estado": s.estado_validacion,
+            "ambito_uso": s.ambito_uso,
+            "ruta_pdf": s.ruta_pdf,
+            "tipo_silabo": s.tipo_silabo.value if hasattr(s.tipo_silabo, "value") else s.tipo_silabo,
+            "fecha_subida": s.fecha_subida.isoformat() if s.fecha_subida else None
+        } for s in todos_silabos
+    ]
+
 @router.get("/{id_silabo}/detalle")
 async def obtener_detalle_silabo(
     id_silabo: int,
@@ -870,9 +909,11 @@ async def obtener_detalle_silabo(
     if not silabo:
         raise HTTPException(status_code=404, detail="Sílabo no encontrado")
     
-    # Validar acceso: Admin siempre, estudiantes solo si es oficial publicado
+    # Validar acceso: Admin siempre, estudiantes solo si es el creador o si es oficial publicado
     if current_user.rol != RolUsuario.ADMIN:
-        if silabo.tipo_silabo != TipoSilabo.OFICIAL or silabo.ambito_uso != AmbitoUso.PUBLICADO:
+        es_creador = silabo.id_usuario_subida == current_user.id
+        es_oficial_publicado = (silabo.tipo_silabo == TipoSilabo.OFICIAL and silabo.ambito_uso == AmbitoUso.PUBLICADO)
+        if not es_creador and not es_oficial_publicado:
             raise HTTPException(status_code=403, detail="Acceso denegado a este sílabo")
     
     return {

@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import Button from '../ui/Button';
-import { LogOut, Menu, X, LayoutDashboard, MessageSquare, BookMarked, BookOpen, BarChart3, User as UserIcon, Compass, ShieldCheck, Sun, Moon } from 'lucide-react';
+import { LogOut, Menu, X, LayoutDashboard, MessageSquare, BookMarked, BookOpen, BarChart3, User as UserIcon, Compass, ShieldCheck, Sun, Moon, FileText } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const Navbar = () => {
@@ -76,7 +76,10 @@ const Navbar = () => {
               <NavItem to="/dashboard" icon={LayoutDashboard} label="Panel" tourId="student-nav-dashboard" />
               <NavItem to="/chat" icon={MessageSquare} label="Asistente" tourId="student-nav-chat" />
               {user?.rol === 'estudiante' && (
-                <NavItem to="/mis-cursos" icon={BookMarked} label="Mis Cursos" tourId="student-nav-mycourses" />
+                <>
+                  <NavItem to="/mis-cursos" icon={BookMarked} label="Mis Cursos" tourId="student-nav-mycourses" />
+                  <NavItem to="/syllabus" icon={FileText} label="Mis Sílabos" />
+                </>
               )}
               <NavItem to="/cursos" icon={BookMarked} label="Cursos" tourId="student-nav-courses" />
               <NavItem to="/sugerencias" icon={BookOpen} label="Sugerencias" />
@@ -162,7 +165,10 @@ const Navbar = () => {
           <MobileNavItem to="/dashboard" icon={LayoutDashboard} label="Panel" onClick={() => setMenuOpen(false)} tourId="student-nav-dashboard" />
           <MobileNavItem to="/chat" icon={MessageSquare} label="Asistente" onClick={() => setMenuOpen(false)} tourId="student-nav-chat" />
           {user?.rol === 'estudiante' && (
-            <MobileNavItem to="/mis-cursos" icon={BookMarked} label="Mis Cursos" onClick={() => setMenuOpen(false)} tourId="student-nav-mycourses" />
+            <>
+              <MobileNavItem to="/mis-cursos" icon={BookMarked} label="Mis Cursos" onClick={() => setMenuOpen(false)} tourId="student-nav-mycourses" />
+              <MobileNavItem to="/syllabus" icon={FileText} label="Mis Sílabos" onClick={() => setMenuOpen(false)} />
+            </>
           )}
           <MobileNavItem to="/cursos" icon={BookMarked} label="Cursos y Matrícula" onClick={() => setMenuOpen(false)} tourId="student-nav-courses" />
           <MobileNavItem to="/sugerencias" icon={BookOpen} label="Sugerencias" onClick={() => setMenuOpen(false)} />

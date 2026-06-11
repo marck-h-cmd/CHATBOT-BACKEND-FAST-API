@@ -146,3 +146,9 @@ export const getSyllabusFullDetail = async (id_silabo) => {
   const response = await apiClient.get(`/silabo/${id_silabo}/detalle`);
   return response.data;
 };
+
+// Obtener lista de sílabos para el estudiante (oficiales matriculados + propios subidos)
+export const getMySyllabi = async () => {
+  const response = await apiClient.get('/silabo/mis-silabos');
+  return response.data;
+};

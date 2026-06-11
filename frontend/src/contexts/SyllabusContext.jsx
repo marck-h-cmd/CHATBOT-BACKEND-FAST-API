@@ -17,8 +17,55 @@ export const SyllabusProvider = ({ children }) => {
   const [uploadStatus, setUploadStatus] = useState(null);
   const { user } = useAuth();
 
-  // No cargamos sílabo preloaded porque el endpoint no existe en el backend
-  // Los sílabos se cargan por contexto de curso usuario en CourseContext
+  const loadUserSyllabi = async () => {
+    setLoading(true);
+    try {
+      const result = await syllabusAPI.getMySyllabi();
+      // Mapear al formato esperado por el frontend
+      const mappedSyllabi = result.map(s => ({
+        id: s.id_silabo,
+        id_curso: s.id_curso,
+        id_periodo: s.id_periodo,
+        nombre_archivo: s.nombre_archivo,
+        nombre_curso: s.nombre_curso,
+        codigo_curso: s.codigo_curso,
+        periodo: s.periodo,
+        estado: s.estado,
+        score: s.score,
+        ruta_pdf: s.ruta_pdf,
+        es_oficial: s.tipo_silabo === 'OFICIAL',
+        fecha_subida: s.fecha_subida,
+      }));
+      setUserSyllabi(mappedSyllabi);
+      return mappedSyllabi;
+    } catch (error) {
+      const errorInfo = handleApiError(error);
+      console.error('Load user syllabi error:', errorInfo);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cargar sílabos del usuario al cambiar de usuario o iniciar sesión
+  useEffect(() => {
+    if (user) {
+      loadUserSyllabi();
+    } else {
+      setUserSyllabi([]);
+      setSelectedSyllabusId(null);
+      setSyllabusDetail(null);
+    }
+  }, [user]);
+
+  // Cargar detalles completos del sílabo seleccionado de forma automática
+  useEffect(() => {
+    if (selectedSyllabusId) {
+      getSyllabusDetail(selectedSyllabusId);
+    } else {
+      setSyllabusDetail(null);
+    }
+  }, [selectedSyllabusId]);
 
   const uploadSyllabus = async (file, id_curso, id_periodo) => {
     setUploadStatus({ loading: true, message: 'Subiendo y procesando...' });
@@ -173,6 +220,7 @@ export const SyllabusProvider = ({ children }) => {
     selectSyllabus,
     clearUploadStatus,
     clearSyllabusDetail,
+    loadUserSyllabi,
   };
 
   return <SyllabusContext.Provider value={value}>{children}</SyllabusContext.Provider>;

@@ -1,16 +1,22 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useSyllabus } from '../contexts/SyllabusContext';
 import { useAuth } from '../contexts/AuthContext';
 import SyllabusSelector from '../components/syllabus/SyllabusSelector';
 import SyllabusSummary from '../components/syllabus/SyllabusSummary';
 import SyllabusUploader from '../components/syllabus/SyllabusUploader';
+import SyllabusPdfViewer from '../components/syllabus/SyllabusPdfViewer';
 import SyllabusChunksList from '../components/syllabus/SyllabusChunksList';
 import Card from '../components/ui/Card';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 const SyllabusManagerPage = () => {
-  const { loading, userSyllabi } = useSyllabus();
+  const { loading, userSyllabi, selectedSyllabusId, syllabusDetail } = useSyllabus();
   const { isAuthenticated } = useAuth();
+
+  // Filtrar los sílabos subidos de forma particular por el estudiante (no oficiales)
+  const uploadedSyllabi = useMemo(() => {
+    return userSyllabi.filter(s => !s.es_oficial);
+  }, [userSyllabi]);
 
   if (!isAuthenticated) {
     return (
@@ -34,6 +40,12 @@ const SyllabusManagerPage = () => {
             <SyllabusSelector />
           </Card>
           <SyllabusSummary />
+          {selectedSyllabusId && syllabusDetail?.ruta_pdf && (
+            <SyllabusPdfViewer 
+              pdfPath={syllabusDetail.ruta_pdf} 
+              title={syllabusDetail.nombre_curso} 
+            />
+          )}
         </div>
         
         <div className="space-y-6">
@@ -41,10 +53,10 @@ const SyllabusManagerPage = () => {
             <SyllabusUploader />
           </Card>
           
-          {userSyllabi.length > 0 && (
+          {uploadedSyllabi.length > 0 && (
             <Card title="Mis sílabos subidos">
               <ul className="divide-y divide-gray-250 dark:divide-slate-800">
-                {userSyllabi.map(s => (
+                {uploadedSyllabi.map(s => (
                   <li key={s.id} className="py-2 flex justify-between items-center text-sm">
                     <span className="text-slate-800 dark:text-slate-200 truncate pr-4">{s.nombre_archivo}</span>
                     <span className="text-xs text-gray-500 dark:text-slate-400 shrink-0">
