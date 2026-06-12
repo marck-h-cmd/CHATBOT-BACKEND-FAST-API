@@ -11,6 +11,9 @@ WORKDIR /app
 # Copiar requirements primero para aprovechar caché de Docker
 COPY requirements.txt .
 
+# Instalar PyTorch CPU-only primero para evitar la descarga de CUDA GPU (reduce el tamaño de la imagen en ~3GB y evita "No space left on device")
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
 # Instalar dependencias de Python
 RUN pip install --no-cache-dir -r requirements.txt
 
