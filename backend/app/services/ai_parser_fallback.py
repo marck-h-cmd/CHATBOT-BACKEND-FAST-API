@@ -107,7 +107,7 @@ class FallbackParser:
     
     @classmethod
     def _get_semanas(cls, i: int) -> str:
-        rangos = {1: "Semana 1-6", 2: "Semana 7-11", 3: "Semana 12-16"}
+        rangos = {1: "Semana 1-5", 2: "Semana 6-10", 3: "Semana 11-16"}
         return rangos.get(i, f"Semana {(i-1)*5+1}-{i*5}")
     
     @classmethod

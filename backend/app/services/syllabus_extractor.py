@@ -723,7 +723,7 @@ class UntSyllabusExtractor:
 
     @classmethod
     def _get_semanas_default(cls, i: int) -> str:
-        return {1: "Semana 1-6", 2: "Semana 7-11", 3: "Semana 12-16"}.get(i, f"Semana {i}")
+        return {1: "Semana 1-5", 2: "Semana 6-10", 3: "Semana 11-16"}.get(i, f"Semana {i}")
 
     @classmethod
     def _extraer_tutoria(cls, seccion_tut: str) -> Dict:
@@ -945,8 +945,8 @@ class UntSyllabusExtractor:
     @classmethod
     def _dividir_texto_por_unidades(cls, texto: str) -> List:
         """Divide texto en bloques usando I/II/III UNIDAD o UNIDAD I/II/III como delimitadores."""
-        # Buscar todos los headers de unidad
-        patron = r'(?:^|\n)\s*(?:UNIDAD\s+(I|II|III)|(I|II|III)\s+UNIDAD)\s*(?:\n|$)'
+        # Buscar todos los headers de unidad (permitiendo dos puntos, espacio o letras después del número de unidad)
+        patron = r'(?:^|\n)\s*(?:UNIDAD\s+(I|II|III)|(I|II|III)\s+UNIDAD)\b'
         matches = list(re.finditer(patron, texto, re.IGNORECASE))
         bloques = []
         for idx, m in enumerate(matches):
@@ -1151,6 +1151,8 @@ class UntSyllabusExtractor:
             patrones_semana = [
                 r'^0?(\d{1,2})$',                              # "01" o "1"
                 r'^[Ss]emana\.?\s*(\d{1,2})',                   # "Semana 1"
+                r'^[Ss]esi[oó]n\s*(\d{1,2})',                   # "Sesión 1"
+                r'^(\d{1,2})[°º]?\s*[Ss]emana',                 # "1° semana"
                 r'^(\d{1,2})[.\)]\s+',                          # "1. " o "1) "
                 r'^(\d{1,2})\s*\|\s*',                          # "1 |" (tabla)
                 r'^\|?\s*(\d{1,2})\s*\|',                        # "| 1 |" (tabla)
@@ -1163,7 +1165,12 @@ class UntSyllabusExtractor:
 
             if m:
                 num = int(m.group(1))
-                if 1 <= num <= 16:
+                allowed_weeks = {
+                    1: set(range(1, 6)),
+                    2: set(range(6, 11)),
+                    3: set(range(11, 18))
+                }.get(num_unidad, set(range(1, 18)))
+                if num in allowed_weeks:
                     if semana_actual is not None and buffer:
                         contenido = cls._limpiar_contenido_sesion(' '.join(buffer), num_unidad)
                         if contenido:
@@ -1582,6 +1589,13 @@ class UntSyllabusExtractor:
 
         for num_unidad, bloque in bloques_unidad:
             tiene_examen_parcial = bool(re.search(r'\b(?:examen\s+parcial|EP|examen\s+mixto)\b', bloque, re.IGNORECASE))
+            
+            allowed_weeks = {
+                1: set(range(1, 6)),
+                2: set(range(6, 11)),
+                3: set(range(11, 18))
+            }.get(num_unidad, set(range(1, 18)))
+
             # Buscar contenidos numerados en el bloque
             # Patrón: número. Tema de contenido (que NO sea estrategia)
             items_contenido = []
@@ -1604,6 +1618,10 @@ class UntSyllabusExtractor:
                 if not linea:
                     continue
                 
+                # Evitar detectar fechas como números de semana (ej. 01/06/26 o 05-06-26)
+                if re.search(r'\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}', linea):
+                    continue
+                
                 # Detectar si la línea contiene "EXAMEN PARCIAL" como celda independiente
                 if re.search(r'^(?:examen\s+parcial|EP|examen\s+mixto)$', linea, re.IGNORECASE):
                     # Esta es una celda de semana que contiene examen parcial (reemplaza el número)
@@ -1620,7 +1638,7 @@ class UntSyllabusExtractor:
                 m_inicio = re.match(r'^(0[1-9]|1[0-6])\b', linea)
                 if m_inicio:
                     sem = int(m_inicio.group(1))
-                    if 1 <= sem <= 16:
+                    if sem in allowed_weeks:
                         semanas_bloque.append(sem)
                         continue
                 

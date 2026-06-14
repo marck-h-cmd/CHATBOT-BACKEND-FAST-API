@@ -198,16 +198,26 @@ def generar_y_guardar_chunks(db: Session, silabo: Silabo, curso: Curso) -> int:
         return None
 
     # ── Pre-colectar TODAS las sesiones de TODAS las unidades ────────────────
-    # Gemini a veces asigna sesiones a la unidad equivocada.
+    # Gemini a veces asigna sesiones a la unidad equivocada, o las pone en el root "sesiones".
     # Redistribuimos por número de semana según SEMANAS_RANGO (la fuente de verdad).
     global_sessions: dict[int, str] = {}  # week_num -> contenido
+    
+    # 1. Colectar del listado raíz "sesiones"
+    for _s in parsing_data.get("sesiones", []):
+        _sem = _s.get("semana", _s.get("semana_num", ""))
+        _ns = extraer_numero_semana(_sem)
+        _cont = _s.get("contenido", _s.get("tema", _s.get("descripcion", ""))).strip()
+        if _ns is not None and _cont:
+            if _ns not in global_sessions:
+                global_sessions[_ns] = _cont
+
+    # 2. Colectar del listado de unidades "unidades[].sesiones"
     for _u in unidades:
         for _s in _u.get("sesiones", []):
             _sem = _s.get("semana", _s.get("semana_num", ""))
             _ns = extraer_numero_semana(_sem)
             _cont = _s.get("contenido", _s.get("tema", _s.get("descripcion", ""))).strip()
             if _ns is not None and _cont:
-                # No sobreescribir si ya existe con contenido
                 if _ns not in global_sessions:
                     global_sessions[_ns] = _cont
 
@@ -295,8 +305,8 @@ def generar_y_guardar_chunks(db: Session, silabo: Silabo, curso: Curso) -> int:
                             bloque_fin = bloque_ini + len(m_ini.group()) + m_fin.start()
                     bloque = prog_text[bloque_ini:bloque_fin]
 
-                    # Extraer líneas "Semana N: contenido" del bloque
-                    for m in re.finditer(r'(?i)semana\s*(\d+)[:\s]+(.+)', bloque):
+                    # Extraer líneas "Semana/Sesión N: contenido" del bloque
+                    for m in re.finditer(r'(?i)(?:semana|sesi[oó]n)\s*(\d+)[:\s]+(.+)', bloque):
                         ns = int(m.group(1))
                         cont_raw = m.group(2).strip()
                         if semanas_permitidas and ns not in semanas_permitidas:

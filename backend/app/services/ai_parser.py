@@ -139,6 +139,10 @@ class GeminiParserService:
 
     6. UNIDADES (Sección IV):
        - Extrae hasta 3 unidades con id (U1, U2, U3), nombre y rango de semanas.
+       - El rango de semanas estándar para las unidades es:
+         * Unidad I: Semana 1-5 (o el rango real que finalice en la semana del examen parcial, típicamente semana 5 o 6).
+         * Unidad II: Semana 6-10 (o el rango real que finalice en el segundo examen parcial, típicamente semana 10 u 11).
+         * Unidad III: Semana 11-16 (o el rango real que finalice en el examen final/aplazados, típicamente semana 16 o 17).
        - Si no hay nombre explícito de unidad, usa el PRIMER contenido de esa unidad como nombre.
 
     JSON requerido (rellena con datos EXACTOS del documento, no inventes):
@@ -510,6 +514,21 @@ class GeminiParserService:
                 if not merged["formulas"].get(key) and llm_formulas.get(key):
                     merged["formulas"][key] = llm_formulas[key]
 
+        # Limpiar trailing + en la fórmula de PP si existe
+        if merged.get("formulas") and isinstance(merged["formulas"].get("PP"), str):
+            pp_formula = merged["formulas"]["PP"]
+            # Reemplazar "+ )" por ")" o "+  )" por ")"
+            pp_formula = re.sub(r'\+\s*\)', ')', pp_formula)
+            # Reemplazar "+/3" por "/3"
+            pp_formula = re.sub(r'\+\s*/', '/', pp_formula)
+            merged["formulas"]["PP"] = pp_formula
+
+        # Si tenemos PP pero no tenemos PU1/PU2/PU3, auto-generar descripciones default válidas (PROM)
+        if merged.get("formulas") and merged["formulas"].get("PP"):
+            for key in ["PU1", "PU2", "PU3"]:
+                if not merged["formulas"].get(key):
+                    merged["formulas"][key] = "PROM"
+
         # ─── Evidencias: normalizar y fusionar inteligentemente ───
         llm_evidencias = llm.get("evidencias", {})
         if llm_evidencias:
@@ -621,7 +640,7 @@ class GeminiParserService:
                 # Semanas del LLM si el patrón tiene default
                 llm_semanas = llm_unidades[i].get("semanas", "")
                 pat_semanas = pattern_unidades[i].get("semanas", "")
-                if llm_semanas and pat_semanas and "Semana 1-6" in pat_semanas and llm_semanas != pat_semanas:
+                if llm_semanas and pat_semanas and "Semana 1-5" in pat_semanas and llm_semanas != pat_semanas:
                     pattern_unidades[i]["semanas"] = llm_semanas
 
         # ─── Competencias: LLM siempre gana ───
@@ -629,64 +648,70 @@ class GeminiParserService:
         if llm_comp:
             merged["competencias"] = llm_comp
 
-        # ─── Sesiones: NO fusionar del LLM (el extractor por patrones es más confiable) ───
-        # Solo si el patrón tiene sesiones y el LLM añade semanas que faltan,
-        # validamos que el contenido sea real (no estrategia/evidencia pura)
-        llm_unidades = llm.get("unidades", [])
-        pattern_unidades = merged.get("unidades", [])
-        if llm_unidades and pattern_unidades:
-            for i in range(min(len(llm_unidades), len(pattern_unidades))):
-                llm_sesiones = llm_unidades[i].get("sesiones", [])
-                pat_sesiones = pattern_unidades[i].get("sesiones", [])
-                if llm_sesiones and pat_sesiones:
-                    # Fusionar: LLM añade las que falten, pero solo contenidos válidos
-                    semanas_pat = {s.get("semana", "") for s in pat_sesiones}
-                    for s in llm_sesiones:
-                        sem = s.get("semana", "")
-                        if sem and sem not in semanas_pat:
-                            contenido = s.get("contenido", "")
-                            # Rechazar si es estrategia pura, evidencia o fragmento corto
-                            if len(contenido) < 20:
-                                continue
-                            lower = contenido.lower()
-                            estrategias = {"desarrollo de", "uso de", "realización de", "realizacion de",
-                                           "aplicación del", "aplicacion del", "exposición", "exposicion",
-                                           "motivación", "motivacion", "rúbrica de", "rubrica de",
-                                           "examen mixto", "examen parcial", "examen final"}
-                            if any(e in lower for e in estrategias):
-                                continue
-                            # Rechazar si termina en preposición
-                            terminaciones = {" de", " del", " la", " el", " los", " las"}
-                            if any(lower.endswith(t) for t in terminaciones):
-                                continue
-                            pat_sesiones.append(s)
-
-        # ─── Sesiones globales (lista flat) del LLM ───
+        # ─── Sesiones: LLM siempre gana si tiene sesiones ───
         llm_sesiones = llm.get("sesiones", [])
-        if llm_sesiones and not any(u.get("sesiones") for u in merged.get("unidades", [])):
-            # Si el patrón no tiene sesiones en ninguna unidad, usar las del LLM
-            validas = []
-            for s in llm_sesiones:
-                contenido = s.get("contenido", "")
-                if len(contenido) < 20:
-                    continue
-                lower = contenido.lower()
-                estrategias = {"desarrollo de", "uso de", "realización de", "realizacion de",
-                               "aplicación del", "aplicacion del", "exposición", "exposicion",
-                               "motivación", "motivacion", "rúbrica de", "rubrica de",
-                               "examen mixto", "examen parcial", "examen final"}
-                if any(e in lower for e in estrategias):
-                    continue
-                if any(lower.endswith(t) for t in {" de", " del", " la", " el", " los", " las"}):
-                    continue
-                validas.append(s)
-            # Asignar a unidades por rango de semana
-            for s in validas:
-                sem = s.get("semana_num", 0)
-                unidad = 1 if sem <= 6 else 2 if sem <= 11 else 3
-                s["unidad"] = unidad
-                if unidad <= len(merged.get("unidades", [])):
-                    merged["unidades"][unidad - 1].setdefault("sesiones", []).append(s)
+        llm_unidades = llm.get("unidades", [])
+        has_llm_sesiones = bool(llm_sesiones) or any(u.get("sesiones") for u in llm_unidades)
+
+        if has_llm_sesiones:
+            def get_sem_num(sem_val) -> Optional[int]:
+                if isinstance(sem_val, int):
+                    return sem_val
+                if isinstance(sem_val, float):
+                    return int(sem_val)
+                if isinstance(sem_val, str):
+                    m = re.search(r'\d+', sem_val)
+                    if m:
+                        return int(m.group(0))
+                return None
+
+            # Limpiar sesiones del patrón y usar las del LLM
+            for u in merged.get("unidades", []):
+                u["sesiones"] = []
+
+            # Si el LLM tiene sesiones a nivel de unidad
+            for i in range(min(len(llm_unidades), len(merged.get("unidades", [])))):
+                u_llm = llm_unidades[i]
+                if u_llm.get("sesiones"):
+                    merged["unidades"][i]["sesiones"] = u_llm["sesiones"]
+
+            # Si el LLM tiene sesiones en una lista plana global (root "sesiones")
+            if llm_sesiones:
+                for s in llm_sesiones:
+                    sem = s.get("semana_num")
+                    if sem is None:
+                        sem = get_sem_num(s.get("semana", ""))
+
+                    # Determinar a qué unidad pertenece
+                    u_idx = s.get("unidad")
+                    if u_idx is None:
+                        # Fallback a los rangos estándar de UNT (1-5, 6-10, 11-16)
+                        if sem is not None:
+                            u_idx = 1 if sem <= 5 else 2 if sem <= 10 else 3
+                    
+                    if isinstance(u_idx, str):
+                        u_idx = u_idx.replace("U", "").strip()
+                    try:
+                        u_idx = int(u_idx)
+                    except (ValueError, TypeError):
+                        u_idx = None
+
+                    if u_idx is not None and 1 <= u_idx <= len(merged.get("unidades", [])):
+                        if sem is not None:
+                            s["semana_num"] = sem
+                        # Validar el contenido
+                        contenido = s.get("contenido", "")
+                        if len(contenido) >= 5:
+                            merged["unidades"][u_idx - 1].setdefault("sesiones", []).append(s)
+
+            # Recalcular el rango de semanas para cada unidad basado en las sesiones reales
+            for u in merged.get("unidades", []):
+                u_sesiones = u.get("sesiones", [])
+                if u_sesiones:
+                    sems = [get_sem_num(s.get("semana_num")) for s in u_sesiones]
+                    sems = [s for s in sems if s is not None]
+                    if sems:
+                        u["semanas"] = f"Semana {min(sems)}-{max(sems)}"
 
         # ─── Capacidades: fusionar ───
         llm_caps = llm.get("capacidades", [])
@@ -928,7 +953,7 @@ class GeminiParserService:
     
     @classmethod
     def _get_semanas_default(cls, unidad_num: int) -> str:
-        rangos = {1: "Semana 1-6", 2: "Semana 7-11", 3: "Semana 12-16"}
+        rangos = {1: "Semana 1-5", 2: "Semana 6-10", 3: "Semana 11-16"}
         return rangos.get(unidad_num, f"Semana {(unidad_num-1)*5+1}-{unidad_num*5}")
 
 
