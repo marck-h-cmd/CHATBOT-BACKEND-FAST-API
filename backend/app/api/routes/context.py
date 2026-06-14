@@ -84,6 +84,7 @@ async def listar_mis_cursos(
     
     result = []
     for ctx in contextos:
+        silabo = ctx.silabo_asignado
         result.append({
             "id_contexto": ctx.id_contexto,
             "id_curso": ctx.id_curso,
@@ -93,6 +94,7 @@ async def listar_mis_cursos(
             "periodo": ctx.periodo.nombre,
             "silabo_validado": ctx.estado_verificacion in [EstadoVerificacion.APROBADO, EstadoVerificacion.OFICIAL],
             "id_silabo": ctx.id_silabo_asignado,
+            "ruta_pdf": silabo.ruta_pdf if silabo else None,
             "notas": {
                 "pu1": ctx.pu1,
                 "pu2": ctx.pu2,

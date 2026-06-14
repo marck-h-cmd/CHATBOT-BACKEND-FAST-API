@@ -213,13 +213,30 @@ const ChatPage = () => {
                             </p>
                             <div className="flex items-center gap-2">
                                <span className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider ${
-                                 ctx.silabo_validado ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
+                                 ctx.silabo_validado ? 'text-emerald-600 dark:text-emerald-450' : 'text-amber-600 dark:text-amber-400'
                                }`}>
                                  <div className={`w-1.5 h-1.5 rounded-full ${ctx.silabo_validado ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-pulse'}`} />
                                  {ctx.silabo_validado ? 'OFICIAL' : 'PENDIENTE'}
                                </span>
                             </div>
                           </div>
+
+                          {/* PDF Download Icon in the sidebar list item */}
+                          {ctx.ruta_pdf && (
+                            <a
+                              href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${ctx.ruta_pdf}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-1.5 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-850 transition-all shrink-0"
+                              title="Descargar PDF del sílabo"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                            </a>
+                          )}
                         </motion.div>
                       );
                     })}
@@ -259,20 +276,50 @@ const ChatPage = () => {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col h-full min-w-0 bg-[#FAF9F6] dark:bg-[#0B0F19] transition-colors duration-200">
 
-        {/* Mobile Header */}
-        <div className="lg:hidden shrink-0 h-14 border-b border-slate-100 dark:border-slate-800/80 flex items-center px-4 gap-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-30">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 -ml-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-850 rounded-xl transition-colors"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-slate-800 flex items-center justify-center border dark:border-slate-700 shadow-sm">
+        {/* Chat Header */}
+        <div className="shrink-0 h-14 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between px-4 sm:px-6 bg-white dark:bg-[#131A2C] backdrop-blur-md sticky top-0 z-30">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 -ml-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-850 rounded-xl transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-slate-800 flex items-center justify-center border dark:border-slate-700 shadow-sm shrink-0">
               <BookOpen className="w-4 h-4 text-white dark:text-slate-200" />
             </div>
-            <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">Sylia</span>
+            {selectedContext ? (
+              <div className="min-w-0">
+                <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight truncate block">
+                  {selectedContext.curso}
+                </span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider block leading-none">
+                  {selectedContext.periodo} • {selectedContext.codigo || 'N/A'}
+                </span>
+              </div>
+            ) : (
+              <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">
+                Sylia
+              </span>
+            )}
           </div>
+
+          {/* Download PDF button if available */}
+          {selectedContext?.ruta_pdf && (
+            <a
+              href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${selectedContext.ruta_pdf}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              download
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-bold rounded-xl transition-all border border-red-200/50 dark:border-red-900/40 shadow-sm shrink-0"
+              title="Descargar PDF del sílabo"
+            >
+              <svg className="w-4 h-4 text-red-650 dark:text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span className="hidden sm:inline">Descargar PDF</span>
+            </a>
+          )}
         </div>
 
         {/* Mensajes */}

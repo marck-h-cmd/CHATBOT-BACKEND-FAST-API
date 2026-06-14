@@ -251,8 +251,22 @@ const SyllabusUploader = () => {
       <Modal isOpen={isModalOpen} onClose={closeModal} title="📋 Resultado de subida" size="lg">
         {uploadStatus?.success ? (
           <div className="space-y-4">
-            {/* Mensaje principal */}
-            <p className="text-gray-700 dark:text-slate-200">{uploadStatus.message || uploadStatus.aviso || 'Sílabo procesado correctamente'}</p>
+            {/* Mensaje de confirmación destacado con Score de Confianza */}
+            <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 rounded-xl p-4 flex items-start gap-3 text-left">
+              <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300">
+                  {uploadStatus.message || '¡Sílabo procesado con éxito!'}
+                </p>
+                <p className="text-xs text-emerald-700 dark:text-emerald-450 mt-0.5 font-medium">
+                  Porcentaje de confianza en la extracción: <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">{uploadStatus.score}%</span>
+                </p>
+              </div>
+            </div>
             
             {/* Información del curso */}
             {(uploadStatus.nombre_curso || uploadStatus.curso?.nombre) && (
