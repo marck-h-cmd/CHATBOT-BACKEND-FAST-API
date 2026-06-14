@@ -314,6 +314,13 @@ const ChatMessage = ({ message }) => {
             </div>
           )}
         </div>
+
+        {/* Info de debug de tokens */}
+        {!isUser && message.tokensUsados !== undefined && message.tokensUsados !== null && (
+          <div className="mt-1 px-2 text-[10px] font-mono text-slate-400/70 dark:text-slate-500/70 select-none">
+            [Debug: {message.tokensUsados} tokens{message.tiempoMs ? ` en ${message.tiempoMs}ms` : ''}]
+          </div>
+        )}
       </div>
 
       {/* Modal para Días Antes */}

@@ -11,68 +11,66 @@ from typing import Dict, Optional, List
 from app.config import Config
 from app.services.syllabus_extractor import UntSyllabusExtractor
 
-# Configurar Gemini en modo lazy (no falla el arranque del servidor si no está disponible)
-GEMINI_DISPONIBLE: bool = False
-MODEL = None
-_GEMINI_INIT_ATTEMPTED: bool = False
+# Configuración genérica para Primary AI
+PRIMARY_AI_DISPONIBLE: bool = False
+PRIMARY_AI_CLIENT = None
+_PRIMARY_AI_INIT_ATTEMPTED: bool = False
 
+# Configuración genérica para Fallback AI
+FALLBACK_AI_DISPONIBLE: bool = False
+FALLBACK_AI_CLIENT = None
+_FALLBACK_AI_INIT_ATTEMPTED: bool = False
 
-def _unique_model_names(names: List[Optional[str]]) -> List[str]:
-    unique: List[str] = []
-    for name in names:
-        if not name:
-            continue
-        if name not in unique:
-            unique.append(name)
-    return unique
-
-
-def _init_gemini() -> None:
-    global GEMINI_DISPONIBLE, MODEL, _GEMINI_INIT_ATTEMPTED
-
-    if _GEMINI_INIT_ATTEMPTED:
+def _init_primary_ai() -> None:
+    global PRIMARY_AI_DISPONIBLE, PRIMARY_AI_CLIENT, _PRIMARY_AI_INIT_ATTEMPTED
+    
+    if _PRIMARY_AI_INIT_ATTEMPTED:
         return
-    _GEMINI_INIT_ATTEMPTED = True
-
-    if not Config.USE_GEMINI:
+    _PRIMARY_AI_INIT_ATTEMPTED = True
+    
+    if not Config.USE_PRIMARY_AI:
         return
-    if not Config.GEMINI_API_KEY:
+    if not Config.PRIMARY_AI_API_KEY:
         return
-
+        
     try:
-        import google.generativeai as genai  # type: ignore
-    except Exception:
-        return
-
-    try:
-        genai.configure(api_key=Config.GEMINI_API_KEY)
-
-        modelos_a_probar = _unique_model_names(
-            [
-                Config.GEMINI_MODEL,
-                "gemini-flash-lite-latest",
-                "gemini-2.5-flash",
-                "gemini-2.5-pro",
-                "gemini-2.0-flash",
-                "gemini-2.0-pro",
-                "gemini-1.5-flash",
-                "gemini-1.5-pro",
-                "gemini-1.5-flash-latest",
-                "gemini-1.5-pro-latest",
-            ]
+        from openai import OpenAI
+        PRIMARY_AI_CLIENT = OpenAI(
+            api_key=Config.PRIMARY_AI_API_KEY,
+            base_url=Config.PRIMARY_AI_BASE_URL
         )
+        PRIMARY_AI_DISPONIBLE = True
+        print(f"✅ Primary AI configurada (modelo: {Config.PRIMARY_AI_MODEL})")
+    except Exception as e:
+        print(f"⚠️ Error configurando Primary AI: {e}")
+        PRIMARY_AI_DISPONIBLE = False
+        PRIMARY_AI_CLIENT = None
 
-        for modelo in modelos_a_probar:
-            try:
-                MODEL = genai.GenerativeModel(modelo)
-                GEMINI_DISPONIBLE = True
-                print(f"✅ Gemini API configurada (modelo: {modelo})")
-                return
-            except Exception:
-                continue
-    except Exception:
-        GEMINI_DISPONIBLE = False
-        MODEL = None
+def _init_fallback_ai() -> None:
+    global FALLBACK_AI_DISPONIBLE, FALLBACK_AI_CLIENT, _FALLBACK_AI_INIT_ATTEMPTED
+    
+    if _FALLBACK_AI_INIT_ATTEMPTED:
+        return
+    _FALLBACK_AI_INIT_ATTEMPTED = True
+    
+    if not Config.USE_FALLBACK_AI:
+        return
+    if not Config.FALLBACK_AI_API_KEY:
+        return
+        
+    try:
+        from openai import OpenAI
+        FALLBACK_AI_CLIENT = OpenAI(
+            api_key=Config.FALLBACK_AI_API_KEY,
+            base_url=Config.FALLBACK_AI_BASE_URL
+        )
+        FALLBACK_AI_DISPONIBLE = True
+        print(f"✅ Fallback AI configurada (modelo: {Config.FALLBACK_AI_MODEL})")
+    except Exception as e:
+        print(f"⚠️ Error configurando Fallback AI: {e}")
+        FALLBACK_AI_DISPONIBLE = False
+        FALLBACK_AI_CLIENT = None
+
 
 
 class GeminiParserService:
@@ -186,16 +184,59 @@ class GeminiParserService:
         score_pattern = resultado_pattern.get("puntaje_confianza", 0)
         print(f"📊 Patrones: score {score_pattern}%")
 
-        # ─── Paso 2: Gemini SIEMPRE como complemento ───
-        _init_gemini()
+        # ─── Paso 2: Primary AI / Fallback AI como complemento ───
+        _init_primary_ai()
+        _init_fallback_ai()
         resultado_llm = None
 
-        if GEMINI_DISPONIBLE and MODEL:
+        if PRIMARY_AI_DISPONIBLE and PRIMARY_AI_CLIENT:
             try:
                 texto_limitado = texto[:35000] if len(texto) > 35000 else texto
-                import google.generativeai as genai
+                hints = cls._construir_hints(resultado_pattern, curso_esperado, periodo_esperado)
+                contexto = f"""
+    CONTEXTO DEL CURSO ESPERADO (útil para verificación externa):
+    - Curso esperado: {curso_esperado or "(no especificado)"}
+    - Periodo esperado: {periodo_esperado or "(no especificado)"}
+"""
+                prompt = cls.PROMPT_BASE + contexto + hints + "\n\n--- INICIO DEL SÍLABO ---\n" + texto_limitado
+                
+                response = PRIMARY_AI_CLIENT.chat.completions.create(
+                    model=Config.PRIMARY_AI_MODEL,
+                    messages=[
+                        {"role": "system", "content": "Eres un asistente experto en analizar sílabos universitarios."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.1,
+                    max_tokens=4096
+                )
+                
+                respuesta_texto = response.choices[0].message.content
+                preview = repr(respuesta_texto[:200]) if respuesta_texto else "None"
+                print(f"🤖 Primary AI raw ({len(respuesta_texto or '')} chars): {preview}")
+                
+                if respuesta_texto and respuesta_texto.strip():
+                    stripped = respuesta_texto.strip()
+                    if stripped.count('"') <= 2 and '\n' not in stripped:
+                        print(f"⚠️ Primary AI devolvió fragmento incompleto, ignorando")
+                        resultado_llm = None
+                    else:
+                        resultado_llm = cls._limpiar_y_parsear_json(respuesta_texto)
+                        if resultado_llm:
+                            resultado_llm = cls._validar_estructura(resultado_llm)
+                            print(f"🤖 Primary AI OK: extrajo {len(resultado_llm)} campos")
+                else:
+                    print(f"⚠️ Primary AI respuesta vacía")
+            except Exception as e:
+                import traceback
+                print(f"⚠️ Primary AI falló: {e}")
+                print(traceback.format_exc())
+                
+        # Fallback si Primary AI falla o no está disponible
+        if not resultado_llm and FALLBACK_AI_DISPONIBLE and FALLBACK_AI_CLIENT:
+            try:
+                print("🔄 Intentando fallback con Fallback AI...")
+                texto_limitado = texto[:35000] if len(texto) > 35000 else texto
 
-                # Construir prompt con hints del extractor de patrones
                 hints = cls._construir_hints(resultado_pattern, curso_esperado, periodo_esperado)
                 contexto = f"""
     CONTEXTO DEL CURSO ESPERADO (útil para verificación externa):
@@ -204,34 +245,34 @@ class GeminiParserService:
 """
                 prompt = cls.PROMPT_BASE + contexto + hints + "\n\n--- INICIO DEL SÍLABO ---\n" + texto_limitado
 
-                response = MODEL.generate_content(
-                    prompt,
-                    generation_config=genai.GenerationConfig(
-                        temperature=0.1,
-                        max_output_tokens=8192
-                    )
+                response = FALLBACK_AI_CLIENT.chat.completions.create(
+                    model=Config.FALLBACK_AI_MODEL,
+                    messages=[
+                        {"role": "system", "content": "Eres un asistente experto en analizar sílabos universitarios."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.1,
+                    max_tokens=4096
                 )
-                respuesta_texto = response.text
-                # Logging detallado para debug
+                respuesta_texto = response.choices[0].message.content
                 preview = repr(respuesta_texto[:200]) if respuesta_texto else "None"
-                print(f"🤖 Gemini raw ({len(respuesta_texto or '')} chars): {preview}")
+                print(f"🤖 Fallback AI raw ({len(respuesta_texto or '')} chars): {preview}")
 
                 if respuesta_texto and respuesta_texto.strip():
-                    # Si Gemini devolvió solo un fragmento de campo sin valor, ignorar
                     stripped = respuesta_texto.strip()
                     if stripped.count('"') <= 2 and '\n' not in stripped:
-                        print(f"⚠️ Gemini devolvió fragmento incompleto, ignorando")
+                        print(f"⚠️ Fallback AI devolvió fragmento incompleto, ignorando")
                         resultado_llm = None
                     else:
                         resultado_llm = cls._limpiar_y_parsear_json(respuesta_texto)
                         if resultado_llm:
                             resultado_llm = cls._validar_estructura(resultado_llm)
-                            print(f"🤖 Gemini OK: extrajo {len(resultado_llm)} campos")
+                            print(f"🤖 Fallback AI OK: extrajo {len(resultado_llm)} campos")
                 else:
-                    print(f"⚠️ Gemini respuesta vacía")
+                    print(f"⚠️ Fallback AI respuesta vacía")
             except Exception as e:
                 import traceback
-                print(f"⚠️ Gemini falló: {e}")
+                print(f"⚠️ Fallback AI falló: {e}")
                 print(traceback.format_exc())
 
         # ─── Paso 3: Merge inteligente ───

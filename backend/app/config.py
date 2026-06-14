@@ -30,11 +30,24 @@ class Config:
     DATABASE_URL = _normalize_database_url(os.getenv("DATABASE_URL"))
     SECRET_KEY = os.getenv("SECRET_KEY")
     ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-    EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+
+    # Primary AI Provider (e.g. Grok, ChatGPT)
+    USE_PRIMARY_AI = os.getenv("USE_PRIMARY_AI", "true").lower() == "true"
+    PRIMARY_AI_API_KEY = os.getenv("PRIMARY_AI_API_KEY")
+    PRIMARY_AI_BASE_URL = os.getenv("PRIMARY_AI_BASE_URL", "https://api.openai.com/v1")
+    PRIMARY_AI_MODEL = os.getenv("PRIMARY_AI_MODEL", "gpt-4o")
+    
+    # Fallback AI Provider (e.g. Gemini via OpenAI compat, or another provider)
+    USE_FALLBACK_AI = os.getenv("USE_FALLBACK_AI", "true").lower() == "true"
+    FALLBACK_AI_API_KEY = os.getenv("FALLBACK_AI_API_KEY")
+    FALLBACK_AI_BASE_URL = os.getenv("FALLBACK_AI_BASE_URL", "https://api.openai.com/v1")
+    FALLBACK_AI_MODEL = os.getenv("FALLBACK_AI_MODEL", "gpt-4o-mini")
+
+    # Legacy Gemini settings (for embeddings or compatibility)
     USE_GEMINI = os.getenv("USE_GEMINI", "false").lower() == "true"
-    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+    EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
     
     NOTA_APROBACION = float(os.getenv("NOTA_APROBACION", 14))
     UMBRAL_RIESGO_ALTO = float(os.getenv("UMBRAL_RIESGO_ALTO", 11))

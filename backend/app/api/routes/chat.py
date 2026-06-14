@@ -25,6 +25,7 @@ class ChatResponse(BaseModel):
     escalado: bool
     riesgo: Optional[str] = None
     sugerencia: Optional[Dict] = None
+    tokens_usados: Optional[int] = None
 
 @router.post("/consultar", response_model=ChatResponse)
 async def consultar_chat(

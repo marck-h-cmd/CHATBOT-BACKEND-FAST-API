@@ -6,6 +6,7 @@ export interface ChatMessage {
   fragmentos?: number;
   escalado?: boolean;
   tiempoMs?: number;
+  tokensUsados?: number;
   isError?: boolean;
   timestamp: string;
 }
@@ -17,6 +18,7 @@ export interface ChatResponse {
   fragmentos_usados: number;
   tiempo_ms: number;
   escalado: boolean;
+  tokens_usados?: number;
 }
 
 export interface ChatRequest {

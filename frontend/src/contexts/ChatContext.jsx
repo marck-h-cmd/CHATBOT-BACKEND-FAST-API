@@ -76,6 +76,7 @@ export const ChatProvider = ({ children }) => {
         fragmentos: response.fragmentos_usados,
         escalado: response.escalado,
         tiempoMs: response.tiempo_ms,
+        tokensUsados: response.tokens_usados,
         timestamp: new Date().toISOString(),
       };
       
