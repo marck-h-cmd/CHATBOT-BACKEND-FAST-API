@@ -86,6 +86,8 @@ export const SyllabusProvider = ({ children }) => {
       
       setUserSyllabi(prev => [...prev, nuevoSilabo]);
       
+      console.log('DEBUG UPLOAD SYLLABUS API RESULT:', result);
+      
       // Retornar información del backend
       setUploadStatus({
         success: true,

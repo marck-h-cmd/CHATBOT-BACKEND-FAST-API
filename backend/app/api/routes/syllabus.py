@@ -898,14 +898,12 @@ async def listar_silabos_oficiales(
     current_user: Usuario = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
-    """Lista todos los sílabos oficiales (admin only) - incluye pendientes, aprobados y rechazados"""
+    """Lista todos los sílabos oficiales y subidos por usuarios (admin only) - incluye pendientes, aprobados y rechazados"""
     
     if current_user.rol != RolUsuario.ADMIN:
-        raise HTTPException(status_code=403, detail="Solo administradores pueden listar sílabos oficiales")
+        raise HTTPException(status_code=403, detail="Solo administradores pueden listar sílabos")
     
-    query = db.query(Silabo).filter(
-        Silabo.tipo_silabo == TipoSilabo.OFICIAL
-    )
+    query = db.query(Silabo)
     
     if id_curso:
         query = query.filter(Silabo.id_curso == id_curso)
@@ -927,6 +925,8 @@ async def listar_silabos_oficiales(
             "score": s.puntaje_confianza,
             "estado": s.estado_validacion,
             "ambito_uso": s.ambito_uso,
+            "tipo_silabo": s.tipo_silabo.value if hasattr(s.tipo_silabo, "value") else s.tipo_silabo,
+            "observaciones": s.observaciones_validacion,
             "fecha_subida": s.fecha_subida.isoformat() if s.fecha_subida else None,
             "subido_por": s.usuario_subida.email if s.usuario_subida else "Sistema"
         } for s in silabos

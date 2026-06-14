@@ -93,6 +93,7 @@ async def listar_mis_cursos(
             "codigo": ctx.curso.codigo_curso,
             "periodo": ctx.periodo.nombre,
             "silabo_validado": ctx.estado_verificacion in [EstadoVerificacion.APROBADO, EstadoVerificacion.OFICIAL],
+            "estado_verificacion": ctx.estado_verificacion.value if ctx.estado_verificacion else None,
             "id_silabo": ctx.id_silabo_asignado,
             "ruta_pdf": silabo.ruta_pdf if silabo else None,
             "notas": {

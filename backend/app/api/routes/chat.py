@@ -42,6 +42,14 @@ async def consultar_chat(
     if not contexto:
         raise HTTPException(status_code=403, detail="No tienes acceso a este curso/contexto")
 
+    # Bloquear si el sílabo no está validado (aprobado o oficial)
+    from app.database.models import EstadoVerificacion
+    if contexto.estado_verificacion not in [EstadoVerificacion.APROBADO, EstadoVerificacion.OFICIAL]:
+        raise HTTPException(
+            status_code=400,
+            detail="El sílabo para este curso se encuentra pendiente de validación o no ha sido subido. Por favor, sube el sílabo para activar el chat."
+        )
+
     resultado = ChatHandler.procesar_consulta(
         db=db,
         id_usuario=current_user.id,

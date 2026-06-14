@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useChat } from '../contexts/ChatContext';
 import { useCourse } from '../contexts/CourseContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -359,13 +360,67 @@ const ChatPage = () => {
         {/* Input Footer */}
         <div className="shrink-0 bg-white dark:bg-[#131A2C] border-t border-slate-100 dark:border-slate-800/80 px-4 pb-5 pt-3 transition-colors duration-200" data-tour="student-chat-input">
           <div className="max-w-3xl mx-auto w-full">
-            <QuickReplies onSelect={handleSend} lastIntent={currentResponse?.intent}  disabled={!selectedContextId} />
-            <div className="mt-3">
-              <ChatInput onSend={handleSend} isLoading={loading} disabled={!selectedContextId} />
-            </div>
-            <div className="text-center mt-2">
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">Sylia puede cometer errores. Verifica la información con tu docente.</span>
-            </div>
+            {selectedContext && !selectedContext.silabo_validado ? (() => {
+              const isRejected = selectedContext.estado_verificacion === 'RECHAZADO';
+              const isPending = selectedContext.estado_verificacion === 'PENDIENTE_CONFIRMACION' && selectedContext.id_silabo;
+              
+              let title = 'Sílabo requerido para este curso';
+              let description = 'Este curso no cuenta con un sílabo asignado. Debes subir el sílabo en formato PDF para poder activar el chat e interactuar con Sylia.';
+              let buttonText = 'Subir Sílabo';
+              let iconColor = 'bg-amber-105 dark:bg-amber-955/35 text-amber-600 dark:text-amber-450 border-amber-200/50 dark:border-amber-900/30';
+              let IconComponent = Clock;
+              
+              if (isRejected) {
+                title = 'Sílabo rechazado';
+                description = 'El sílabo subido fue rechazado por el administrador. Por favor, sube un documento PDF correcto para activar el chat.';
+                buttonText = 'Subir de nuevo';
+                iconColor = 'bg-red-100 dark:bg-red-955/35 text-red-600 dark:text-red-450 border-red-200/50 dark:border-red-900/30';
+                IconComponent = ShieldAlert;
+              } else if (isPending) {
+                title = 'Sílabo en proceso de validación';
+                description = 'El sílabo ha sido subido y se encuentra pendiente de validación por parte del administrador. El chat se activará una vez aprobado.';
+                buttonText = 'Gestionar Sílabos';
+                iconColor = 'bg-amber-100 dark:bg-amber-955/35 text-amber-600 dark:text-amber-450 border-amber-200/50 dark:border-amber-900/30';
+                IconComponent = Clock;
+              }
+              
+              return (
+                <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 text-center space-y-4 my-2 transition-all shadow-sm">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto border ${iconColor}`}>
+                    <IconComponent className="w-6 h-6 animate-pulse" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-bold text-slate-950 dark:text-white">
+                      {title}
+                    </h4>
+                    <p className="text-xs text-slate-550 dark:text-slate-400 leading-relaxed font-medium max-w-md mx-auto">
+                      {description}
+                    </p>
+                  </div>
+                  <div className="pt-2">
+                    <Link
+                      to="/syllabus"
+                      className="inline-flex items-center justify-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-extrabold shadow-sm transition-colors gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-3-3m3 3l3-3" />
+                      </svg>
+                      {buttonText}
+                    </Link>
+                  </div>
+                </div>
+              );
+            })() : (
+              <>
+                <QuickReplies onSelect={handleSend} lastIntent={currentResponse?.intent}  disabled={!selectedContextId} />
+                <div className="mt-3">
+                  <ChatInput onSend={handleSend} isLoading={loading} disabled={!selectedContextId} />
+                </div>
+                <div className="text-center mt-2">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">Sylia puede cometer errores. Verifica la información con tu docente.</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

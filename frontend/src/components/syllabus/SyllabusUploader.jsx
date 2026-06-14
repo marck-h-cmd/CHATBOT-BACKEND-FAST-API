@@ -7,7 +7,7 @@ import SearchableSelect from '../ui/SearchableSelect';
 
 const SyllabusUploader = () => {
   const { uploadSyllabus, uploadStatus, clearUploadStatus, loadUserSyllabi } = useSyllabus();
-  const { courses, periods, getCurrentPeriod, enrollments } = useCourse();
+  const { courses, periods, getCurrentPeriod, enrollments, refreshData } = useCourse();
   const [file, setFile] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -91,11 +91,15 @@ const SyllabusUploader = () => {
     setUploading(true);
     const result = await uploadSyllabus(file, selectedCourse, selectedPeriod);
     setUploading(false);
+    console.log('DEBUG SyllabusUploader handleUpload result:', result);
     if (result.success) {
       setFile(null);
       setIsModalOpen(true);
       if (typeof loadUserSyllabi === 'function') {
         loadUserSyllabi();
+      }
+      if (typeof refreshData === 'function') {
+        refreshData();
       }
     } else {
       alert('Error al subir: ' + (result.error?.message || 'Error desconocido'));
@@ -247,9 +251,15 @@ const SyllabusUploader = () => {
         Subir sílabo
       </Button>
 
-      {/* Modal de resultado */}
       <Modal isOpen={isModalOpen} onClose={closeModal} title="📋 Resultado de subida" size="lg">
-        {uploadStatus?.success ? (
+        {uploadStatus?.loading ? (
+          <div className="flex flex-col items-center justify-center py-12 space-y-4">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+            <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">
+              {uploadStatus.message || 'Procesando sílabo...'}
+            </p>
+          </div>
+        ) : uploadStatus?.success ? (
           <div className="space-y-4">
             {/* Mensaje de confirmación destacado con Score de Confianza */}
             <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 rounded-xl p-4 flex items-start gap-3 text-left">
