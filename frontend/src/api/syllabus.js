@@ -42,7 +42,7 @@ export const updateSyllabus = async (idSilabo, data) => {
 
 // Nueva: Eliminar un sílabo
 export const deleteSyllabus = async (idSilabo) => {
-  const response = await apiClient.delete(`/syllabus/${idSilabo}`);
+  const response = await apiClient.delete(`/silabo/${idSilabo}`);
   return response.data;
 };
 

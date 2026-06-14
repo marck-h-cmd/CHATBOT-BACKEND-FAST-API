@@ -57,11 +57,15 @@ const SyllabusManagerPage = () => {
             <Card title="Mis sílabos subidos">
               <ul className="divide-y divide-gray-250 dark:divide-slate-800">
                 {uploadedSyllabi.map(s => (
-                  <li key={s.id} className="py-2 flex justify-between items-center text-sm">
-                    <span className="text-slate-800 dark:text-slate-200 truncate pr-4">{s.nombre_archivo}</span>
-                    <span className="text-xs text-gray-500 dark:text-slate-400 shrink-0">
-                      {s.fecha_subida ? new Date(s.fecha_subida).toLocaleDateString() : ''}
+                  <li key={s.id} className="py-2.5 flex justify-between items-center text-sm gap-2">
+                    <span className="text-slate-800 dark:text-slate-200 truncate flex-1" title={s.nombre_archivo}>
+                      {s.nombre_archivo}
                     </span>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-xs text-gray-500 dark:text-slate-400">
+                        {s.fecha_subida ? new Date(s.fecha_subida).toLocaleDateString() : ''}
+                      </span>
+                    </div>
                   </li>
                 ))}
               </ul>

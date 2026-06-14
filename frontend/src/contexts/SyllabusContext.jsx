@@ -186,10 +186,32 @@ export const SyllabusProvider = ({ children }) => {
     try {
       const result = await syllabusAPI.deleteOfficialSyllabus(id_silabo);
       setOfficialSyllabi(prev => prev.filter(s => s.id_silabo !== id_silabo));
+      // Also update userSyllabi just in case
+      setUserSyllabi(prev => prev.filter(s => s.id !== id_silabo));
       return { success: true, data: result };
     } catch (error) {
       const errorInfo = handleApiError(error);
       console.error('Delete official syllabus error:', errorInfo);
+      return { success: false, error: errorInfo };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteSyllabus = async (id_silabo) => {
+    setLoading(true);
+    try {
+      const result = await syllabusAPI.deleteSyllabus(id_silabo);
+      setUserSyllabi(prev => prev.filter(s => s.id !== id_silabo));
+      setOfficialSyllabi(prev => prev.filter(s => s.id_silabo !== id_silabo));
+      if (selectedSyllabusId === id_silabo) {
+        setSelectedSyllabusId(null);
+        setSyllabusDetail(null);
+      }
+      return { success: true, data: result };
+    } catch (error) {
+      const errorInfo = handleApiError(error);
+      console.error('Delete syllabus error:', errorInfo);
       return { success: false, error: errorInfo };
     } finally {
       setLoading(false);
@@ -230,6 +252,7 @@ export const SyllabusProvider = ({ children }) => {
     uploadOfficialSyllabus,
     loadOfficialSyllabi,
     deleteOfficialSyllabus,
+    deleteSyllabus,
     getSyllabusDetail,
     selectSyllabus,
     clearUploadStatus,

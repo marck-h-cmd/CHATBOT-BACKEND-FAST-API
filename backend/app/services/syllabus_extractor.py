@@ -84,8 +84,28 @@ class UntSyllabusExtractor:
             "niveles_logro": tabla_prog.get("niveles_logro", []),
         }
 
-        # Derivar evidencias de las fórmulas extraídas
-        resultado["evidencias"] = cls._derivar_evidencias(resultado["formulas"])
+        # Try to use EvaluationFormulaExtractor for normalized formulas and weights
+        try:
+            from app.services.formula_normalizer import EvaluationFormulaExtractor
+            eval_seccion = secciones.get("evaluacion", "")
+            normalizador_res = EvaluationFormulaExtractor.extract_and_normalize(eval_seccion)
+            if normalizador_res.get("normalized_formulas"):
+                resultado["formulas"] = normalizador_res["normalized_formulas"]
+                
+                # Derive evidences from normalized formulas & weights
+                evidencias_new = {}
+                for code, weight in normalizador_res.get("inferred_weights", {}).items():
+                    evidencias_new[code] = {
+                        "nombre": code.title(),
+                        "peso": weight
+                    }
+                resultado["evidencias"] = evidencias_new
+                resultado["formulas_evaluacion_detallada"] = normalizador_res
+            else:
+                resultado["evidencias"] = cls._derivar_evidencias(resultado["formulas"])
+        except Exception as e:
+            print(f"Error calling EvaluationFormulaExtractor in UntSyllabusExtractor: {e}")
+            resultado["evidencias"] = cls._derivar_evidencias(resultado["formulas"])
 
         # Extraer sesiones/semanas de la programación académica (limpio)
         prog_limpio = cls._limpiar_artefactos_pdf(secciones.get("programacion", texto))
@@ -1481,6 +1501,17 @@ class UntSyllabusExtractor:
         return data
 
     @classmethod
+    def normalizar_periodo(cls, p: str) -> str:
+        if not p:
+            return ""
+        p = p.upper().replace(" ", "").replace("–", "-").replace("/", "-")
+        # Reemplazar números romanos del semestre
+        p = re.sub(r'-III$', '-3', p)
+        p = re.sub(r'-II$', '-2', p)
+        p = re.sub(r'-I$', '-1', p)
+        return p
+
+    @classmethod
     def _calcular_score(cls, data: Dict, texto: str, curso_ref: str, periodo_ref: str) -> Tuple[int, Dict]:
         score = 0
         coincidencias = {
@@ -1491,22 +1522,38 @@ class UntSyllabusExtractor:
             "legibilidad": True
         }
 
+        # 0. Normalizar curso_ref y extraer código esperado si existe
+        nombre_esperado = curso_ref
+        codigo_esperado = None
+        if curso_ref and " - " in curso_ref:
+            parts = curso_ref.split(" - ", 1)
+            codigo_esperado = parts[0].strip()
+            nombre_esperado = parts[1].strip()
+
         # 1. Código (25 pts)
         codigo = data.get("codigo_curso", "").strip()
-        if codigo and re.match(r"^\d{3,5}$", codigo) and codigo not in {"0000", "9999", "", "N/A"}:
-            score += 25
-            coincidencias["codigo"] = True
+        if codigo and re.match(r"^[A-Z0-9\-_]{2,10}$", codigo, re.IGNORECASE) and codigo not in {"0000", "9999", "", "N/A"}:
+            if codigo_esperado:
+                if codigo_esperado.upper() == codigo.upper():
+                    score += 25
+                    coincidencias["codigo"] = True
+                elif codigo_esperado.upper() in codigo.upper() or codigo.upper() in codigo_esperado.upper():
+                    score += 20
+                    coincidencias["codigo"] = True
+            else:
+                score += 25
+                coincidencias["codigo"] = True
 
         # 2. Nombre (25 pts)
         nombre = data.get("nombre_curso", "").strip().upper()
         if nombre and nombre not in {"LA EXPERIENCIA CURRICULAR", "EXPERIENCIA CURRICULAR", "CURSO", "ASIGNATURA", ""} and len(nombre) > 3:
-            if curso_ref:
-                curso_ref_upper = curso_ref.upper()
-                if curso_ref_upper in nombre or nombre in curso_ref_upper:
+            if nombre_esperado:
+                nombre_esp_upper = nombre_esperado.upper()
+                if nombre_esp_upper in nombre or nombre in nombre_esp_upper:
                     score += 25
                     coincidencias["curso"] = True
                 else:
-                    palabras_ref = {w for w in re.findall(r'[A-ZÁÉÍÓÚÑ]{4,}', curso_ref_upper)}
+                    palabras_ref = {w for w in re.findall(r'[A-ZÁÉÍÓÚÑ]{4,}', nombre_esp_upper)}
                     palabras_ext = {w for w in re.findall(r'[A-ZÁÉÍÓÚÑ]{4,}', nombre)}
                     if palabras_ref and palabras_ext:
                         interseccion = palabras_ref.intersection(palabras_ext)
@@ -1525,15 +1572,33 @@ class UntSyllabusExtractor:
 
         # 3. Periodo (15 pts)
         periodo = data.get("periodo", "").strip()
-        if periodo and re.match(r"^\d{4}-[IV12]+$", periodo):
-            if periodo_ref and periodo_ref in periodo:
-                score += 15
-                coincidencias["periodo"] = "ACTUAL"
-            else:
-                score += 8
+        norm_ref = cls.normalizar_periodo(periodo_ref)
+        norm_ext = cls.normalizar_periodo(periodo)
+        
+        if norm_ref and norm_ext and (norm_ref == norm_ext or norm_ref in norm_ext or norm_ext in norm_ref):
+            score += 15
+            coincidencias["periodo"] = "ACTUAL"
+        elif periodo and periodo_ref:
+            # Detectar si es anterior o no coincide
+            try:
+                match_ref = re.search(r'(\d{4})', norm_ref)
+                match_ext = re.search(r'(\d{4})', norm_ext)
+                if match_ref and match_ext:
+                    anio_ref = int(match_ref.group(1))
+                    anio_ext = int(match_ext.group(1))
+                    if anio_ext < anio_ref:
+                        score += 8
+                        coincidencias["periodo"] = "ANTERIOR"
+                    else:
+                        coincidencias["periodo"] = "NO_COINCIDE"
+                else:
+                    coincidencias["periodo"] = "NO_COINCIDE"
+            except:
                 coincidencias["periodo"] = "NO_COINCIDE"
+        else:
+            coincidencias["periodo"] = "DESCONOCIDO"
 
-        # 4. Fórmulas (20 pts) — más granular para reflejar calidad de extracción
+        # 4. Fórmulas (20 pts)
         formulas = data.get("formulas", {})
         formula_count = sum(1 for k in ["PU1", "PU2", "PU3", "PP"] if formulas.get(k))
         if formula_count >= 4:

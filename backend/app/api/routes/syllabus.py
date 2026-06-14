@@ -13,7 +13,8 @@ from app.database.models import (
     EstadoVerificacion, AmbitoUso, TipoSilabo,
     TipoIncidenteServicio, RolUsuario, CoincidenciaPeriodo,
     ContextoCursoUsuario, OrigenContexto, IncidenteServicio, EstadoIncidente,
-    LogIngestion, TipoSeccionChunk
+    LogIngestion, TipoSeccionChunk, IncidenteAcademico, SolicitudServicio,
+    SugerenciaEstudio
 )
 from app.services.chunker import ChunkerService
 from app.services.pdf_parser import PDFParserService
@@ -479,7 +480,7 @@ async def subir_silabo(
 
     # 4. Parsing Gemini + Confidence Score
     parsing_data = gemini_parser.extraer_estructura_completa(
-        texto, curso.nombre_curso, periodo.nombre
+        texto, f"{curso.codigo_curso} - {curso.nombre_curso}", periodo.nombre
     )
     
     score = parsing_data["puntaje_confianza"]
@@ -790,7 +791,7 @@ async def subir_silabo_oficial(
 
     # 4. Parsing Gemini + Confidence Score
     parsing_data = gemini_parser.extraer_estructura_completa(
-        texto, curso.nombre_curso, periodo.nombre
+        texto, f"{curso.codigo_curso} - {curso.nombre_curso}", periodo.nombre
     )
     
     score = parsing_data.get("puntaje_confianza", 100)
@@ -898,6 +899,71 @@ async def eliminar_silabo_oficial(
         "success": True,
         "id_silabo": id_silabo,
         "mensaje": "Sílabo oficial eliminado exitosamente",
+        "contextos_desvinculados": len(contextos)
+    }
+
+@router.delete("/{id_silabo}")
+async def eliminar_silabo(
+    id_silabo: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_from_token)
+):
+    """Endpoint para que el ADMIN elimine cualquier sílabo (Oficial o subido por Usuario)"""
+
+    # 1. Validar permisos
+    if current_user.rol != RolUsuario.ADMIN:
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: solo administradores pueden eliminar sílabos."
+        )
+
+    # 2. Buscar el sílabo
+    silabo = db.query(Silabo).filter(Silabo.id_silabo == id_silabo).first()
+    if not silabo:
+        raise HTTPException(status_code=404, detail="Sílabo no encontrado")
+
+    # 3. Desvincular contextos de estudiantes que usan este sílabo
+    contextos = db.query(ContextoCursoUsuario).filter(
+        ContextoCursoUsuario.id_silabo_asignado == id_silabo
+    ).all()
+    for ctx in contextos:
+        ctx.id_silabo_asignado = None
+        ctx.origen_contexto = OrigenContexto.DECLARADO_USUARIO
+        ctx.estado_verificacion = EstadoVerificacion.PENDIENTE_CONFIRMACION
+
+    # 4. Eliminar chunks relacionados
+    db.query(SilaboChunk).filter(SilaboChunk.id_silabo == id_silabo).delete(synchronize_session=False)
+
+    # 5. Eliminar registros que dependen del sílabo con FK NOT NULL y sin CASCADE
+    db.query(IncidenteServicio).filter(IncidenteServicio.id_silabo == id_silabo).delete(synchronize_session=False)
+    db.query(IncidenteAcademico).filter(IncidenteAcademico.id_silabo == id_silabo).delete(synchronize_session=False)
+    db.query(SolicitudServicio).filter(SolicitudServicio.id_silabo == id_silabo).delete(synchronize_session=False)
+    db.query(LogIngestion).filter(LogIngestion.id_silabo == id_silabo).delete(synchronize_session=False)
+    db.query(SugerenciaEstudio).filter(SugerenciaEstudio.id_silabo == id_silabo).update(
+        {SugerenciaEstudio.id_silabo: None},
+        synchronize_session=False
+    )
+
+    # 6. Guardar ruta del PDF antes de eliminar
+    ruta_pdf = silabo.ruta_pdf
+
+    # 7. Eliminar el sílabo de la base de datos
+    db.delete(silabo)
+    db.commit()
+
+    # 8. Eliminar archivo físico si existe
+    if ruta_pdf:
+        filepath = os.path.join("app", ruta_pdf.lstrip("/").replace("/", os.sep))
+        try:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        except OSError:
+            pass  # No crítico si el archivo no se puede eliminar
+
+    return {
+        "success": True,
+        "id_silabo": id_silabo,
+        "mensaje": "Sílabo y recursos asociados eliminados exitosamente",
         "contextos_desvinculados": len(contextos)
     }
 
@@ -1065,7 +1131,7 @@ async def resolver_incidente_servicio(
         periodo = silabo.periodo
         
         parsing_data = gemini_parser.extraer_estructura_completa(
-            texto, curso.nombre_curso, periodo.nombre
+            texto, f"{curso.codigo_curso} - {curso.nombre_curso}", periodo.nombre
         )
         
         score = parsing_data["puntaje_confianza"]

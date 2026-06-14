@@ -18,7 +18,7 @@ const ESTADO_LABELS = {
 
 export default function SyllabusManagementPage() {
   const navigate = useNavigate();
-  const { officialSyllabi, loadOfficialSyllabi, deleteOfficialSyllabus, loading } = useSyllabus();
+  const { officialSyllabi, loadOfficialSyllabi, deleteSyllabus, loading } = useSyllabus();
   const { courses, periods } = useCourse();
 
   const [filterEscuela, setFilterEscuela] = useState('');
@@ -149,7 +149,7 @@ export default function SyllabusManagementPage() {
   };
 
   const handleDelete = async (id_silabo) => {
-    const result = await deleteOfficialSyllabus(id_silabo);
+    const result = await deleteSyllabus(id_silabo);
     if (result.success) {
       setDeleteConfirm(null);
     } else {

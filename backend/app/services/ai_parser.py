@@ -287,6 +287,32 @@ class GeminiParserService:
             resultado = resultado_pattern
             print(f"⚠️ Sin Gemini, usando solo patrones")
 
+        # Canonicalize and validate formulas using EvaluationFormulaExtractor
+        try:
+            from app.services.formula_normalizer import EvaluationFormulaExtractor
+            secciones_text = UntSyllabusExtractor._segmentar(texto)
+            eval_seccion = secciones_text.get("evaluacion", "")
+            
+            # Run the detailed extractor
+            detalles_formulas = EvaluationFormulaExtractor.extract_and_normalize(eval_seccion)
+            resultado["formulas_evaluacion_detallada"] = detalles_formulas
+            
+            # Ensure final formulas are canonical
+            if detalles_formulas.get("normalized_formulas"):
+                resultado["formulas"] = detalles_formulas["normalized_formulas"]
+                
+            # Normalize evidences weights
+            if detalles_formulas.get("inferred_weights"):
+                evidencias_new = {}
+                for code, weight in detalles_formulas["inferred_weights"].items():
+                    evidencias_new[code] = {
+                        "nombre": code.title(),
+                        "peso": weight
+                    }
+                resultado["evidencias"] = evidencias_new
+        except Exception as e:
+            print(f"Error normalizing final formulas in GeminiParserService: {e}")
+
         # Recalcular score final con el merged result
         puntaje, coincidencias = cls.calcular_puntaje_confianza(
             resultado, texto, curso_esperado, periodo_esperado
@@ -778,6 +804,17 @@ class GeminiParserService:
         return merged
 
     @classmethod
+    def normalizar_periodo(cls, p: str) -> str:
+        if not p:
+            return ""
+        p = p.upper().replace(" ", "").replace("–", "-").replace("/", "-")
+        # Reemplazar números romanos del semestre
+        p = re.sub(r'-III$', '-3', p)
+        p = re.sub(r'-II$', '-2', p)
+        p = re.sub(r'-I$', '-1', p)
+        return p
+
+    @classmethod
     def calcular_puntaje_confianza(cls, data: Dict, texto_completo: str, curso_ref: str, periodo_ref: str) -> tuple:
         """
         Calcula score 0-100 basado en reglas ITIL 4
@@ -791,75 +828,79 @@ class GeminiParserService:
             "legibilidad": True
         }
 
+        # 0. Normalizar curso_ref y extraer código esperado si existe
+        nombre_esperado = curso_ref
+        codigo_esperado = None
+        if curso_ref and " - " in curso_ref:
+            parts = curso_ref.split(" - ", 1)
+            codigo_esperado = parts[0].strip()
+            nombre_esperado = parts[1].strip()
+
         # 1. Coincidencia de nombre de curso (25 pts)
         nombre_extraido = data.get("nombre_curso", "").upper()
-        if curso_ref and curso_ref.upper() in nombre_extraido:
-            score += 25
-            coincidencias["curso"] = True
-        elif curso_ref and any(word in nombre_extraido for word in curso_ref.upper().split() if len(word) > 3):
-            score += 15
-            coincidencias["curso"] = True
+        if nombre_esperado:
+            nombre_esp_upper = nombre_esperado.upper()
+            if nombre_esp_upper in nombre_extraido:
+                score += 25
+                coincidencias["curso"] = True
+            elif any(word in nombre_extraido for word in nombre_esp_upper.split() if len(word) > 3):
+                score += 15
+                coincidencias["curso"] = True
 
-        # 2. Coincidencia de código (20 pts) - validar contra curso esperado
+        # 2. Coincidencia de código (20 pts)
         codigo_extraido = data.get("codigo_curso", "").strip()
         codigo_fallbacks = {"0000", "9999", "N/A", "", "S/C"}
         curso_encontrado = False
 
-        if codigo_extraido and codigo_extraido not in codigo_fallbacks and len(codigo_extraido) > 2:
-            if curso_ref:
-                # Extraer código del curso_ref si tiene formato "COD - Nombre"
-                match = re.search(r'^(\d{3,4})\s*[-–]', curso_ref)
-                if match:
-                    codigo_esperado = match.group(1)
-                    if codigo_esperado == codigo_extraido:
-                        score += 20
-                        coincidencias["codigo"] = True
-                        curso_encontrado = True
-                    elif codigo_esperado in codigo_extraido or codigo_extraido in codigo_esperado:
-                        # Código parcialmente relacionado
-                        score += 10
-                        coincidencias["codigo"] = True
-                        curso_encontrado = True
-                    else:
-                        # Código completamente diferente: penalización fuerte
-                        score = max(0, score - 30)
-                        coincidencias["codigo"] = False
-                else:
-                    # No se pudo extraer código del curso esperado, verificar que no sea fallback
+        if codigo_extraido and codigo_extraido not in codigo_fallbacks and len(codigo_extraido) > 1:
+            if codigo_esperado:
+                if codigo_esperado.upper() == codigo_extraido.upper():
+                    score += 20
+                    coincidencias["codigo"] = True
+                    curso_encontrado = True
+                elif codigo_esperado.upper() in codigo_extraido.upper() or codigo_extraido.upper() in codigo_esperado.upper():
                     score += 10
                     coincidencias["codigo"] = True
+                    curso_encontrado = True
+                else:
+                    # Código completamente diferente: penalización fuerte
+                    score = max(0, score - 30)
+                    coincidencias["codigo"] = False
             else:
                 score += 10
                 coincidencias["codigo"] = True
         else:
-            # Código vacío o fallback: no puntos, penalización leve
             coincidencias["codigo"] = False
 
-        # Si el curso es completamente diferente o el código es fallback, penalizar fuertemente
-        if not curso_encontrado and curso_ref:
+        # Si el curso es completamente diferente o el código es fallback y el nombre no coincide, penalizar fuertemente
+        if not curso_encontrado and nombre_esperado:
             nombre_extraido = data.get("nombre_curso", "").upper()
-            curso_ref_upper = curso_ref.upper()
+            nombre_esp_upper = nombre_esperado.upper()
             # Si no hay ninguna palabra compartida significativa (más de 3 letras)
-            palabras_ref = {w for w in re.findall(r'[A-ZÁÉÍÓÚÑ]{4,}', curso_ref_upper)}
+            palabras_ref = {w for w in re.findall(r'[A-ZÁÉÍÓÚÑ]{4,}', nombre_esp_upper)}
             palabras_ext = {w for w in re.findall(r'[A-ZÁÉÍÓÚÑ]{4,}', nombre_extraido)}
             if palabras_ref and palabras_ext and not palabras_ref.intersection(palabras_ext):
                 score = max(0, score - 40)
                 coincidencias["curso"] = False
             elif codigo_extraido in codigo_fallbacks:
                 # Código no extraído correctamente pero nombre tampoco coincide
-                score = max(0, score - 20)
+                if not coincidencias["curso"]:
+                    score = max(0, score - 20)
 
         # 3. Coincidencia de periodo (20 pts)
         periodo_extraido = data.get("periodo", "")
-        if periodo_ref and periodo_ref in periodo_extraido:
+        norm_ref = cls.normalizar_periodo(periodo_ref)
+        norm_ext = cls.normalizar_periodo(periodo_extraido)
+        
+        if norm_ref and norm_ext and (norm_ref == norm_ext or norm_ref in norm_ext or norm_ext in norm_ref):
             score += 20
             coincidencias["periodo"] = "ACTUAL"
         elif periodo_extraido and periodo_ref:
             # Lógica para detectar si es un periodo anterior
             try:
-                # Extraer año y término (ej: 2025-I, 2025-II, 2025-1, 2025-2)
-                match_ref = re.search(r'(\d{4})[- ]?([IV120]+)', periodo_ref)
-                match_ext = re.search(r'(\d{4})[- ]?([IV120]+)', periodo_extraido)
+                # Extraer año y término
+                match_ref = re.search(r'(\d{4})', norm_ref)
+                match_ext = re.search(r'(\d{4})', norm_ext)
                 
                 if match_ref and match_ext:
                     anio_ref = int(match_ref.group(1))
@@ -867,7 +908,7 @@ class GeminiParserService:
                     
                     if anio_ext < anio_ref:
                         coincidencias["periodo"] = "ANTERIOR"
-                        score += 5 # Bono parcial por ser el mismo curso aunque sea otro año
+                        score += 10 # Bono parcial por ser el mismo curso aunque sea otro año
                     else:
                         coincidencias["periodo"] = "NO_COINCIDE"
                 else:
