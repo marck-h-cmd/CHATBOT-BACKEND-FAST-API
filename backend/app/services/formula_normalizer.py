@@ -342,14 +342,22 @@ class EvaluationFormulaExtractor:
         """
         Stage 4: Fallback parser using OpenAI (ChatGPT) to solve complex structure extraction.
         """
-        # Ensure we have client configured
-        if not Config.PRIMARY_AI_API_KEY:
-            print("⚠️ OpenAI API Key not configured. LLM fallback skipped.")
+        # Ensure we have client configured according to toggles and available keys
+        if Config.USE_PRIMARY_AI and Config.PRIMARY_AI_API_KEY:
+            api_key = Config.PRIMARY_AI_API_KEY
+            base_url = Config.PRIMARY_AI_BASE_URL
+            model_name = Config.PRIMARY_AI_MODEL
+        elif Config.USE_FALLBACK_AI and Config.FALLBACK_AI_API_KEY:
+            api_key = Config.FALLBACK_AI_API_KEY
+            base_url = Config.FALLBACK_AI_BASE_URL
+            model_name = Config.FALLBACK_AI_MODEL
+        else:
+            print("[WARNING] OpenAI API/Fallback Key not configured or AI is disabled. LLM fallback skipped.")
             return {}
             
         try:
             from openai import OpenAI
-            client = OpenAI(api_key=Config.PRIMARY_AI_API_KEY, base_url=Config.PRIMARY_AI_BASE_URL)
+            client = OpenAI(api_key=api_key, base_url=base_url)
             
             system_prompt = """
 Eres un asistente experto en análisis y extracción de fórmulas de evaluación académica en sílabos universitarios.
@@ -389,7 +397,7 @@ NUNCA agregues explicaciones, markdown ```json o texto fuera del JSON.
             user_prompt = f"Analiza esta sección de evaluación y genera la salida JSON:\n\n{text}"
             
             response = client.chat.completions.create(
-                model=Config.PRIMARY_AI_MODEL,
+                model=model_name,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
@@ -406,7 +414,7 @@ NUNCA agregues explicaciones, markdown ```json o texto fuera del JSON.
                 
             return json.loads(content)
         except Exception as e:
-            print(f"⚠️ OpenAI fallback failed: {e}")
+            print(f"[WARNING] OpenAI fallback failed: {e}")
             return {}
 
     @classmethod

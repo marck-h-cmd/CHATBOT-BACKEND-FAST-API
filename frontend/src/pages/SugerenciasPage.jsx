@@ -75,8 +75,8 @@ const renderDistribucion = (distribucion) => {
     return (
       <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-lg border border-slate-100 dark:border-slate-800 text-sm flex gap-4">
         {Object.entries(parsedDist).map(([tipo, horas]) => (
-          <span key={tipo} className="capitalize text-slate-650 dark:text-slate-350">
-            <span className="font-semibold text-indigo-650 dark:text-indigo-400">{horas}h</span> {tipo}
+          <span key={tipo} className="capitalize text-slate-600 dark:text-slate-400">
+            <span className="font-semibold text-indigo-600 dark:text-indigo-400">{horas}h</span> {tipo}
           </span>
         ))}
       </div>
@@ -177,7 +177,7 @@ const SugerenciasPage = () => {
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
           <h1 className="text-2xl lg:text-3xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
-            <div className="bg-indigo-650 p-2.5 rounded-xl shadow-sm">
+            <div className="bg-indigo-600 p-2.5 rounded-xl shadow-sm">
               <BookOpen className="w-6 h-6 text-white" />
             </div>
             Mis Sugerencias de Estudio
@@ -222,11 +222,11 @@ const SugerenciasPage = () => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={`bg-white dark:bg-[#131A2C] p-6 rounded-2xl shadow-sm border transition-shadow hover:shadow-md ${
-                  sugerencia.estado === 'ACEPTADA' ? 'border-emerald-250 dark:border-emerald-900/50 bg-emerald-50/10 dark:bg-emerald-950/5' :
+                  sugerencia.estado === 'ACEPTADA' ? 'border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/10 dark:bg-emerald-950/5' :
                   sugerencia.estado === 'IGNORADA' ? 'border-slate-200 dark:border-slate-800 opacity-60' :
                   sugerencia.estado === 'EXPIRADA' ? 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/30 opacity-75' :
                   sugerencia.estado === 'CANCELADA' ? 'border-rose-100 dark:border-rose-900/40 bg-rose-50/30 dark:bg-rose-950/10 opacity-80' :
-                  'border-indigo-100 dark:border-indigo-900/50'
+                  'border-indigo-150 dark:border-indigo-900/50'
                 }`}
               >
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -260,13 +260,13 @@ const SugerenciasPage = () => {
                       <>
                         <button
                           onClick={() => openAcceptModal(sugerencia.id_sugerencia)}
-                          className="flex items-center gap-1.5 px-4 py-2 bg-emerald-100 dark:bg-emerald-950/30 text-emerald-750 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 rounded-lg font-bold text-sm transition-colors shadow-sm"
+                          className="flex items-center gap-1.5 px-4 py-2 bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 rounded-lg font-bold text-sm transition-colors shadow-sm"
                         >
                           <CheckCircle className="w-4 h-4" /> Aceptar
                         </button>
                         <button
                           onClick={() => handleUpdateEstado(sugerencia.id_sugerencia, 'IGNORADA')}
-                          className="flex items-center gap-1.5 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg font-bold text-sm transition-colors shadow-sm"
+                          className="flex items-center gap-1.5 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg font-bold text-sm transition-colors shadow-sm"
                         >
                           <XCircle className="w-4 h-4" /> Ignorar
                         </button>
@@ -278,14 +278,14 @@ const SugerenciasPage = () => {
                         </div>
                         <button
                           onClick={() => openAcceptModal(sugerencia.id_sugerencia)}
-                          className="flex items-center gap-1 px-3 py-2 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-650 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-lg font-semibold text-sm transition-colors"
+                          className="flex items-center gap-1 px-3 py-2 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-lg font-semibold text-sm transition-colors"
                           title="Reprogramar"
                         >
                           <Calendar className="w-4 h-4" /> Reprogramar
                         </button>
                         <button
                           onClick={() => handleUpdateEstado(sugerencia.id_sugerencia, 'CANCELADA')}
-                          className="flex items-center gap-1 px-3 py-2 bg-rose-50 dark:bg-rose-950/20 text-rose-650 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 rounded-lg font-semibold text-sm transition-colors"
+                          className="flex items-center gap-1 px-3 py-2 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 rounded-lg font-semibold text-sm transition-colors"
                           title="Cancelar Programación"
                         >
                           <XCircle className="w-4 h-4" /> Cancelar
