@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from typing import Dict, List, Optional
 import time
 import json
+import re
 from app.core.intent_classifier import IntentClassifier
 from app.services.rag_retriever import RAGRetriever
 from app.services.rule_engine import RuleEngine
@@ -11,6 +12,87 @@ from app.config import Config
 
 class ChatHandler:
     
+    @classmethod
+    def obtener_resumen_compacto_json(cls, rj) -> str:
+        if not rj:
+            return ""
+        if isinstance(rj, str):
+            try:
+                rj = json.loads(rj)
+            except Exception:
+                return ""
+        if not isinstance(rj, dict):
+            return ""
+        
+        lines = []
+        
+        # 1. Identificación básica
+        lines.append(f"Curso: {rj.get('nombre_curso', '')} ({rj.get('codigo_curso', '')})")
+        lines.append(f"Docente: {rj.get('docente', '')} ({rj.get('email_docente', '')})")
+        
+        # 2. Fórmulas y Evidencias
+        formulas = rj.get("formulas", {})
+        if formulas:
+            lines.append(f"Fórmulas: {json.dumps(formulas, ensure_ascii=False)}")
+            
+        evidencias = rj.get("evidencias", {})
+        if evidencias:
+            ev_summary = []
+            for k, v in evidencias.items():
+                if isinstance(v, dict):
+                    ev_summary.append(f"{k}: {v.get('nombre', '')} (peso {v.get('peso', '')})")
+                else:
+                    ev_summary.append(f"{k}: {v}")
+            lines.append(f"Evidencias: {', '.join(ev_summary)}")
+            
+        rules = rj.get("reglas", {})
+        if rules:
+            lines.append(f"Reglas: Asistencia mín {rules.get('asistencia_minima', 70)}%, Inhabilitación {rules.get('inhabilitacion_umbral', 30)}%, Redondeo: {rules.get('redondeo', '')}")
+            
+        # 3. Resumen semanal de sesiones (optimizado en tokens)
+        unidades = rj.get("unidades", [])
+        sessions_pool = []
+        for u in unidades:
+            for s in u.get("sesiones", []):
+                sem_num = s.get("semana") or s.get("semana_num")
+                tema = s.get("contenido") or s.get("tema") or s.get("descripcion", "")
+                if sem_num and tema:
+                    sessions_pool.append((sem_num, u.get("id", ""), tema))
+                    
+        for s in rj.get("sesiones", []):
+            sem_num = s.get("semana") or s.get("semana_num")
+            tema = s.get("contenido") or s.get("tema") or s.get("descripcion", "")
+            if sem_num and tema:
+                if not any(sp[0] == sem_num for sp in sessions_pool):
+                    sessions_pool.append((sem_num, s.get("unidad", ""), tema))
+                    
+        def parse_sem_num(val):
+            if isinstance(val, int):
+                return val
+            if isinstance(val, str):
+                m = re.search(r'\d+', val)
+                return int(m.group(0)) if m else 99
+            return 99
+            
+        sessions_pool.sort(key=lambda x: parse_sem_num(x[0]))
+        
+        semanas = []
+        for sem_num, u_id, tema in sessions_pool:
+            clean_tema = str(tema).strip()
+            if len(clean_tema) > 50:
+                clean_tema = clean_tema[:47] + "..."
+            semanas.append(f"S{sem_num}({u_id}): {clean_tema}")
+            
+        if semanas:
+            lines.append(f"Cronograma: {' | '.join(semanas)}")
+            
+        # 4. Tutoría
+        tut = rj.get("tutoria", {})
+        if tut:
+            lines.append(f"Tutoría: {tut.get('dia', '')} {tut.get('horario', '')} via {', '.join(tut.get('canales', []))}")
+            
+        return "\n".join(lines)
+
     @staticmethod
     def procesar_consulta(
         db: Session,
@@ -54,10 +136,10 @@ class ChatHandler:
         # 1. Clasificar intención
         intent, params = IntentClassifier.clasificar(pregunta)
         
-        # 2. Recuperar fragmentos relevantes (RAG)
+        # 2. Recuperar fragmentos relevantes (RAG) - Optimizado para ahorrar tokens
         fragmentos = []
-        if silabo:
-            fragmentos = RAGRetriever.recuperar_fragmentos(db, silabo.id_silabo, pregunta, top_k=3)
+        if silabo and intent not in ["saludar"]:
+            fragmentos = RAGRetriever.recuperar_fragmentos(db, silabo.id_silabo, pregunta, top_k=2)
         
         # 3. Generar respuesta según intención
         respuesta = ""
@@ -96,10 +178,12 @@ class ChatHandler:
                 nombre_periodo = contexto.periodo.nombre if contexto and contexto.periodo else "Desconocido"
                 
                 info_estructurada = ""
+                info_resumen_json = ""
                 formulas = {}
                 nota_min = "14"
                 if silabo and silabo.reglas_json:
                     rj = silabo.reglas_json
+                    info_resumen_json = ChatHandler.obtener_resumen_compacto_json(rj)
                     if isinstance(rj, dict):
                         nota_min = rj.get("nota_aprobatoria", "14 (por reglamento)")
                         formulas = rj.get("formulas", rj)
@@ -203,15 +287,25 @@ class ChatHandler:
 
                 prompt = f"""Escribe como Sylia, tutora académica empática y directa. Tu meta es guiar al alumno sobre su curso y dudas de forma humana, clara y concisa. Evita rodeos innecesarios.
 
+                        [REGLAS DE FORMATO (OBLIGATORIAS PARA COLORES)]
+                        Para resaltar con colores hermosos y facilitar la visualización del estudiante, usa siempre:
+                        - Texto entre **doble asterisco** (ej. **Concepto Clave**) para resaltar términos críticos, títulos de secciones, nombres de fórmulas o conceptos fundamentales. Se mostrará en color Indigo.
+                        - Texto entre *un asterisco* (ej. *Semana 5*) para fechas importantes, números de semanas, notas de aprobación o estados del curso. Se mostrará en color Ámbar/Amarillo.
+                        - Texto entre `backticks` (ej. `PU1`) para siglas de evaluación, fórmulas matemáticas o notas numéricas específicas. Se mostrará en color Rosa.
+
                         [REGLAS GENERALES]
                         - Calificaciones vigesimales de 0 a 20 (aprobación: 14). Nunca calcules o sugieras notas mayores a 20. Si requiere >20, indícalo de forma realista y sugiere Examen Sustitutorio o Aplazados.
-                        - Consultas semanales: Si el estudiante consulta por una semana o tema específico (ej. "Semana 5", "Unidad 2"), detalla con precisión sus contenidos según el contexto [RAG]. No los omitas ni seas genérico.
+                        - Consultas semanales: Si el estudiante consulta por una semana o tema específico (ej. "Semana 5", "Unidad 2"), detalla con precisión sus contenidos usando el resumen estructurado o RAG. No los omitas ni seas genérico.
                         - Explicación de Temas: Si el estudiante te pide explicar un tema o contenido, brinda un resumen teórico corto, claro y conciso (máximo 1-2 párrafos cortos), y de forma proactiva sugiérele repasar o técnicas de estudio aplicadas a ese tema.
 
                         Usa los siguientes datos como contexto de apoyo para tus respuestas:
 
                         [CURSO] {nombre_curso} ({nombre_periodo})
                         {info_estructurada}
+                        
+                        [RESUMEN ESTRUCTURADO DEL SÍLABO (JSON COMPACTO)]
+                        {info_resumen_json}
+                        
                         {instruccion_extra}
                         {info_susti}
 

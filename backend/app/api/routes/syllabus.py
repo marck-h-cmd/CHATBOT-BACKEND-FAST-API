@@ -165,27 +165,6 @@ def generar_y_guardar_chunks(db: Session, silabo: Silabo, curso: Curso) -> int:
     parsing_data = silabo.reglas_json or {}
     unidades = parsing_data.get("unidades", [])
 
-    # Semanas de evaluación fijas del calendario UNT
-    EVAL_WEEKS = {
-        1: {"semana": 5,  "tipo": "EXAMEN PARCIAL – Unidad I"},
-        2: {"semana": 10, "tipo": "EXAMEN PARCIAL – Unidad II"},
-        3: {"semana": 15, "tipo": "EXAMEN FINAL – Unidad III"},
-    }
-    # Semana 16 se agrega sólo al chunk de Unidad III
-    SUSTITUTORIO_WEEK = {"semana": 16, "tipo": "EXAMEN SUSTITUTORIO / APLAZADOS"}
-
-    # Rango completo de semanas por unidad (incluyendo semana de examen)
-    SEMANAS_RANGO = {
-        1: set(range(1, 6)),    # 1-5
-        2: set(range(6, 11)),   # 6-10
-        3: set(range(11, 17)),  # 11-16
-    }
-    SEMANA_DISPLAY = {
-        1: "Semanas 1-5 (Semana 5: Examen Parcial)",
-        2: "Semanas 6-10 (Semana 10: Examen Parcial)",
-        3: "Semanas 11-16 (Semana 15: Examen Final | Semana 16: Sustitutorio/Aplazados)",
-    }
-
     # Helper para extraer el número de semana
     def extraer_numero_semana(sem_val) -> Optional[int]:
         if isinstance(sem_val, int):
@@ -221,6 +200,36 @@ def generar_y_guardar_chunks(db: Session, silabo: Silabo, curso: Curso) -> int:
             if _ns is not None and _cont:
                 if _ns not in global_sessions:
                     global_sessions[_ns] = _cont
+
+    # Determinar dinámicamente si el sílabo tiene 17 semanas
+    es_17_semanas = False
+    if global_sessions:
+        if max(global_sessions.keys(), default=16) >= 17:
+            es_17_semanas = True
+    if not es_17_semanas and texto:
+        if re.search(r'17\s*semanas', texto, re.IGNORECASE):
+            es_17_semanas = True
+
+    # Semanas de evaluación fijas del calendario UNT
+    EVAL_WEEKS = {
+        1: {"semana": 5,  "tipo": "EXAMEN PARCIAL – Unidad I"},
+        2: {"semana": 10, "tipo": "EXAMEN PARCIAL – Unidad II"},
+        3: {"semana": 16 if es_17_semanas else 15, "tipo": "EXAMEN FINAL – Unidad III"},
+    }
+    # Semana 16 o 17 se agrega sólo al chunk de Unidad III
+    SUSTITUTORIO_WEEK = {"semana": 17 if es_17_semanas else 16, "tipo": "EXAMEN SUSTITUTORIO / APLAZADOS"}
+
+    # Rango completo de semanas por unidad (incluyendo semana de examen)
+    SEMANAS_RANGO = {
+        1: set(range(1, 6)),    # 1-5
+        2: set(range(6, 11)),   # 6-10
+        3: set(range(11, 18)) if es_17_semanas else set(range(11, 17)),  # 11-17 o 11-16
+    }
+    SEMANA_DISPLAY = {
+        1: "Semanas 1-5 (Semana 5: Examen Parcial)",
+        2: "Semanas 6-10 (Semana 10: Examen Parcial)",
+        3: f"Semanas 11-{17 if es_17_semanas else 16} (Semana {16 if es_17_semanas else 15}: Examen Final | Semana {17 if es_17_semanas else 16}: Sustitutorio/Aplazados)",
+    }
 
     for uni in unidades:
         uid = uni.get("id", "")
@@ -318,27 +327,23 @@ def generar_y_guardar_chunks(db: Session, silabo: Silabo, curso: Curso) -> int:
                             tiene_sesiones_reales = True
                             tiene_sesiones = True
 
+        # --- Inyectar semana de examen si no fue extraída como sesión ---
+        if num_entero in EVAL_WEEKS:
+            ew = EVAL_WEEKS[num_entero]
+            if ew["semana"] not in sesiones_dict:
+                sesiones_dict[ew["semana"]] = ew["tipo"]
+                tiene_sesiones = True
+
+        # Semana de sustitutorio sólo para Unidad III
+        if num_entero == 3 and SUSTITUTORIO_WEEK["semana"] not in sesiones_dict:
+            sesiones_dict[SUSTITUTORIO_WEEK["semana"]] = SUSTITUTORIO_WEEK["tipo"]
+            tiene_sesiones = True
+
         # Mostrar semanas en orden (contenido real primero)
         if sesiones_dict:
             contenido_unidad += "Temas por Semana:\n"
             for num_sem in sorted(sesiones_dict):
                 contenido_unidad += f"- Semana {num_sem}: {sesiones_dict[num_sem]}\n"
-
-        # --- Inyectar semana de examen si no fue extraída como sesión ---
-        if num_entero in EVAL_WEEKS:
-            ew = EVAL_WEEKS[num_entero]
-            if ew["semana"] not in sesiones_dict:
-                if not sesiones_dict:
-                    contenido_unidad += "Temas por Semana:\n"
-                contenido_unidad += f"- Semana {ew['semana']}: {ew['tipo']}\n"
-                tiene_sesiones = True
-
-        # Semana 16 sólo para Unidad III
-        if num_entero == 3 and SUSTITUTORIO_WEEK["semana"] not in sesiones_dict:
-            if not sesiones_dict and num_entero not in EVAL_WEEKS:
-                contenido_unidad += "Temas por Semana:\n"
-            contenido_unidad += f"- Semana {SUSTITUTORIO_WEEK['semana']}: {SUSTITUTORIO_WEEK['tipo']}\n"
-            tiene_sesiones = True
 
         # --- Logros, competencias, capacidades, resultados ---
         logros = uni.get("logros_aprendizaje", "")
@@ -383,6 +388,7 @@ def generar_y_guardar_chunks(db: Session, silabo: Silabo, curso: Curso) -> int:
 
         if nombre and (tiene_contenido or es_nombre_sustancial):
             content_str = contenido_unidad.strip()
+            # 1. Guardar chunk completo de la unidad
             db.add(SilaboChunk(
                 id_silabo=silabo.id_silabo,
                 tipo_seccion=TipoSeccionChunk.CONTENIDOS,
@@ -397,6 +403,24 @@ def generar_y_guardar_chunks(db: Session, silabo: Silabo, curso: Curso) -> int:
                 }
             ))
             chunks_guardados += 1
+
+            # 2. Guardar chunks individuales de cada semana para RAG altamente preciso
+            for num_sem, tema_sem in sesiones_dict.items():
+                week_content = f"Curso: {curso.nombre_curso}\nUnidad {numero}: {nombre}\nSemana {num_sem}: {tema_sem}"
+                db.add(SilaboChunk(
+                    id_silabo=silabo.id_silabo,
+                    tipo_seccion=TipoSeccionChunk.CONTENIDOS,
+                    titulo=f"Unidad {numero} - Semana {num_sem}"[:200],
+                    contenido=week_content,
+                    embedding=embedding_service.generar_embedding(week_content),
+                    metadata_json={
+                        "fuente": "Extracted_Week",
+                        "unidad": f"U{numero}",
+                        "semana": num_sem,
+                        "es_unidad_completa": False,
+                    }
+                ))
+                chunks_guardados += 1
         elif nombre:
             # Registrar incidencia: la unidad fue identificada pero no tiene contenido extraíble
             print(f"[INCIDENCIA] Unidad '{nombre}' (silabo_id={silabo.id_silabo}) sin contenido extraíble. Se omite el chunk.")

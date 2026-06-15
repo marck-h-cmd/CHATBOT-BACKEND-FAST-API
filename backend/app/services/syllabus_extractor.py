@@ -14,7 +14,7 @@ Secciones UNT estándar:
 """
 
 import re
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from collections import Counter
 
 
@@ -1192,7 +1192,7 @@ class UntSyllabusExtractor:
                 }.get(num_unidad, set(range(1, 18)))
                 if num in allowed_weeks:
                     if semana_actual is not None and buffer:
-                        contenido = cls._limpiar_contenido_sesion(' '.join(buffer), num_unidad)
+                        contenido = cls._limpiar_contenido_sesion(' '.join(buffer), num_unidad, semana_num=semana_actual)
                         if contenido:
                             semanas.append({
                                 "semana": str(semana_actual),
@@ -1245,7 +1245,10 @@ class UntSyllabusExtractor:
                     "MONOGRAFÍA", "MONOGRAFIA", "TAREA"
                 ])
                 if skip:
-                    continue
+                    es_semana_eval = semana_actual in (5, 10, 16)
+                    contiene_eval_term = any(term in upper for term in ["EXAMEN", "EVALUACIÓN", "EVALUACION", "EXPOSICIÓN", "EXPOSICION", "SUSTITUTORIO", "APLAZADO", "PARCIAL", "FINAL"])
+                    if not (es_semana_eval and contiene_eval_term):
+                        continue
                 if 2 < len(linea_strip) < 180:
                     limpio = re.sub(r'^[•\-\*\d]+[.\)]?\s*', '', linea_strip)
                     if len(limpio) > 2:
@@ -1253,7 +1256,7 @@ class UntSyllabusExtractor:
 
         # Guardar última
         if semana_actual is not None and buffer:
-            contenido = cls._limpiar_contenido_sesion(' '.join(buffer), num_unidad)
+            contenido = cls._limpiar_contenido_sesion(' '.join(buffer), num_unidad, semana_num=semana_actual)
             if contenido:
                 semanas.append({
                     "semana": str(semana_actual),
@@ -1279,10 +1282,21 @@ class UntSyllabusExtractor:
     @classmethod
     def _es_contenido_valido(cls, contenido: str) -> bool:
         """Rechaza fragmentos cortos, preposiciones sueltas o estrategias puras."""
-        if not contenido or len(contenido) < 20:
+        if not contenido:
             return False
         lower = contenido.lower().strip()
-        # Rechazar si termina en preposición o artículo (fragmento incompleto)
+        # Permitir evaluaciones más cortas (ej: "Examen Parcial")
+        if any(term in lower for term in ["examen", "evaluación", "evaluacion", "exposición", "exposicion", "sustitutorio", "aplazado", "parcial", "final"]):
+            if len(contenido) >= 8:
+                terminaciones_malas = {
+                    " de", " del", " la", " el", " los", " las", " en", " con", " por",
+                    " para", " a", " e", " y", " o", " u", " un", " una",
+                }
+                if any(lower.endswith(t) for t in terminaciones_malas):
+                    return False
+                return True
+        if len(contenido) < 20:
+            return False
         terminaciones_malas = {
             " de", " del", " la", " el", " los", " las", " en", " con", " por",
             " para", " a", " e", " y", " o", " u", " un", " una",
@@ -1331,7 +1345,7 @@ class UntSyllabusExtractor:
                 continue
             # Limpiar
             contenido = re.sub(r'^[•\-\*]+\s*', '', contenido)
-            contenido = cls._limpiar_contenido_sesion(contenido, num_unidad)
+            contenido = cls._limpiar_contenido_sesion(contenido, num_unidad, semana_num=num)
             if contenido:
                 semanas.append({
                     "semana": str(num),
@@ -1341,17 +1355,28 @@ class UntSyllabusExtractor:
         return semanas
 
     @classmethod
-    def _limpiar_contenido_sesion(cls, contenido: str, num_unidad: int = 0) -> str:
+    def _limpiar_contenido_sesion(cls, contenido: str, num_unidad: int = 0, semana_num: Optional[int] = None) -> str:
         """Limpia contenido de sesión: corta contaminación de otras unidades, evaluación, estrategias, etc."""
         if not contenido:
             return ""
 
+        is_exam_week = semana_num in (5, 10, 16)
+
         # 0. Quitar prefijos de evidencia del inicio (ej: "mixto Analiza...")
-        contenido = re.sub(r'^\s*(mixto|práctica|practica|informe|caso|examen|parcial|final|rúbrica|rubrica)\s+', '', contenido, flags=re.IGNORECASE)
+        # Pero si es semana de examen (5, 10, 16), NO quitemos palabras de evaluación como "examen", "parcial", "final", "sustitutorio", "aplazado".
+        if not is_exam_week:
+            contenido = re.sub(r'^\s*(mixto|práctica|practica|informe|caso|examen|parcial|final|rúbrica|rubrica)\s+', '', contenido, flags=re.IGNORECASE)
 
         # 0.5. Si es estrategia didáctica, evidencia pura o competencia, descartar
-        if cls._es_estrategia_didactica(contenido) or cls._es_evidencia(contenido) or cls._es_competencia(contenido):
-            return ""
+        if is_exam_week:
+            lower = contenido.lower()
+            if any(term in lower for term in ["examen", "evaluación", "evaluacion", "exposición", "exposicion", "sustitutorio", "aplazado", "parcial", "final"]):
+                pass
+            elif cls._es_estrategia_didactica(contenido) or cls._es_evidencia(contenido) or cls._es_competencia(contenido):
+                return ""
+        else:
+            if cls._es_estrategia_didactica(contenido) or cls._es_evidencia(contenido) or cls._es_competencia(contenido):
+                return ""
 
         # 1. Intentar separar columnas de tabla concatenadas (2+ espacios = delimitador de columna)
         columnas = re.split(r'\s{2,}', contenido)
@@ -1420,7 +1445,9 @@ class UntSyllabusExtractor:
             return ""
 
         # 8. Revisar de nuevo si quedó como estrategia o evidencia tras cortes
-        if cls._es_estrategia_didactica(contenido) or cls._es_evidencia(contenido):
+        if is_exam_week and any(term in lower for term in ["examen", "evaluación", "evaluacion", "exposición", "exposicion", "sustitutorio", "aplazado", "parcial", "final"]):
+            pass
+        elif cls._es_estrategia_didactica(contenido) or cls._es_evidencia(contenido):
             return ""
 
         return contenido.strip()
@@ -1432,7 +1459,7 @@ class UntSyllabusExtractor:
         # Buscar "Semana X: contenido"
         for m in re.finditer(r'[Ss]emana\s+(\d+)[.:\-]?\s*([^\.\n]{3,100})', seccion_prog):
             semana_num = int(m.group(1))
-            contenido = cls._limpiar_contenido_sesion(m.group(2).strip(), num_unidad=0)
+            contenido = cls._limpiar_contenido_sesion(m.group(2).strip(), num_unidad=0, semana_num=semana_num)
             if contenido and cls._es_contenido_valido(contenido):
                 sesiones.append({
                     "semana": str(semana_num),
@@ -1444,7 +1471,7 @@ class UntSyllabusExtractor:
         # Buscar "X. Tema de la semana"
         for m in re.finditer(r'(?:^|\n)\s*(\d{1,2})\s*[.\)]\s+([A-ZÁÉÍÓÚÑ][^\.\n]{3,200})', seccion_prog):
             semana_num = int(m.group(1))
-            contenido = cls._limpiar_contenido_sesion(m.group(2).strip(), num_unidad=0)
+            contenido = cls._limpiar_contenido_sesion(m.group(2).strip(), num_unidad=0, semana_num=semana_num)
             if contenido and cls._es_contenido_valido(contenido):
                 sesiones.append({
                     "semana": str(semana_num),

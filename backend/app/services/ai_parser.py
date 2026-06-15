@@ -121,10 +121,16 @@ class GeminiParserService:
     5. PROGRAMACIÓN ACADÉMICA (Sección IV - TABLA):
        Si la sección IV es una TABLA con columnas (Capacidades, Resultados de Aprendizaje, Contenidos, Estrategias, Evidencias, Instrumentos, Semana):
 
-       a) "sesiones": Lista de sesiones por semana. Para CADA semana (01, 02, 03...), extrae el tema/contenido correspondiente de la columna "Contenidos por Unidades". NO pongas estrategias didácticas como contenido (ej: "Motivación", "Exposición docente" NO son contenidos).
-          Ejemplo de sesión correcta:
-          {{"semana": "1", "semana_num": 1, "contenido": "Panorama general de la gestión de la cadena de suministro", "unidad": 1}}
-          {{"semana": "2", "semana_num": 2, "contenido": "Función de la logística en las cadenas de suministro", "unidad": 1}}
+       a) "sesiones": Lista de sesiones por semana. Para CADA semana (de la 1 a la 16 o 17, según el sílabo) sin falta, extrae el tema/contenido correspondiente. NO omitas ninguna semana.
+           - En las semanas 5 y 10, la sesión DEBE corresponder a una evaluación (ej: "Examen Parcial I Unidad", "Examen Parcial II Unidad", "Evaluación teórica/práctica" o "Exposición de trabajo de investigación").
+           - En la semana 16 (para sílabos de 16 semanas) o semana 17 (para sílabos de 17 semanas), la sesión DEBE corresponder al "Examen Sustitutorio / Aplazado".
+           - Para el resto de semanas, extrae el tema de contenido de la columna "Contenidos por Unidades" (evita poner meras estrategias didácticas genéricas como "Motivación" o "Exposición docente" a menos que sea la semana de examen).
+           Ejemplo de sesiones:
+           {"semana": "1", "semana_num": 1, "contenido": "Panorama general de la gestión de la cadena de suministro", "unidad": 1}
+           {"semana": "5", "semana_num": 5, "contenido": "Examen Parcial I Unidad", "unidad": 1}
+           {"semana": "10", "semana_num": 10, "contenido": "Examen Parcial II Unidad", "unidad": 2}
+           {"semana": "16", "semana_num": 16, "contenido": "Examen Sustitutorio / Aplazado (o Examen Final en caso de 17 semanas)", "unidad": 3}
+           {"semana": "17", "semana_num": 17, "contenido": "Examen Sustitutorio / Aplazado", "unidad": 3}
 
        b) "capacidades": Lista de textos. Extrae las capacidades de la primera columna (ej: "Analiza las características propias de la cadena de suministro...").
 
