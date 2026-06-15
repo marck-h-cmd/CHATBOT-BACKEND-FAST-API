@@ -317,11 +317,11 @@ class Silabo(Base):
     chunks = relationship("SilaboChunk", back_populates="silabo", cascade="all, delete-orphan")
     reglas = relationship("ReglaEvaluacion", back_populates="silabo", cascade="all, delete-orphan")
     contextos_asignados = relationship("ContextoCursoUsuario", back_populates="silabo_asignado", foreign_keys=[ContextoCursoUsuario.id_silabo_asignado])  # <<< RELACIÓN CORREGIDA
-    solicitudes = relationship("SolicitudServicio", back_populates="silabo")
-    incidentes = relationship("IncidenteAcademico", back_populates="silabo")
-    incidentes_servicio = relationship("IncidenteServicio", back_populates="silabo")
+    solicitudes = relationship("SolicitudServicio", back_populates="silabo", cascade="all, delete-orphan")
+    incidentes = relationship("IncidenteAcademico", back_populates="silabo", cascade="all, delete-orphan")
+    incidentes_servicio = relationship("IncidenteServicio", back_populates="silabo", cascade="all, delete-orphan")
     revisiones = relationship("RevisionSilabo", back_populates="silabo", cascade="all, delete-orphan")
-    logs_ingestion = relationship("LogIngestion", back_populates="silabo")
+    logs_ingestion = relationship("LogIngestion", back_populates="silabo", cascade="all, delete-orphan")
     sugerencias_estudio = relationship("SugerenciaEstudio", back_populates="silabo")
 
 

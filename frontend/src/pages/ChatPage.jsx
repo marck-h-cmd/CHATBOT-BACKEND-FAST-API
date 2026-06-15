@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useChat } from '../contexts/ChatContext';
 import { useCourse } from '../contexts/CourseContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -213,13 +214,30 @@ const ChatPage = () => {
                             </p>
                             <div className="flex items-center gap-2">
                                <span className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider ${
-                                 ctx.silabo_validado ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
+                                 ctx.silabo_validado ? 'text-emerald-600 dark:text-emerald-450' : 'text-amber-600 dark:text-amber-400'
                                }`}>
                                  <div className={`w-1.5 h-1.5 rounded-full ${ctx.silabo_validado ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-pulse'}`} />
                                  {ctx.silabo_validado ? 'OFICIAL' : 'PENDIENTE'}
                                </span>
                             </div>
                           </div>
+
+                          {/* PDF Download Icon in the sidebar list item */}
+                          {ctx.ruta_pdf && (
+                            <a
+                              href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${ctx.ruta_pdf}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-1.5 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-850 transition-all shrink-0"
+                              title="Descargar PDF del sílabo"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                            </a>
+                          )}
                         </motion.div>
                       );
                     })}
@@ -259,20 +277,50 @@ const ChatPage = () => {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col h-full min-w-0 bg-[#FAF9F6] dark:bg-[#0B0F19] transition-colors duration-200">
 
-        {/* Mobile Header */}
-        <div className="lg:hidden shrink-0 h-14 border-b border-slate-100 dark:border-slate-800/80 flex items-center px-4 gap-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-30">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 -ml-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-850 rounded-xl transition-colors"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-slate-800 flex items-center justify-center border dark:border-slate-700 shadow-sm">
+        {/* Chat Header */}
+        <div className="shrink-0 h-14 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between px-4 sm:px-6 bg-white dark:bg-[#131A2C] backdrop-blur-md sticky top-0 z-30">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 -ml-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-850 rounded-xl transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-slate-800 flex items-center justify-center border dark:border-slate-700 shadow-sm shrink-0">
               <BookOpen className="w-4 h-4 text-white dark:text-slate-200" />
             </div>
-            <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">Sylia</span>
+            {selectedContext ? (
+              <div className="min-w-0">
+                <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight truncate block">
+                  {selectedContext.curso}
+                </span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider block leading-none">
+                  {selectedContext.periodo} • {selectedContext.codigo || 'N/A'}
+                </span>
+              </div>
+            ) : (
+              <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">
+                Sylia
+              </span>
+            )}
           </div>
+
+          {/* Download PDF button if available */}
+          {selectedContext?.ruta_pdf && (
+            <a
+              href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${selectedContext.ruta_pdf}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              download
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-bold rounded-xl transition-all border border-red-200/50 dark:border-red-900/40 shadow-sm shrink-0"
+              title="Descargar PDF del sílabo"
+            >
+              <svg className="w-4 h-4 text-red-650 dark:text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span className="hidden sm:inline">Descargar PDF</span>
+            </a>
+          )}
         </div>
 
         {/* Mensajes */}
@@ -312,13 +360,67 @@ const ChatPage = () => {
         {/* Input Footer */}
         <div className="shrink-0 bg-white dark:bg-[#131A2C] border-t border-slate-100 dark:border-slate-800/80 px-4 pb-5 pt-3 transition-colors duration-200" data-tour="student-chat-input">
           <div className="max-w-3xl mx-auto w-full">
-            <QuickReplies onSelect={handleSend} lastIntent={currentResponse?.intent}  disabled={!selectedContextId} />
-            <div className="mt-3">
-              <ChatInput onSend={handleSend} isLoading={loading} disabled={!selectedContextId} />
-            </div>
-            <div className="text-center mt-2">
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">Sylia puede cometer errores. Verifica la información con tu docente.</span>
-            </div>
+            {selectedContext && !selectedContext.silabo_validado ? (() => {
+              const isRejected = selectedContext.estado_verificacion === 'RECHAZADO';
+              const isPending = selectedContext.estado_verificacion === 'PENDIENTE_CONFIRMACION' && selectedContext.id_silabo;
+              
+              let title = 'Sílabo requerido para este curso';
+              let description = 'Este curso no cuenta con un sílabo asignado. Debes subir el sílabo en formato PDF para poder activar el chat e interactuar con Sylia.';
+              let buttonText = 'Subir Sílabo';
+              let iconColor = 'bg-amber-105 dark:bg-amber-955/35 text-amber-600 dark:text-amber-450 border-amber-200/50 dark:border-amber-900/30';
+              let IconComponent = Clock;
+              
+              if (isRejected) {
+                title = 'Sílabo rechazado';
+                description = 'El sílabo subido fue rechazado por el administrador. Por favor, sube un documento PDF correcto para activar el chat.';
+                buttonText = 'Subir de nuevo';
+                iconColor = 'bg-red-100 dark:bg-red-955/35 text-red-600 dark:text-red-450 border-red-200/50 dark:border-red-900/30';
+                IconComponent = ShieldAlert;
+              } else if (isPending) {
+                title = 'Sílabo en proceso de validación';
+                description = 'El sílabo ha sido subido y se encuentra pendiente de validación por parte del administrador. El chat se activará una vez aprobado.';
+                buttonText = 'Gestionar Sílabos';
+                iconColor = 'bg-amber-100 dark:bg-amber-955/35 text-amber-600 dark:text-amber-450 border-amber-200/50 dark:border-amber-900/30';
+                IconComponent = Clock;
+              }
+              
+              return (
+                <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 text-center space-y-4 my-2 transition-all shadow-sm">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto border ${iconColor}`}>
+                    <IconComponent className="w-6 h-6 animate-pulse" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-bold text-slate-950 dark:text-white">
+                      {title}
+                    </h4>
+                    <p className="text-xs text-slate-550 dark:text-slate-400 leading-relaxed font-medium max-w-md mx-auto">
+                      {description}
+                    </p>
+                  </div>
+                  <div className="pt-2">
+                    <Link
+                      to="/syllabus"
+                      className="inline-flex items-center justify-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-extrabold shadow-sm transition-colors gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-3-3m3 3l3-3" />
+                      </svg>
+                      {buttonText}
+                    </Link>
+                  </div>
+                </div>
+              );
+            })() : (
+              <>
+                <QuickReplies onSelect={handleSend} lastIntent={currentResponse?.intent}  disabled={!selectedContextId} />
+                <div className="mt-3">
+                  <ChatInput onSend={handleSend} isLoading={loading} disabled={!selectedContextId} />
+                </div>
+                <div className="text-center mt-2">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">Sylia puede cometer errores. Verifica la información con tu docente.</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

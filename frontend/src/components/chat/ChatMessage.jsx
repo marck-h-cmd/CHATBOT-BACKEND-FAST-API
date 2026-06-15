@@ -165,7 +165,6 @@ const ChatMessage = ({ message }) => {
             <div className="text-[15px] leading-relaxed markdown-body
               [&_pre]:my-4 [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-slate-900 dark:[&_pre]:bg-slate-950 [&_pre]:text-slate-50 [&_pre]:shadow-sm
               [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-inherit [&_pre_code]:font-mono [&_pre_code]:text-[14px] [&_pre_code]:border-none
-              [&_code:not(pre_code)]:px-1.5 [&_code:not(pre_code)]:py-0.5 [&_code:not(pre_code)]:mx-0.5 [&_code:not(pre_code)]:rounded-md [&_code:not(pre_code)]:bg-slate-100 dark:[&_code:not(pre_code)]:bg-slate-800/80 [&_code:not(pre_code)]:text-slate-700 dark:[&_code:not(pre_code)]:text-slate-200 [&_code:not(pre_code)]:font-mono [&_code:not(pre_code)]:text-[13.5px] [&_code:not(pre_code)]:font-bold [&_code:not(pre_code)]:border [&_code:not(pre_code)]:border-slate-200 dark:[&_code:not(pre_code)]:border-slate-700
             ">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
@@ -177,7 +176,14 @@ const ChatMessage = ({ message }) => {
                   h1: ({node, ...props}) => <h1 className="text-xl font-extrabold text-slate-900 dark:text-white mb-3 mt-5 tracking-tight" {...props} />,
                   h2: ({node, ...props}) => <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 mb-2 mt-4 tracking-tight" {...props} />,
                   h3: ({node, ...props}) => <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-100 mb-2 mt-3 tracking-tight" {...props} />,
-                  strong: ({node, ...props}) => <strong className="font-bold text-slate-900 dark:text-white" {...props} />,
+                  strong: ({node, ...props}) => <strong className="font-extrabold text-indigo-600 dark:text-indigo-400" {...props} />,
+                  em: ({node, ...props}) => <em className="not-italic px-1.5 py-0.5 mx-0.5 rounded bg-amber-50 dark:bg-amber-950/35 text-amber-700 dark:text-amber-300 font-extrabold border border-amber-200/40 dark:border-amber-900/30" {...props} />,
+                  code: ({node, inline, ...props}) => {
+                    if (inline) {
+                      return <code className="px-1.5 py-0.5 mx-0.5 rounded-md bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-450 font-mono text-[13px] font-bold border border-rose-100/60 dark:border-rose-900/30" {...props} />;
+                    }
+                    return <code className="font-mono" {...props} />;
+                  },
                   blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-slate-300 dark:border-slate-700 pl-4 py-1 my-3 bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300 italic rounded-r-lg" {...props} />,
                   a: ({node, ...props}) => <a className="text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 hover:underline font-bold transition-colors" target="_blank" rel="noopener noreferrer" {...props} />
                 }}
@@ -314,6 +320,13 @@ const ChatMessage = ({ message }) => {
             </div>
           )}
         </div>
+
+        {/* Info de debug de tokens */}
+        {!isUser && message.tokensUsados !== undefined && message.tokensUsados !== null && (
+          <div className="mt-1 px-2 text-[10px] font-mono text-slate-400/70 dark:text-slate-500/70 select-none">
+            [Debug: {message.tokensUsados} tokens{message.tiempoMs ? ` en ${message.tiempoMs}ms` : ''}]
+          </div>
+        )}
       </div>
 
       {/* Modal para Días Antes */}

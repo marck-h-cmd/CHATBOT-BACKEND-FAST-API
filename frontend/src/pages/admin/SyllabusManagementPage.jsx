@@ -18,7 +18,7 @@ const ESTADO_LABELS = {
 
 export default function SyllabusManagementPage() {
   const navigate = useNavigate();
-  const { officialSyllabi, loadOfficialSyllabi, deleteOfficialSyllabus, loading } = useSyllabus();
+  const { officialSyllabi, loadOfficialSyllabi, deleteSyllabus, loading } = useSyllabus();
   const { courses, periods } = useCourse();
 
   const [filterEscuela, setFilterEscuela] = useState('');
@@ -149,7 +149,7 @@ export default function SyllabusManagementPage() {
   };
 
   const handleDelete = async (id_silabo) => {
-    const result = await deleteOfficialSyllabus(id_silabo);
+    const result = await deleteSyllabus(id_silabo);
     if (result.success) {
       setDeleteConfirm(null);
     } else {
@@ -196,9 +196,30 @@ export default function SyllabusManagementPage() {
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 truncate">
           {silabo.periodo}
         </p>
-        <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-4 truncate" title={silabo.nombre_archivo}>
+        <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-2.5 truncate" title={silabo.nombre_archivo}>
           {silabo.nombre_archivo}
         </p>
+
+        {/* Origen / Subido por */}
+        <div className="mb-2.5 text-[10px] flex items-center gap-1.5 flex-wrap">
+          <span className="text-slate-400 dark:text-slate-500">Origen:</span>
+          {silabo.tipo_silabo === 'SUBIDO_USUARIO' ? (
+            <span className="font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 px-2 py-0.5 rounded border border-amber-250 dark:border-amber-900/35 truncate max-w-full" title={`Usuario: ${silabo.subido_por}`}>
+              👤 {silabo.subido_por}
+            </span>
+          ) : (
+            <span className="font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 px-2 py-0.5 rounded border border-blue-250 dark:border-blue-900/35">
+              💻 Oficial / Sistema
+            </span>
+          )}
+        </div>
+
+        {/* Observaciones */}
+        {silabo.observaciones && (
+          <div className="mb-3 p-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/60 rounded-lg text-[10px] text-slate-500 dark:text-slate-400 italic line-clamp-2" title={silabo.observaciones}>
+            <span className="font-semibold not-italic text-slate-600 dark:text-slate-300">Obs:</span> {silabo.observaciones}
+          </div>
+        )}
 
         {/* Score bar */}
         <div className="mt-auto">
@@ -275,7 +296,7 @@ export default function SyllabusManagementPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
             <FileText className="w-7 h-7 text-blue-600 dark:text-blue-400" />
-            Sílabos Oficiales
+            Gestión de Sílabos
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-lg">
             Gestiona los sílabos del sistema, revisa scores de validación y controla estados de aprobación.

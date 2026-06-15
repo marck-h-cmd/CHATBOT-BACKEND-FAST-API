@@ -13,7 +13,8 @@ from app.database.models import (
     EstadoVerificacion, AmbitoUso, TipoSilabo,
     TipoIncidenteServicio, RolUsuario, CoincidenciaPeriodo,
     ContextoCursoUsuario, OrigenContexto, IncidenteServicio, EstadoIncidente,
-    LogIngestion, TipoSeccionChunk
+    LogIngestion, TipoSeccionChunk, IncidenteAcademico, SolicitudServicio,
+    SugerenciaEstudio
 )
 from app.services.chunker import ChunkerService
 from app.services.pdf_parser import PDFParserService
@@ -163,21 +164,87 @@ def generar_y_guardar_chunks(db: Session, silabo: Silabo, curso: Curso) -> int:
     # Extraer de reglas_json (parsing_data)
     parsing_data = silabo.reglas_json or {}
     unidades = parsing_data.get("unidades", [])
+
+    # Helper para extraer el número de semana
+    def extraer_numero_semana(sem_val) -> Optional[int]:
+        if isinstance(sem_val, int):
+            return sem_val
+        if isinstance(sem_val, float):
+            return int(sem_val)
+        if isinstance(sem_val, str):
+            m = re.search(r'\d+', sem_val)
+            if m:
+                return int(m.group(0))
+        return None
+
+    # ── Pre-colectar TODAS las sesiones de TODAS las unidades ────────────────
+    # Gemini a veces asigna sesiones a la unidad equivocada, o las pone en el root "sesiones".
+    # Redistribuimos por número de semana según SEMANAS_RANGO (la fuente de verdad).
+    global_sessions: dict[int, str] = {}  # week_num -> contenido
     
+    # 1. Colectar del listado raíz "sesiones"
+    for _s in parsing_data.get("sesiones", []):
+        _sem = _s.get("semana", _s.get("semana_num", ""))
+        _ns = extraer_numero_semana(_sem)
+        _cont = _s.get("contenido", _s.get("tema", _s.get("descripcion", ""))).strip()
+        if _ns is not None and _cont:
+            if _ns not in global_sessions:
+                global_sessions[_ns] = _cont
+
+    # 2. Colectar del listado de unidades "unidades[].sesiones"
+    for _u in unidades:
+        for _s in _u.get("sesiones", []):
+            _sem = _s.get("semana", _s.get("semana_num", ""))
+            _ns = extraer_numero_semana(_sem)
+            _cont = _s.get("contenido", _s.get("tema", _s.get("descripcion", ""))).strip()
+            if _ns is not None and _cont:
+                if _ns not in global_sessions:
+                    global_sessions[_ns] = _cont
+
+    # Determinar dinámicamente si el sílabo tiene 17 semanas
+    es_17_semanas = False
+    if global_sessions:
+        if max(global_sessions.keys(), default=16) >= 17:
+            es_17_semanas = True
+    if not es_17_semanas and texto:
+        if re.search(r'17\s*semanas', texto, re.IGNORECASE):
+            es_17_semanas = True
+
+    # Semanas de evaluación fijas del calendario UNT
+    EVAL_WEEKS = {
+        1: {"semana": 5,  "tipo": "EXAMEN PARCIAL – Unidad I"},
+        2: {"semana": 10, "tipo": "EXAMEN PARCIAL – Unidad II"},
+        3: {"semana": 16 if es_17_semanas else 15, "tipo": "EXAMEN FINAL – Unidad III"},
+    }
+    # Semana 16 o 17 se agrega sólo al chunk de Unidad III
+    SUSTITUTORIO_WEEK = {"semana": 17 if es_17_semanas else 16, "tipo": "EXAMEN SUSTITUTORIO / APLAZADOS"}
+
+    # Rango completo de semanas por unidad (incluyendo semana de examen)
+    SEMANAS_RANGO = {
+        1: set(range(1, 6)),    # 1-5
+        2: set(range(6, 11)),   # 6-10
+        3: set(range(11, 18)) if es_17_semanas else set(range(11, 17)),  # 11-17 o 11-16
+    }
+    SEMANA_DISPLAY = {
+        1: "Semanas 1-5 (Semana 5: Examen Parcial)",
+        2: "Semanas 6-10 (Semana 10: Examen Parcial)",
+        3: f"Semanas 11-{17 if es_17_semanas else 16} (Semana {16 if es_17_semanas else 15}: Examen Final | Semana {17 if es_17_semanas else 16}: Sustitutorio/Aplazados)",
+    }
+
     for uni in unidades:
         uid = uni.get("id", "")
         numero = uid.replace("U", "").strip()
         nombre = uni.get("nombre", "").strip()
         semanas = uni.get("semanas", "").strip()
-        
+
         if not numero and "numero_unidad" in uni:
             numero = str(uni.get("numero_unidad"))
             uid = f"U{numero}"
-            
+
         if not nombre and "titulo_unidad" in uni:
             nombre = uni.get("titulo_unidad", "").strip()
-            
-        # Determinar número entero de unidad para filtrar semanas
+
+        # Determinar número entero de unidad
         num_entero = None
         norm_num = str(numero).upper().strip()
         if norm_num in {"1", "I"}:
@@ -187,77 +254,102 @@ def generar_y_guardar_chunks(db: Session, silabo: Silabo, curso: Curso) -> int:
         elif norm_num in {"3", "III"}:
             num_entero = 3
         else:
-            if "I" in norm_num:
-                if "III" in norm_num:
-                    num_entero = 3
-                elif "II" in norm_num:
-                    num_entero = 2
-                else:
-                    num_entero = 1
-            elif "1" in norm_num:
+            if "III" in norm_num:
+                num_entero = 3
+            elif "II" in norm_num:
+                num_entero = 2
+            elif "I" in norm_num or "1" in norm_num:
                 num_entero = 1
             elif "2" in norm_num:
                 num_entero = 2
             elif "3" in norm_num:
                 num_entero = 3
 
-        # Formatear la duración según la unidad requerida
-        semana_display = {
-            1: "Semana 1-4",
-            2: "Semana 6-9",
-            3: "Semana 11-14"
-        }.get(num_entero, semanas)
+        semana_display = SEMANA_DISPLAY.get(num_entero, semanas or f"Unidad {numero}")
+        semanas_permitidas = SEMANAS_RANGO.get(num_entero, set())
 
-        # Armar el contenido estructurado de la unidad
+        # Armar encabezado
         contenido_unidad = f"CURSO: {curso.nombre_curso}\n"
         contenido_unidad += f"UNIDAD {numero}: {nombre}\n"
-        if semana_display:
-            contenido_unidad += f"Duración: {semana_display}\n"
-        contenido_unidad += "\n"
-        
-        # Helper para extraer el número de semana
-        def extraer_numero_semana(sem_val) -> Optional[int]:
-            if isinstance(sem_val, int):
-                return sem_val
-            if isinstance(sem_val, float):
-                return int(sem_val)
-            if isinstance(sem_val, str):
-                match = re.search(r'\d+', sem_val)
-                if match:
-                    return int(match.group(0))
-            return None
+        contenido_unidad += f"Duración: {semana_display}\n\n"
 
-        # Agregar sesiones/temas
-        sesiones = uni.get("sesiones", [])
+        # --- Temas por semana (desde el pool global redistribuido) ---
+        sesiones_dict: dict = {}  # num_semana -> contenido
+        tiene_sesiones_reales = False
         tiene_sesiones = False
-        
-        semanas_permitidas = {
-            1: {1, 2, 3, 4},
-            2: {6, 7, 8, 9},
-            3: {11, 12, 13, 14}
-        }.get(num_entero, set())
 
-        if sesiones:
+
+        # Usar el pool global de sesiones redistribuidas por semana
+        for ns, cont in global_sessions.items():
+            if semanas_permitidas and ns not in semanas_permitidas:
+                continue
+            sesiones_dict[ns] = cont
+            tiene_sesiones_reales = True
+            tiene_sesiones = True
+
+        # --- Fallback: si faltan sesiones de contenido, minar del texto crudo ---
+        # Se activa incluso si hay algunas sesiones (para rellenar las semanas faltantes)
+        if not tiene_sesiones_reales and "programacion" in segmentos:
+            prog_text = limpiar_texto(segmentos["programacion"])
+            patron_unidad_map = {
+                1: r'(?i)(?:I\s+UNIDAD|UNIDAD\s+I)\b(?!I)',
+                2: r'(?i)(?:II\s+UNIDAD|UNIDAD\s+II)\b(?!I)',
+                3: r'(?i)(?:III\s+UNIDAD|UNIDAD\s+III)\b',
+            }
+            patron_siguiente_map = {
+                1: r'(?i)(?:II\s+UNIDAD|UNIDAD\s+II)\b',
+                2: r'(?i)(?:III\s+UNIDAD|UNIDAD\s+III)\b',
+                3: None,
+            }
+            patron_unidad = patron_unidad_map.get(num_entero)
+            patron_siguiente = patron_siguiente_map.get(num_entero)
+
+            if patron_unidad:
+                m_ini = re.search(patron_unidad, prog_text)
+                if m_ini:
+                    bloque_ini = m_ini.start()
+                    bloque_fin = len(prog_text)
+                    if patron_siguiente:
+                        m_fin = re.search(patron_siguiente, prog_text[bloque_ini + len(m_ini.group()):] )
+                        if m_fin:
+                            bloque_fin = bloque_ini + len(m_ini.group()) + m_fin.start()
+                    bloque = prog_text[bloque_ini:bloque_fin]
+
+                    # Extraer líneas "Semana/Sesión N: contenido" del bloque
+                    for m in re.finditer(r'(?i)(?:semana|sesi[oó]n)\s*(\d+)[:\s]+(.+)', bloque):
+                        ns = int(m.group(1))
+                        cont_raw = m.group(2).strip()
+                        if semanas_permitidas and ns not in semanas_permitidas:
+                            continue
+                        # No sobreescribir si ya fue extraída del JSON
+                        if ns not in sesiones_dict and cont_raw:
+                            sesiones_dict[ns] = cont_raw
+                            tiene_sesiones_reales = True
+                            tiene_sesiones = True
+
+        # --- Inyectar semana de examen si no fue extraída como sesión ---
+        if num_entero in EVAL_WEEKS:
+            ew = EVAL_WEEKS[num_entero]
+            if ew["semana"] not in sesiones_dict:
+                sesiones_dict[ew["semana"]] = ew["tipo"]
+                tiene_sesiones = True
+
+        # Semana de sustitutorio sólo para Unidad III
+        if num_entero == 3 and SUSTITUTORIO_WEEK["semana"] not in sesiones_dict:
+            sesiones_dict[SUSTITUTORIO_WEEK["semana"]] = SUSTITUTORIO_WEEK["tipo"]
+            tiene_sesiones = True
+
+        # Mostrar semanas en orden (contenido real primero)
+        if sesiones_dict:
             contenido_unidad += "Temas por Semana:\n"
-            for s in sesiones:
-                sem = s.get("semana", s.get("semana_num", ""))
-                num_sem = extraer_numero_semana(sem)
-                
-                # Solo procesar si el número de semana pertenece a las permitidas de la unidad
-                if num_sem is None or (num_entero in {1, 2, 3} and num_sem not in semanas_permitidas):
-                    continue
-                
-                cont = s.get("contenido", "").strip()
-                if cont:
-                    contenido_unidad += f"- Semana {sem}: {cont}\n"
-                    tiene_sesiones = True
-                    
-        # Agregar logros si existen en el JSON de la unidad (ej. extraído por Gemini)
+            for num_sem in sorted(sesiones_dict):
+                contenido_unidad += f"- Semana {num_sem}: {sesiones_dict[num_sem]}\n"
+
+        # --- Logros, competencias, capacidades, resultados ---
         logros = uni.get("logros_aprendizaje", "")
         if logros:
             contenido_unidad += f"\nLogros de Aprendizaje:\n{logros}\n"
-            
-        # Agregar competencias de la unidad
+
         competencias_u = uni.get("competencias", [])
         tiene_competencias = False
         if competencias_u:
@@ -269,8 +361,7 @@ def generar_y_guardar_chunks(db: Session, silabo: Silabo, curso: Curso) -> int:
                 elif isinstance(comp, dict) and comp.get("texto"):
                     contenido_unidad += f"- {comp.get('texto').strip()}\n"
                     tiene_competencias = True
-            
-        # Agregar capacidades de la unidad
+
         capacidades = uni.get("capacidades", [])
         if capacidades:
             contenido_unidad += "\nCapacidades:\n"
@@ -279,8 +370,7 @@ def generar_y_guardar_chunks(db: Session, silabo: Silabo, curso: Curso) -> int:
                     contenido_unidad += f"- {cap.strip()}\n"
                 elif isinstance(cap, dict) and cap.get("texto"):
                     contenido_unidad += f"- {cap.get('texto').strip()}\n"
-                    
-        # Agregar resultados de la unidad
+
         resultados = uni.get("resultados_aprendizaje", [])
         if resultados:
             contenido_unidad += "\nResultados de Aprendizaje:\n"
@@ -290,12 +380,15 @@ def generar_y_guardar_chunks(db: Session, silabo: Silabo, curso: Curso) -> int:
                 elif isinstance(res, dict) and res.get("texto"):
                     contenido_unidad += f"- {res.get('texto').strip()}\n"
 
-        # Validar si tiene contenido real antes de guardarla
+        # --- Validar y guardar ---
         tiene_contenido = (tiene_sesiones or logros or capacidades or resultados or tiene_competencias)
-        es_nombre_sustancial = nombre and len(nombre.strip()) > 8 and not re.match(r'^unidad\s*\d+[\s.:]*$', nombre.strip(), re.IGNORECASE)
-        
+        es_nombre_sustancial = nombre and len(nombre.strip()) > 8 and not re.match(
+            r'^unidad\s*\d+[\s.:]*$', nombre.strip(), re.IGNORECASE
+        )
+
         if nombre and (tiene_contenido or es_nombre_sustancial):
             content_str = contenido_unidad.strip()
+            # 1. Guardar chunk completo de la unidad
             db.add(SilaboChunk(
                 id_silabo=silabo.id_silabo,
                 tipo_seccion=TipoSeccionChunk.CONTENIDOS,
@@ -303,12 +396,39 @@ def generar_y_guardar_chunks(db: Session, silabo: Silabo, curso: Curso) -> int:
                 contenido=content_str,
                 embedding=embedding_service.generar_embedding(content_str),
                 metadata_json={
-                    "fuente": "Gemini_Extracted_Units",
+                    "fuente": "Extracted_Units",
                     "unidad": f"U{numero}",
-                    "es_unidad_completa": True
+                    "es_unidad_completa": True,
+                    "tiene_sesiones": tiene_sesiones,
                 }
             ))
             chunks_guardados += 1
+
+            # 2. Guardar chunks individuales de cada semana para RAG altamente preciso
+            for num_sem, tema_sem in sesiones_dict.items():
+                week_content = f"Curso: {curso.nombre_curso}\nUnidad {numero}: {nombre}\nSemana {num_sem}: {tema_sem}"
+                db.add(SilaboChunk(
+                    id_silabo=silabo.id_silabo,
+                    tipo_seccion=TipoSeccionChunk.CONTENIDOS,
+                    titulo=f"Unidad {numero} - Semana {num_sem}"[:200],
+                    contenido=week_content,
+                    embedding=embedding_service.generar_embedding(week_content),
+                    metadata_json={
+                        "fuente": "Extracted_Week",
+                        "unidad": f"U{numero}",
+                        "semana": num_sem,
+                        "es_unidad_completa": False,
+                    }
+                ))
+                chunks_guardados += 1
+        elif nombre:
+            # Registrar incidencia: la unidad fue identificada pero no tiene contenido extraíble
+            print(f"[INCIDENCIA] Unidad '{nombre}' (silabo_id={silabo.id_silabo}) sin contenido extraíble. Se omite el chunk.")
+            ITILServiceDesk.registrar_incidente_servicio(
+                db, silabo.id_silabo,
+                TipoIncidenteServicio.FALLO_PARSING,
+                f"Unidad '{nombre}' detectada pero sin contenido de sesiones extraíble del JSON ni del texto crudo."
+            )
 
     db.commit()
     return chunks_guardados
@@ -384,7 +504,7 @@ async def subir_silabo(
 
     # 4. Parsing Gemini + Confidence Score
     parsing_data = gemini_parser.extraer_estructura_completa(
-        texto, curso.nombre_curso, periodo.nombre
+        texto, f"{curso.codigo_curso} - {curso.nombre_curso}", periodo.nombre
     )
     
     score = parsing_data["puntaje_confianza"]
@@ -695,7 +815,7 @@ async def subir_silabo_oficial(
 
     # 4. Parsing Gemini + Confidence Score
     parsing_data = gemini_parser.extraer_estructura_completa(
-        texto, curso.nombre_curso, periodo.nombre
+        texto, f"{curso.codigo_curso} - {curso.nombre_curso}", periodo.nombre
     )
     
     score = parsing_data.get("puntaje_confianza", 100)
@@ -806,6 +926,71 @@ async def eliminar_silabo_oficial(
         "contextos_desvinculados": len(contextos)
     }
 
+@router.delete("/{id_silabo}")
+async def eliminar_silabo(
+    id_silabo: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user_from_token)
+):
+    """Endpoint para que el ADMIN elimine cualquier sílabo (Oficial o subido por Usuario)"""
+
+    # 1. Validar permisos
+    if current_user.rol != RolUsuario.ADMIN:
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: solo administradores pueden eliminar sílabos."
+        )
+
+    # 2. Buscar el sílabo
+    silabo = db.query(Silabo).filter(Silabo.id_silabo == id_silabo).first()
+    if not silabo:
+        raise HTTPException(status_code=404, detail="Sílabo no encontrado")
+
+    # 3. Desvincular contextos de estudiantes que usan este sílabo
+    contextos = db.query(ContextoCursoUsuario).filter(
+        ContextoCursoUsuario.id_silabo_asignado == id_silabo
+    ).all()
+    for ctx in contextos:
+        ctx.id_silabo_asignado = None
+        ctx.origen_contexto = OrigenContexto.DECLARADO_USUARIO
+        ctx.estado_verificacion = EstadoVerificacion.PENDIENTE_CONFIRMACION
+
+    # 4. Eliminar chunks relacionados
+    db.query(SilaboChunk).filter(SilaboChunk.id_silabo == id_silabo).delete(synchronize_session=False)
+
+    # 5. Eliminar registros que dependen del sílabo con FK NOT NULL y sin CASCADE
+    db.query(IncidenteServicio).filter(IncidenteServicio.id_silabo == id_silabo).delete(synchronize_session=False)
+    db.query(IncidenteAcademico).filter(IncidenteAcademico.id_silabo == id_silabo).delete(synchronize_session=False)
+    db.query(SolicitudServicio).filter(SolicitudServicio.id_silabo == id_silabo).delete(synchronize_session=False)
+    db.query(LogIngestion).filter(LogIngestion.id_silabo == id_silabo).delete(synchronize_session=False)
+    db.query(SugerenciaEstudio).filter(SugerenciaEstudio.id_silabo == id_silabo).update(
+        {SugerenciaEstudio.id_silabo: None},
+        synchronize_session=False
+    )
+
+    # 6. Guardar ruta del PDF antes de eliminar
+    ruta_pdf = silabo.ruta_pdf
+
+    # 7. Eliminar el sílabo de la base de datos
+    db.delete(silabo)
+    db.commit()
+
+    # 8. Eliminar archivo físico si existe
+    if ruta_pdf:
+        filepath = os.path.join("app", ruta_pdf.lstrip("/").replace("/", os.sep))
+        try:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        except OSError:
+            pass  # No crítico si el archivo no se puede eliminar
+
+    return {
+        "success": True,
+        "id_silabo": id_silabo,
+        "mensaje": "Sílabo y recursos asociados eliminados exitosamente",
+        "contextos_desvinculados": len(contextos)
+    }
+
 @router.get("/list-oficial")
 async def listar_silabos_oficiales(
     id_curso: Optional[int] = None,
@@ -813,14 +998,12 @@ async def listar_silabos_oficiales(
     current_user: Usuario = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
-    """Lista todos los sílabos oficiales (admin only) - incluye pendientes, aprobados y rechazados"""
+    """Lista todos los sílabos oficiales y subidos por usuarios (admin only) - incluye pendientes, aprobados y rechazados"""
     
     if current_user.rol != RolUsuario.ADMIN:
-        raise HTTPException(status_code=403, detail="Solo administradores pueden listar sílabos oficiales")
+        raise HTTPException(status_code=403, detail="Solo administradores pueden listar sílabos")
     
-    query = db.query(Silabo).filter(
-        Silabo.tipo_silabo == TipoSilabo.OFICIAL
-    )
+    query = db.query(Silabo)
     
     if id_curso:
         query = query.filter(Silabo.id_curso == id_curso)
@@ -842,6 +1025,8 @@ async def listar_silabos_oficiales(
             "score": s.puntaje_confianza,
             "estado": s.estado_validacion,
             "ambito_uso": s.ambito_uso,
+            "tipo_silabo": s.tipo_silabo.value if hasattr(s.tipo_silabo, "value") else s.tipo_silabo,
+            "observaciones": s.observaciones_validacion,
             "fecha_subida": s.fecha_subida.isoformat() if s.fecha_subida else None,
             "subido_por": s.usuario_subida.email if s.usuario_subida else "Sistema"
         } for s in silabos
@@ -897,6 +1082,122 @@ async def listar_mis_silabos(
         } for s in todos_silabos
     ]
 
+# NOTE: All static paths MUST come before /{id_silabo}/... parameterized routes.
+# FastAPI matches routes in registration order; static segments take priority.
+
+@router.get("/incidentes-servicio")
+async def listar_incidentes_servicio(
+    current_user: Usuario = Depends(get_current_user_from_token),
+    db: Session = Depends(get_db)
+):
+    """Lista todos los incidentes de servicio activos (Admin only)"""
+    if current_user.rol != RolUsuario.ADMIN:
+        raise HTTPException(status_code=403, detail="Acceso denegado")
+        
+    incidentes = db.query(IncidenteServicio).filter(
+        IncidenteServicio.estado == EstadoIncidente.ACTIVO
+    ).order_by(IncidenteServicio.fecha_creacion.desc()).all()
+    
+    return [
+        {
+            "id_incidente_servicio": inc.id_incidente_servicio,
+            "id_silabo": inc.id_silabo,
+            "tipo_incidente": inc.tipo_incidente,
+            "descripcion": inc.descripcion,
+            "fecha_creacion": inc.fecha_creacion.isoformat() if inc.fecha_creacion else None,
+            "nombre_archivo": inc.silabo.nombre_archivo if inc.silabo else "N/A",
+            "nombre_curso": inc.silabo.curso.nombre_curso if inc.silabo and inc.silabo.curso else "N/A",
+            "periodo": inc.silabo.periodo.nombre if inc.silabo and inc.silabo.periodo else "N/A",
+            "usuario": f"{inc.silabo.usuario_subida.nombres} {inc.silabo.usuario_subida.apellidos}" if inc.silabo and inc.silabo.usuario_subida else "Sistema"
+        } for inc in incidentes
+    ]
+
+@router.post("/incidentes-servicio/{id_incidente}/resolver")
+async def resolver_incidente_servicio(
+    id_incidente: int,
+    accion: str = Form(...),
+    archivo: Optional[UploadFile] = File(None),
+    current_user: Usuario = Depends(get_current_user_from_token),
+    db: Session = Depends(get_db)
+):
+    """Resuelve un incidente de servicio con opciones de reemplazar PDF o mantenerlo"""
+    import datetime as _dt
+    if current_user.rol != RolUsuario.ADMIN:
+        raise HTTPException(status_code=403, detail="Acceso denegado")
+        
+    incidente = db.query(IncidenteServicio).filter(
+        IncidenteServicio.id_incidente_servicio == id_incidente
+    ).first()
+    
+    if not incidente:
+        raise HTTPException(status_code=404, detail="Incidente no encontrado")
+        
+    silabo = incidente.silabo
+    if not silabo:
+        raise HTTPException(status_code=404, detail="Sílabo asociado no encontrado")
+
+    if accion == "REEMPLAZAR_PDF":
+        if not archivo:
+            raise HTTPException(status_code=400, detail="Debe proporcionar un nuevo archivo PDF")
+            
+        _validar_archivo_pdf(archivo)
+            
+        contenido = await archivo.read()
+        filename = f"{uuid.uuid4()}_{archivo.filename}"
+        filepath = os.path.join("app", "static", "uploads", "syllabi", filename)
+        with open(filepath, "wb") as f:
+            f.write(contenido)
+        
+        relative_path = f"/static/uploads/syllabi/{filename}"
+        texto = PDFParserService.extraer_texto(contenido)
+        
+        curso = silabo.curso
+        periodo = silabo.periodo
+        
+        parsing_data = gemini_parser.extraer_estructura_completa(
+            texto, f"{curso.codigo_curso} - {curso.nombre_curso}", periodo.nombre
+        )
+        
+        score = parsing_data["puntaje_confianza"]
+        
+        silabo.nombre_archivo = archivo.filename
+        silabo.ruta_pdf = relative_path
+        silabo.texto_extraido = texto[:15000]
+        silabo.reglas_json = parsing_data
+        silabo.puntaje_confianza = score
+        silabo.estado_validacion = EstadoVerificacion.APROBADO
+        silabo.ambito_uso = AmbitoUso.PUBLICADO
+        
+        generar_y_guardar_chunks(db, silabo, curso)
+        
+    elif accion == "MANTENER":
+        silabo.estado_validacion = EstadoVerificacion.APROBADO
+        silabo.ambito_uso = AmbitoUso.PUBLICADO
+    else:
+        raise HTTPException(status_code=400, detail="Acción no válida")
+        
+    contextos = db.query(ContextoCursoUsuario).filter(
+        ContextoCursoUsuario.id_curso == silabo.id_curso,
+        ContextoCursoUsuario.id_periodo == silabo.id_periodo
+    ).all()
+
+    for contexto in contextos:
+        contexto.id_silabo_asignado = silabo.id_silabo
+        contexto.origen_contexto = OrigenContexto.OFICIAL
+        contexto.estado_verificacion = EstadoVerificacion.OFICIAL
+        contexto.puntaje_confianza = silabo.puntaje_confianza
+
+    incidente.estado = EstadoIncidente.RESUELTO
+    incidente.fecha_cierre = _dt.datetime.now()
+    db.commit()
+    
+    return {
+        "success": True, 
+        "message": "Incidente resuelto y sílabo publicado exitosamente",
+        "contextos_sincronizados": len(contextos)
+    }
+
+
 @router.get("/{id_silabo}/detalle")
 async def obtener_detalle_silabo(
     id_silabo: int,
@@ -943,120 +1244,134 @@ async def obtener_detalle_silabo(
             ec for ec in db.query(ContextoCursoUsuario).filter(
                 ContextoCursoUsuario.id_silabo_asignado == id_silabo
             ).all()
-        ]) if silabo.tipo_silabo == TipoSilabo.OFICIAL else 0
+        ]) if silabo.tipo_silabo == TipoSilabo.OFICIAL else 0,
+        "incidentes": [
+            {
+                "id_incidente_servicio": inc.id_incidente_servicio,
+                "tipo_incidente": inc.tipo_incidente,
+                "estado": inc.estado,
+                "descripcion": inc.descripcion
+            } for inc in db.query(IncidenteServicio).filter(IncidenteServicio.id_silabo == id_silabo).all()
+        ]
     }
 
-@router.get("/incidentes-servicio")
-async def listar_incidentes_servicio(
+# ==================== ADMIN: EDIT ENDPOINTS ====================
+
+@router.get("/{id_silabo}/chunks")
+async def listar_chunks_silabo(
+    id_silabo: int,
     current_user: Usuario = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
-    """Lista todos los incidentes de servicio activos (Admin only)"""
+    """Lista todos los chunks RAG de un sílabo (Admin only)"""
     if current_user.rol != RolUsuario.ADMIN:
-        raise HTTPException(status_code=403, detail="Acceso denegado")
-        
-    incidentes = db.query(IncidenteServicio).filter(
-        IncidenteServicio.estado == EstadoIncidente.ACTIVO
-    ).order_by(IncidenteServicio.fecha_creacion.desc()).all()
-    
+        raise HTTPException(status_code=403, detail="Solo administradores pueden ver los chunks")
+
+    silabo = db.query(Silabo).filter(Silabo.id_silabo == id_silabo).first()
+    if not silabo:
+        raise HTTPException(status_code=404, detail="Sílabo no encontrado")
+
+    chunks = db.query(SilaboChunk).filter(SilaboChunk.id_silabo == id_silabo).all()
     return [
         {
-            "id_incidente_servicio": inc.id_incidente_servicio,
-            "id_silabo": inc.id_silabo,
-            "tipo_incidente": inc.tipo_incidente,
-            "descripcion": inc.descripcion,
-            "fecha_creacion": inc.fecha_creacion.isoformat() if inc.fecha_creacion else None,
-            "nombre_archivo": inc.silabo.nombre_archivo if inc.silabo else "N/A",
-            "nombre_curso": inc.silabo.curso.nombre_curso if inc.silabo and inc.silabo.curso else "N/A",
-            "periodo": inc.silabo.periodo.nombre if inc.silabo and inc.silabo.periodo else "N/A",
-            "usuario": f"{inc.silabo.usuario_subida.nombres} {inc.silabo.usuario_subida.apellidos}" if inc.silabo and inc.silabo.usuario_subida else "Sistema"
-        } for inc in incidentes
+            "id_chunk": c.id_seccion,
+            "tipo_seccion": c.tipo_seccion,
+            "titulo": c.titulo,
+            "contenido": c.contenido,
+            "metadata_json": c.metadata_json,
+        }
+        for c in chunks
     ]
 
-@router.post("/incidentes-servicio/{id_incidente}/resolver")
-async def resolver_incidente_servicio(
-    id_incidente: int,
-    accion: str = Form(...), # REEMPLAZAR_PDF o MANTENER
-    archivo: Optional[UploadFile] = File(None),
+
+class ChunkUpdateRequest(BaseModel):
+    titulo: Optional[str] = None
+    contenido: str
+
+
+@router.put("/{id_silabo}/chunks/{id_chunk}")
+async def actualizar_chunk(
+    id_silabo: int,
+    id_chunk: int,
+    body: ChunkUpdateRequest,
     current_user: Usuario = Depends(get_current_user_from_token),
     db: Session = Depends(get_db)
 ):
-    """Resuelve un incidente de servicio con opciones de reemplazar PDF o mantenerlo"""
+    """Actualiza el título y contenido de un chunk RAG (Admin only). Regenera el embedding."""
     if current_user.rol != RolUsuario.ADMIN:
-        raise HTTPException(status_code=403, detail="Acceso denegado")
-        
-    incidente = db.query(IncidenteServicio).filter(
-        IncidenteServicio.id_incidente_servicio == id_incidente
+        raise HTTPException(status_code=403, detail="Solo administradores pueden editar chunks")
+
+    chunk = db.query(SilaboChunk).filter(
+        SilaboChunk.id_seccion == id_chunk,
+        SilaboChunk.id_silabo == id_silabo
     ).first()
-    
-    if not incidente:
-        raise HTTPException(status_code=404, detail="Incidente no encontrado")
-        
-    silabo = incidente.silabo
-    if not silabo:
-        raise HTTPException(status_code=404, detail="Sílabo asociado no encontrado")
+    if not chunk:
+        raise HTTPException(status_code=404, detail="Chunk no encontrado")
 
-    if accion == "REEMPLAZAR_PDF":
-        if not archivo:
-            raise HTTPException(status_code=400, detail="Debe proporcionar un nuevo archivo PDF")
-            
-        # Validar el nuevo archivo PDF
-        _validar_archivo_pdf(archivo)
-            
-        contenido = await archivo.read()
-        filename = f"{uuid.uuid4()}_{archivo.filename}"
-        filepath = os.path.join("app", "static", "uploads", "syllabi", filename)
-        with open(filepath, "wb") as f:
-            f.write(contenido)
-        
-        relative_path = f"/static/uploads/syllabi/{filename}"
-        texto = PDFParserService.extraer_texto(contenido)
-        
-        curso = silabo.curso
-        periodo = silabo.periodo
-        
-        parsing_data = gemini_parser.extraer_estructura_completa(
-            texto, curso.nombre_curso, periodo.nombre
-        )
-        
-        score = parsing_data["puntaje_confianza"]
-        
-        # Actualizar sílabo
-        silabo.nombre_archivo = archivo.filename
-        silabo.ruta_pdf = relative_path
-        silabo.texto_extraido = texto[:15000]
-        silabo.reglas_json = parsing_data
-        silabo.puntaje_confianza = score
-        silabo.estado_validacion = EstadoVerificacion.APROBADO
-        silabo.ambito_uso = AmbitoUso.PUBLICADO
-        
-        generar_y_guardar_chunks(db, silabo, curso)
-        
-    elif accion == "MANTENER":
-        # Forzar aprobación del sílabo actual
-        silabo.estado_validacion = EstadoVerificacion.APROBADO
-        silabo.ambito_uso = AmbitoUso.PUBLICADO
-    else:
-        raise HTTPException(status_code=400, detail="Acción no válida")
-        
-    # Sincronizar con contextos de los estudiantes
-    contextos = db.query(ContextoCursoUsuario).filter(
-        ContextoCursoUsuario.id_curso == silabo.id_curso,
-        ContextoCursoUsuario.id_periodo == silabo.id_periodo
-    ).all()
-
-    for contexto in contextos:
-        contexto.id_silabo_asignado = silabo.id_silabo
-        contexto.origen_contexto = OrigenContexto.OFICIAL
-        contexto.estado_verificacion = EstadoVerificacion.OFICIAL
-        contexto.puntaje_confianza = silabo.puntaje_confianza
-
-    incidente.estado = EstadoIncidente.RESUELTO
-    incidente.fecha_cierre = datetime.datetime.now()
+    if body.titulo is not None:
+        chunk.titulo = body.titulo
+    chunk.contenido = body.contenido
+    chunk.embedding = embedding_service.generar_embedding(body.contenido)
     db.commit()
-    
+
     return {
-        "success": True, 
-        "message": "Incidente resuelto y sílabo publicado exitosamente",
-        "contextos_sincronizados": len(contextos)
+        "success": True,
+        "id_chunk": chunk.id_seccion,
+        "titulo": chunk.titulo,
+        "contenido": chunk.contenido,
     }
+
+
+class ReglasJsonUpdateRequest(BaseModel):
+    reglas_json: Any
+
+
+@router.put("/{id_silabo}/reglas-json")
+async def actualizar_reglas_json(
+    id_silabo: int,
+    body: ReglasJsonUpdateRequest,
+    current_user: Usuario = Depends(get_current_user_from_token),
+    db: Session = Depends(get_db)
+):
+    """Actualiza el JSON de reglas/estructura de un sílabo (Admin only)."""
+    if current_user.rol != RolUsuario.ADMIN:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden editar reglas")
+
+    silabo = db.query(Silabo).filter(Silabo.id_silabo == id_silabo).first()
+    if not silabo:
+        raise HTTPException(status_code=404, detail="Sílabo no encontrado")
+
+    silabo.reglas_json = body.reglas_json
+    db.commit()
+
+    return {"success": True, "message": "reglas_json actualizado correctamente"}
+
+
+@router.post("/{id_silabo}/regenerar-chunks")
+async def regenerar_chunks_silabo(
+    id_silabo: int,
+    current_user: Usuario = Depends(get_current_user_from_token),
+    db: Session = Depends(get_db)
+):
+    """Regenera todos los chunks RAG de un sílabo (Admin only)."""
+    if current_user.rol != RolUsuario.ADMIN:
+        raise HTTPException(status_code=403, detail="Solo administradores pueden regenerar chunks")
+
+    silabo = db.query(Silabo).filter(Silabo.id_silabo == id_silabo).first()
+    if not silabo:
+        raise HTTPException(status_code=404, detail="Sílabo no encontrado")
+
+    if not silabo.texto_extraido:
+        raise HTTPException(status_code=400, detail="El sílabo no tiene texto extraído")
+
+    if not silabo.curso:
+        raise HTTPException(status_code=400, detail="El sílabo no tiene curso asociado")
+
+    chunks_creados = generar_y_guardar_chunks(db, silabo, silabo.curso)
+
+    return {
+        "success": True,
+        "chunks_creados": chunks_creados,
+        "message": f"{chunks_creados} chunks regenerados exitosamente"
+    }
+

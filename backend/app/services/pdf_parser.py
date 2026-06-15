@@ -49,11 +49,16 @@ class PDFParserService:
         # Una sola llamada a Gemini (optimizado)
         resultado_ia = ai_parser.gemini_parser.extraer_estructura_completa(texto)
         
-        # Determinar confiabilidad
+        # Determinar confiabilidad y disponibilidad de la IA
+        ai_parser._init_primary_ai()
+        ai_parser._init_fallback_ai()
+        ai_disponible = (ai_parser.PRIMARY_AI_DISPONIBLE and ai_parser.PRIMARY_AI_CLIENT is not None) or \
+                        (ai_parser.FALLBACK_AI_DISPONIBLE and ai_parser.FALLBACK_AI_CLIENT is not None)
+        
         confiabilidad = "ALTA"
         advertencias = []
         
-        if not Config.USE_GEMINI or not ai_parser.GEMINI_DISPONIBLE:
+        if not ai_disponible:
             confiabilidad = "MEDIA"
             advertencias.append("Usando modo estándar (sin IA)")
         
@@ -79,7 +84,7 @@ class PDFParserService:
             "reglas": resultado_ia.get("reglas", {}),
             "confiabilidad": confiabilidad,
             "advertencias": advertencias,
-            "usando_gemini": Config.USE_GEMINI and ai_parser.GEMINI_DISPONIBLE
+            "usando_gemini": ai_disponible
         }
     
     @staticmethod

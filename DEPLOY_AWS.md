@@ -9,7 +9,7 @@ Esta guía detalla los pasos para poner en producción Sylia AI utilizando una i
 2. Haz clic en **Launch instances**.
 3. **Nombre:** `sylia-production-server`
 4. **AMI:** Selecciona `Ubuntu Server 22.04 LTS (HVM), SSD Volume Type`.
-5. **Instance Type:** Selecciona `t3.medium` (necesario por PostgreSQL + pgvector y el LLM framework).
+5. **Instance Type:** Selecciona **`m7i-flex.large`** (Recomendado, 2 vCPU, 8 GiB RAM) o **`c7i-flex.large`** (4 GiB RAM) para evitar errores de falta de memoria (OOM) causados por PyTorch y PostgreSQL. Si eliges **`t3.small`** (2 GiB RAM) por economía, debes configurar obligatoriamente un archivo SWAP de mínimo 2 GB para evitar caídas.
 6. **Key Pair:** Crea un nuevo par de claves (ej. `sylia-prod-key.pem`) y descárgalo a tu computadora. Lo necesitarás para conectarte y para el CI/CD.
 
 ### 1.2 Configurar Security Group
@@ -26,7 +26,7 @@ Para que la IP de la instancia no cambie al reiniciarla:
 3. Selecciónala -> *Actions* -> *Associate Elastic IP address* -> Elige tu instancia `sylia-production-server`.
 
 ### 1.4 Configurar el Dominio DNS
-Ve a tu proveedor de dominio y crea un registro tipo `A` que apunte tu dominio (ej. `sylia.com`) hacia la IP elástica que acabas de configurar.
+Ve a tu proveedor de dominio y crea un registro tipo `A` que apunte tu dominio (ej. `syl-ia.com`) hacia la IP elástica que acabas de configurar.
 
 ---
 
@@ -34,7 +34,7 @@ Ve a tu proveedor de dominio y crea un registro tipo `A` que apunte tu dominio (
 
 Conéctate a tu instancia vía SSH usando el archivo `.pem` que descargaste:
 ```bash
-ssh -i "sylia-prod-key.pem" ubuntu@TU_IP_ELASTICA
+ssh -i "sylia-prod-key.pem" ubuntu@35.174.223.238
 ```
 
 ### 2.1 Instalar Docker y Docker Compose
@@ -64,27 +64,35 @@ cd chatbot-app
 cp backend/.env.example backend/.env.prod
 nano backend/.env.prod
 ```
-> Modifica las claves seguras: `POSTGRES_PASSWORD`, `SECRET_KEY`, `OPENAI_API_KEY`, variables `SMTP_*` y añade tu dominio a `ALLOWED_ORIGINS` (ej: `https://tudominio.com`).
+> Modifica las claves seguras: `POSTGRES_PASSWORD`, `SECRET_KEY`, `OPENAI_API_KEY`, variables `SMTP_*` y añade tu dominio a `ALLOWED_ORIGINS` (ej: `https://syl-ia.com`).
 
 ---
 
 ## Fase 3: Despliegue y Certificados SSL
 
-### 3.1 Primer Inicio (Dummy SSL)
-Nginx requiere los archivos de certificados para poder levantar el puerto 443, pero certbot necesita a nginx corriendo en el puerto 80 para validar el dominio.
-Para resolver esto automatizadamente, ejecuta este script en la raíz del proyecto en la instancia EC2:
+### 3.1 Primer Inicio (Configuración de Nginx y Certificados)
 
-```bash
-docker compose -f docker-compose.prod.yml up -d
-```
-> NOTA: Si el contenedor del frontend falla por primera vez debido a la falta de certificados SSL, debes comentar las lineas SSL en `frontend/nginx/nginx.conf`, reiniciar Nginx, correr Certbot y volver a descomentar. 
+Dado que Nginx está configurado para usar certificados SSL en `frontend/nginx/nginx.conf`, si inicias el contenedor antes de generar los certificados, Nginx fallará y se detendrá. Sigue estos pasos para solucionarlo:
+
+1. **Editar configuración de Nginx temporalmente:**
+   Comenta las líneas relacionadas con SSL y el bloque del puerto 443 en el archivo `frontend/nginx/nginx.conf` usando `nano frontend/nginx/nginx.conf`.
+   Asegúrate también de reemplazar `YOUR_DOMAIN` por tu dominio real en ese archivo.
+
+2. **Levantar los contenedores:**
+   ```bash
+   docker compose -f docker-compose.prod.yml up -d --build
+   ```
+   Esto levantará Nginx solo en el puerto 80, permitiendo que Certbot valide el dominio.
 
 ### 3.2 Generar Certificado Definitivo (Certbot)
 Dentro del servidor EC2, corre un contenedor temporal para que Certbot haga el challenge webroot a través de nginx (que expone `/var/www/certbot`):
 ```bash
-docker compose -f docker-compose.prod.yml run --rm certbot certonly --webroot --webroot-path /var/www/certbot/ -d tudominio.com -d www.tudominio.com
+docker compose -f docker-compose.prod.yml run --rm certbot certonly --webroot --webroot-path /var/www/certbot/ -d syl-ia.com -d www.syl-ia.com
 ```
-Luego reinicia el frontend para que tome el certificado:
+
+### 3.3 Habilitar SSL Definitivo
+1. Vuelve a editar `frontend/nginx/nginx.conf` y **descomenta** las líneas de SSL y el bloque del puerto 443.
+2. Reinicia el servicio de frontend para aplicar los cambios y habilitar HTTPS:
 ```bash
 docker compose -f docker-compose.prod.yml restart frontend
 ```
@@ -97,7 +105,7 @@ Para que el servidor se actualice automáticamente cada vez que hagas `push` a l
 
 1. Ve al repositorio en GitHub > **Settings** > **Secrets and variables** > **Actions**.
 2. Agrega los siguientes secretos:
-   - `EC2_HOST`: Tu IP Elástica (ej. `3.14.159.26`)
+   - `EC2_HOST`: Tu IP Elástica (`35.174.223.238`)
    - `EC2_USERNAME`: `ubuntu`
    - `EC2_SSH_KEY`: Pega aquí todo el contenido del archivo `sylia-prod-key.pem` que descargaste en la Fase 1.
 
@@ -106,5 +114,5 @@ Para que el servidor se actualice automáticamente cada vez que hagas `push` a l
 ---
 
 ## Acceso a Herramientas
-- **Web App**: `https://tudominio.com`
-- **Administración DB**: `http://TU_IP_ELASTICA:5050` (Asegúrate de estar en la misma red/IP que configuraste en el Security Group). Ingresa con las credenciales de `PGADMIN_DEFAULT_EMAIL` que hayas puesto en `.env.prod`.
+- **Web App**: `https://syl-ia.com`
+- **Administración DB**: `http://35.174.223.238:5050` (Asegúrate de estar en la misma red/IP que configuraste en el Security Group). Ingresa con las credenciales de `PGADMIN_DEFAULT_EMAIL` que hayas puesto en `.env.prod`.

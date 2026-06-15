@@ -9,7 +9,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 const EnrollmentSuccessPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { courses, periods, loading: coursesLoading } = useCourse();
+  const { courses, periods, loading: coursesLoading, refreshData } = useCourse();
   const { userSyllabi, uploadSyllabus, loading: syllabusLoading } = useSyllabus();
   
   const [syllabusExists, setSyllabusExists] = useState(false);
@@ -91,6 +91,9 @@ const EnrollmentSuccessPage = () => {
           ...result.data
         });
         setSelectedFile(null);
+        if (typeof refreshData === 'function') {
+          refreshData();
+        }
       } else {
         const errorMsg = result?.error?.message || result?.error?.detail || 'Error al cargar el sílabo';
         console.error('Upload failed:', errorMsg);

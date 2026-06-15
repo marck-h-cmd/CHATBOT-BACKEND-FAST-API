@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Any, cast
 import datetime
 from app.database.connection import get_db
-from app.database.models import Usuario, SilaboChunk, Silabo
+from app.database.models import Usuario, SilaboChunk, Silabo, TipoSilabo, AmbitoUso, RolUsuario, TipoSeccionChunk
 from app.api.dependencies import get_current_active_user
 
 router = APIRouter(prefix="/chunks", tags=["Chunks"])
@@ -21,11 +21,11 @@ def _iso_or_none(value: Any) -> Optional[str]:
 
 def _format_chunk(chunk: SilaboChunk) -> dict:
     return {
-        "id": cast(int, chunk.id),
+        "id": cast(int, chunk.id_seccion),
         "id_silabo": cast(int, chunk.id_silabo),
-        "chunk_texto": cast(str, chunk.chunk_texto),
-        "tipo_seccion": cast(Optional[str], chunk.tipo_seccion),
-        "unidad": cast(Optional[str], chunk.unidad),
+        "chunk_texto": cast(str, chunk.contenido),
+        "tipo_seccion": cast(Optional[str], chunk.tipo_seccion.value if hasattr(chunk.tipo_seccion, "value") else chunk.tipo_seccion),
+        "unidad": cast(Optional[str], chunk.metadata_json.get("unidad") if chunk.metadata_json else None),
         "embedding": cast(Optional[Any], chunk.embedding),
         "metadata_json": cast(Optional[Any], chunk.metadata_json)
     }
@@ -49,23 +49,27 @@ class SilaboChunkUpdate(BaseModel):
 
 
 def _get_chunk(db: Session, id_chunk: int) -> SilaboChunk:
-    chunk = db.query(SilaboChunk).filter(SilaboChunk.id == id_chunk).first()
+    chunk = db.query(SilaboChunk).filter(SilaboChunk.id_seccion == id_chunk).first()
     if not chunk:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chunk no encontrado")
     return chunk
 
 
 def _verify_chunk_access(db: Session, chunk: SilaboChunk, current_user: Usuario):
-    silabo = db.query(Silabo).filter(Silabo.id == chunk.id_silabo).first()
+    silabo = db.query(Silabo).filter(Silabo.id_silabo == chunk.id_silabo).first()
     if not silabo:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sílabo no encontrado")
 
-    if _to_bool(silabo.es_oficial):
-        return
+    try:
+        rol_value = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
+    except Exception:
+        rol_value = str(current_user.rol)
 
-    # Verificar acceso al sílabo
-    from app.api.routes.syllabus import _verify_access
-    _verify_access(db, silabo, current_user)
+    if rol_value.upper() != "ADMIN":
+        es_creador = silabo.id_usuario_subida == current_user.id
+        es_oficial_publicado = (silabo.tipo_silabo == TipoSilabo.OFICIAL and silabo.ambito_uso == AmbitoUso.PUBLICADO)
+        if not es_creador and not es_oficial_publicado:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso denegado a este sílabo")
 
 
 def _is_admin_or_docente(current_user: Usuario) -> bool:
@@ -122,11 +126,28 @@ async def crear_chunk(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para crear chunks")
 
     # Verificar que el sílabo existe
-    silabo = db.query(Silabo).filter(Silabo.id == chunk_data.id_silabo).first()
+    silabo = db.query(Silabo).filter(Silabo.id_silabo == chunk_data.id_silabo).first()
     if not silabo:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sílabo no encontrado")
 
-    chunk = SilaboChunk(**chunk_data.dict())
+    meta = chunk_data.metadata_json or {}
+    if chunk_data.unidad:
+        meta["unidad"] = chunk_data.unidad
+
+    tipo_seccion = TipoSeccionChunk.GENERAL
+    if chunk_data.tipo_seccion:
+        try:
+            tipo_seccion = TipoSeccionChunk(chunk_data.tipo_seccion)
+        except ValueError:
+            tipo_seccion = TipoSeccionChunk.GENERAL
+
+    chunk = SilaboChunk(
+        id_silabo=chunk_data.id_silabo,
+        contenido=chunk_data.chunk_texto,
+        tipo_seccion=tipo_seccion,
+        embedding=chunk_data.embedding,
+        metadata_json=meta
+    )
     db.add(chunk)
     db.commit()
     db.refresh(chunk)
@@ -145,9 +166,23 @@ async def actualizar_chunk(
 
     chunk = _get_chunk(db, id_chunk)
     _verify_chunk_access(db, chunk, current_user)
-    update_data = chunk_data.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(chunk, key, value)
+    
+    if chunk_data.chunk_texto is not None:
+        chunk.contenido = chunk_data.chunk_texto
+    if chunk_data.tipo_seccion is not None:
+        try:
+            chunk.tipo_seccion = TipoSeccionChunk(chunk_data.tipo_seccion)
+        except ValueError:
+            pass
+    if chunk_data.unidad is not None:
+        meta = chunk.metadata_json or {}
+        meta["unidad"] = chunk_data.unidad
+        chunk.metadata_json = meta
+    if chunk_data.embedding is not None:
+        chunk.embedding = chunk_data.embedding
+    if chunk_data.metadata_json is not None:
+        chunk.metadata_json = chunk_data.metadata_json
+
     db.commit()
     db.refresh(chunk)
     return _format_chunk(chunk)

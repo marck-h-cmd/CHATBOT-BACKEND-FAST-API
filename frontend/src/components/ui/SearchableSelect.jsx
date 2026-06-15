@@ -71,13 +71,15 @@ const SearchableSelect = ({
         </span>
         <div className="flex items-center gap-1 shrink-0">
           {value && (
-            <button
-              type="button"
+            <span
+              role="button"
+              tabIndex={0}
               onClick={clear}
-              className="p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { clear(e); } }}
+              className="p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer inline-flex items-center justify-center"
             >
               <X className="w-3.5 h-3.5" />
-            </button>
+            </span>
           )}
           <ChevronDown className={`w-4 h-4 text-slate-400 dark:text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </div>

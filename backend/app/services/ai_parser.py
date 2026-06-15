@@ -11,68 +11,66 @@ from typing import Dict, Optional, List
 from app.config import Config
 from app.services.syllabus_extractor import UntSyllabusExtractor
 
-# Configurar Gemini en modo lazy (no falla el arranque del servidor si no está disponible)
-GEMINI_DISPONIBLE: bool = False
-MODEL = None
-_GEMINI_INIT_ATTEMPTED: bool = False
+# Configuración genérica para Primary AI
+PRIMARY_AI_DISPONIBLE: bool = False
+PRIMARY_AI_CLIENT = None
+_PRIMARY_AI_INIT_ATTEMPTED: bool = False
 
+# Configuración genérica para Fallback AI
+FALLBACK_AI_DISPONIBLE: bool = False
+FALLBACK_AI_CLIENT = None
+_FALLBACK_AI_INIT_ATTEMPTED: bool = False
 
-def _unique_model_names(names: List[Optional[str]]) -> List[str]:
-    unique: List[str] = []
-    for name in names:
-        if not name:
-            continue
-        if name not in unique:
-            unique.append(name)
-    return unique
-
-
-def _init_gemini() -> None:
-    global GEMINI_DISPONIBLE, MODEL, _GEMINI_INIT_ATTEMPTED
-
-    if _GEMINI_INIT_ATTEMPTED:
+def _init_primary_ai() -> None:
+    global PRIMARY_AI_DISPONIBLE, PRIMARY_AI_CLIENT, _PRIMARY_AI_INIT_ATTEMPTED
+    
+    if _PRIMARY_AI_INIT_ATTEMPTED:
         return
-    _GEMINI_INIT_ATTEMPTED = True
-
-    if not Config.USE_GEMINI:
+    _PRIMARY_AI_INIT_ATTEMPTED = True
+    
+    if not Config.USE_PRIMARY_AI:
         return
-    if not Config.GEMINI_API_KEY:
+    if not Config.PRIMARY_AI_API_KEY:
         return
-
+        
     try:
-        import google.generativeai as genai  # type: ignore
-    except Exception:
-        return
-
-    try:
-        genai.configure(api_key=Config.GEMINI_API_KEY)
-
-        modelos_a_probar = _unique_model_names(
-            [
-                Config.GEMINI_MODEL,
-                "gemini-flash-lite-latest",
-                "gemini-2.5-flash",
-                "gemini-2.5-pro",
-                "gemini-2.0-flash",
-                "gemini-2.0-pro",
-                "gemini-1.5-flash",
-                "gemini-1.5-pro",
-                "gemini-1.5-flash-latest",
-                "gemini-1.5-pro-latest",
-            ]
+        from openai import OpenAI
+        PRIMARY_AI_CLIENT = OpenAI(
+            api_key=Config.PRIMARY_AI_API_KEY,
+            base_url=Config.PRIMARY_AI_BASE_URL
         )
+        PRIMARY_AI_DISPONIBLE = True
+        print(f"✅ Primary AI configurada (modelo: {Config.PRIMARY_AI_MODEL})")
+    except Exception as e:
+        print(f"⚠️ Error configurando Primary AI: {e}")
+        PRIMARY_AI_DISPONIBLE = False
+        PRIMARY_AI_CLIENT = None
 
-        for modelo in modelos_a_probar:
-            try:
-                MODEL = genai.GenerativeModel(modelo)
-                GEMINI_DISPONIBLE = True
-                print(f"✅ Gemini API configurada (modelo: {modelo})")
-                return
-            except Exception:
-                continue
-    except Exception:
-        GEMINI_DISPONIBLE = False
-        MODEL = None
+def _init_fallback_ai() -> None:
+    global FALLBACK_AI_DISPONIBLE, FALLBACK_AI_CLIENT, _FALLBACK_AI_INIT_ATTEMPTED
+    
+    if _FALLBACK_AI_INIT_ATTEMPTED:
+        return
+    _FALLBACK_AI_INIT_ATTEMPTED = True
+    
+    if not Config.USE_FALLBACK_AI:
+        return
+    if not Config.FALLBACK_AI_API_KEY:
+        return
+        
+    try:
+        from openai import OpenAI
+        FALLBACK_AI_CLIENT = OpenAI(
+            api_key=Config.FALLBACK_AI_API_KEY,
+            base_url=Config.FALLBACK_AI_BASE_URL
+        )
+        FALLBACK_AI_DISPONIBLE = True
+        print(f"✅ Fallback AI configurada (modelo: {Config.FALLBACK_AI_MODEL})")
+    except Exception as e:
+        print(f"⚠️ Error configurando Fallback AI: {e}")
+        FALLBACK_AI_DISPONIBLE = False
+        FALLBACK_AI_CLIENT = None
+
 
 
 class GeminiParserService:
@@ -123,10 +121,16 @@ class GeminiParserService:
     5. PROGRAMACIÓN ACADÉMICA (Sección IV - TABLA):
        Si la sección IV es una TABLA con columnas (Capacidades, Resultados de Aprendizaje, Contenidos, Estrategias, Evidencias, Instrumentos, Semana):
 
-       a) "sesiones": Lista de sesiones por semana. Para CADA semana (01, 02, 03...), extrae el tema/contenido correspondiente de la columna "Contenidos por Unidades". NO pongas estrategias didácticas como contenido (ej: "Motivación", "Exposición docente" NO son contenidos).
-          Ejemplo de sesión correcta:
-          {{"semana": "1", "semana_num": 1, "contenido": "Panorama general de la gestión de la cadena de suministro", "unidad": 1}}
-          {{"semana": "2", "semana_num": 2, "contenido": "Función de la logística en las cadenas de suministro", "unidad": 1}}
+       a) "sesiones": Lista de sesiones por semana. Para CADA semana (de la 1 a la 16 o 17, según el sílabo) sin falta, extrae el tema/contenido correspondiente. NO omitas ninguna semana.
+           - En las semanas 5 y 10, la sesión DEBE corresponder a una evaluación (ej: "Examen Parcial I Unidad", "Examen Parcial II Unidad", "Evaluación teórica/práctica" o "Exposición de trabajo de investigación").
+           - En la semana 16 (para sílabos de 16 semanas) o semana 17 (para sílabos de 17 semanas), la sesión DEBE corresponder al "Examen Sustitutorio / Aplazado".
+           - Para el resto de semanas, extrae el tema de contenido de la columna "Contenidos por Unidades" (evita poner meras estrategias didácticas genéricas como "Motivación" o "Exposición docente" a menos que sea la semana de examen).
+           Ejemplo de sesiones:
+           {"semana": "1", "semana_num": 1, "contenido": "Panorama general de la gestión de la cadena de suministro", "unidad": 1}
+           {"semana": "5", "semana_num": 5, "contenido": "Examen Parcial I Unidad", "unidad": 1}
+           {"semana": "10", "semana_num": 10, "contenido": "Examen Parcial II Unidad", "unidad": 2}
+           {"semana": "16", "semana_num": 16, "contenido": "Examen Sustitutorio / Aplazado (o Examen Final en caso de 17 semanas)", "unidad": 3}
+           {"semana": "17", "semana_num": 17, "contenido": "Examen Sustitutorio / Aplazado", "unidad": 3}
 
        b) "capacidades": Lista de textos. Extrae las capacidades de la primera columna (ej: "Analiza las características propias de la cadena de suministro...").
 
@@ -141,6 +145,10 @@ class GeminiParserService:
 
     6. UNIDADES (Sección IV):
        - Extrae hasta 3 unidades con id (U1, U2, U3), nombre y rango de semanas.
+       - El rango de semanas estándar para las unidades es:
+         * Unidad I: Semana 1-5 (o el rango real que finalice en la semana del examen parcial, típicamente semana 5 o 6).
+         * Unidad II: Semana 6-10 (o el rango real que finalice en el segundo examen parcial, típicamente semana 10 u 11).
+         * Unidad III: Semana 11-16 (o el rango real que finalice en el examen final/aplazados, típicamente semana 16 o 17).
        - Si no hay nombre explícito de unidad, usa el PRIMER contenido de esa unidad como nombre.
 
     JSON requerido (rellena con datos EXACTOS del documento, no inventes):
@@ -186,16 +194,59 @@ class GeminiParserService:
         score_pattern = resultado_pattern.get("puntaje_confianza", 0)
         print(f"📊 Patrones: score {score_pattern}%")
 
-        # ─── Paso 2: Gemini SIEMPRE como complemento ───
-        _init_gemini()
+        # ─── Paso 2: Primary AI / Fallback AI como complemento ───
+        _init_primary_ai()
+        _init_fallback_ai()
         resultado_llm = None
 
-        if GEMINI_DISPONIBLE and MODEL:
+        if PRIMARY_AI_DISPONIBLE and PRIMARY_AI_CLIENT:
             try:
                 texto_limitado = texto[:35000] if len(texto) > 35000 else texto
-                import google.generativeai as genai
+                hints = cls._construir_hints(resultado_pattern, curso_esperado, periodo_esperado)
+                contexto = f"""
+    CONTEXTO DEL CURSO ESPERADO (útil para verificación externa):
+    - Curso esperado: {curso_esperado or "(no especificado)"}
+    - Periodo esperado: {periodo_esperado or "(no especificado)"}
+"""
+                prompt = cls.PROMPT_BASE + contexto + hints + "\n\n--- INICIO DEL SÍLABO ---\n" + texto_limitado
+                
+                response = PRIMARY_AI_CLIENT.chat.completions.create(
+                    model=Config.PRIMARY_AI_MODEL,
+                    messages=[
+                        {"role": "system", "content": "Eres un asistente experto en analizar sílabos universitarios."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.1,
+                    max_tokens=4096
+                )
+                
+                respuesta_texto = response.choices[0].message.content
+                preview = repr(respuesta_texto[:200]) if respuesta_texto else "None"
+                print(f"🤖 Primary AI raw ({len(respuesta_texto or '')} chars): {preview}")
+                
+                if respuesta_texto and respuesta_texto.strip():
+                    stripped = respuesta_texto.strip()
+                    if stripped.count('"') <= 2 and '\n' not in stripped:
+                        print(f"⚠️ Primary AI devolvió fragmento incompleto, ignorando")
+                        resultado_llm = None
+                    else:
+                        resultado_llm = cls._limpiar_y_parsear_json(respuesta_texto)
+                        if resultado_llm:
+                            resultado_llm = cls._validar_estructura(resultado_llm)
+                            print(f"🤖 Primary AI OK: extrajo {len(resultado_llm)} campos")
+                else:
+                    print(f"⚠️ Primary AI respuesta vacía")
+            except Exception as e:
+                import traceback
+                print(f"⚠️ Primary AI falló: {e}")
+                print(traceback.format_exc())
+                
+        # Fallback si Primary AI falla o no está disponible
+        if not resultado_llm and FALLBACK_AI_DISPONIBLE and FALLBACK_AI_CLIENT:
+            try:
+                print("🔄 Intentando fallback con Fallback AI...")
+                texto_limitado = texto[:35000] if len(texto) > 35000 else texto
 
-                # Construir prompt con hints del extractor de patrones
                 hints = cls._construir_hints(resultado_pattern, curso_esperado, periodo_esperado)
                 contexto = f"""
     CONTEXTO DEL CURSO ESPERADO (útil para verificación externa):
@@ -204,34 +255,34 @@ class GeminiParserService:
 """
                 prompt = cls.PROMPT_BASE + contexto + hints + "\n\n--- INICIO DEL SÍLABO ---\n" + texto_limitado
 
-                response = MODEL.generate_content(
-                    prompt,
-                    generation_config=genai.GenerationConfig(
-                        temperature=0.1,
-                        max_output_tokens=8192
-                    )
+                response = FALLBACK_AI_CLIENT.chat.completions.create(
+                    model=Config.FALLBACK_AI_MODEL,
+                    messages=[
+                        {"role": "system", "content": "Eres un asistente experto en analizar sílabos universitarios."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.1,
+                    max_tokens=4096
                 )
-                respuesta_texto = response.text
-                # Logging detallado para debug
+                respuesta_texto = response.choices[0].message.content
                 preview = repr(respuesta_texto[:200]) if respuesta_texto else "None"
-                print(f"🤖 Gemini raw ({len(respuesta_texto or '')} chars): {preview}")
+                print(f"🤖 Fallback AI raw ({len(respuesta_texto or '')} chars): {preview}")
 
                 if respuesta_texto and respuesta_texto.strip():
-                    # Si Gemini devolvió solo un fragmento de campo sin valor, ignorar
                     stripped = respuesta_texto.strip()
                     if stripped.count('"') <= 2 and '\n' not in stripped:
-                        print(f"⚠️ Gemini devolvió fragmento incompleto, ignorando")
+                        print(f"⚠️ Fallback AI devolvió fragmento incompleto, ignorando")
                         resultado_llm = None
                     else:
                         resultado_llm = cls._limpiar_y_parsear_json(respuesta_texto)
                         if resultado_llm:
                             resultado_llm = cls._validar_estructura(resultado_llm)
-                            print(f"🤖 Gemini OK: extrajo {len(resultado_llm)} campos")
+                            print(f"🤖 Fallback AI OK: extrajo {len(resultado_llm)} campos")
                 else:
-                    print(f"⚠️ Gemini respuesta vacía")
+                    print(f"⚠️ Fallback AI respuesta vacía")
             except Exception as e:
                 import traceback
-                print(f"⚠️ Gemini falló: {e}")
+                print(f"⚠️ Fallback AI falló: {e}")
                 print(traceback.format_exc())
 
         # ─── Paso 3: Merge inteligente ───
@@ -241,6 +292,32 @@ class GeminiParserService:
         else:
             resultado = resultado_pattern
             print(f"⚠️ Sin Gemini, usando solo patrones")
+
+        # Canonicalize and validate formulas using EvaluationFormulaExtractor
+        try:
+            from app.services.formula_normalizer import EvaluationFormulaExtractor
+            secciones_text = UntSyllabusExtractor._segmentar(texto)
+            eval_seccion = secciones_text.get("evaluacion", "")
+            
+            # Run the detailed extractor
+            detalles_formulas = EvaluationFormulaExtractor.extract_and_normalize(eval_seccion)
+            resultado["formulas_evaluacion_detallada"] = detalles_formulas
+            
+            # Ensure final formulas are canonical
+            if detalles_formulas.get("normalized_formulas"):
+                resultado["formulas"] = detalles_formulas["normalized_formulas"]
+                
+            # Normalize evidences weights
+            if detalles_formulas.get("inferred_weights"):
+                evidencias_new = {}
+                for code, weight in detalles_formulas["inferred_weights"].items():
+                    evidencias_new[code] = {
+                        "nombre": code.title(),
+                        "peso": weight
+                    }
+                resultado["evidencias"] = evidencias_new
+        except Exception as e:
+            print(f"Error normalizing final formulas in GeminiParserService: {e}")
 
         # Recalcular score final con el merged result
         puntaje, coincidencias = cls.calcular_puntaje_confianza(
@@ -469,6 +546,21 @@ class GeminiParserService:
                 if not merged["formulas"].get(key) and llm_formulas.get(key):
                     merged["formulas"][key] = llm_formulas[key]
 
+        # Limpiar trailing + en la fórmula de PP si existe
+        if merged.get("formulas") and isinstance(merged["formulas"].get("PP"), str):
+            pp_formula = merged["formulas"]["PP"]
+            # Reemplazar "+ )" por ")" o "+  )" por ")"
+            pp_formula = re.sub(r'\+\s*\)', ')', pp_formula)
+            # Reemplazar "+/3" por "/3"
+            pp_formula = re.sub(r'\+\s*/', '/', pp_formula)
+            merged["formulas"]["PP"] = pp_formula
+
+        # Si tenemos PP pero no tenemos PU1/PU2/PU3, auto-generar descripciones default válidas (PROM)
+        if merged.get("formulas") and merged["formulas"].get("PP"):
+            for key in ["PU1", "PU2", "PU3"]:
+                if not merged["formulas"].get(key):
+                    merged["formulas"][key] = "PROM"
+
         # ─── Evidencias: normalizar y fusionar inteligentemente ───
         llm_evidencias = llm.get("evidencias", {})
         if llm_evidencias:
@@ -580,7 +672,7 @@ class GeminiParserService:
                 # Semanas del LLM si el patrón tiene default
                 llm_semanas = llm_unidades[i].get("semanas", "")
                 pat_semanas = pattern_unidades[i].get("semanas", "")
-                if llm_semanas and pat_semanas and "Semana 1-6" in pat_semanas and llm_semanas != pat_semanas:
+                if llm_semanas and pat_semanas and "Semana 1-5" in pat_semanas and llm_semanas != pat_semanas:
                     pattern_unidades[i]["semanas"] = llm_semanas
 
         # ─── Competencias: LLM siempre gana ───
@@ -588,64 +680,70 @@ class GeminiParserService:
         if llm_comp:
             merged["competencias"] = llm_comp
 
-        # ─── Sesiones: NO fusionar del LLM (el extractor por patrones es más confiable) ───
-        # Solo si el patrón tiene sesiones y el LLM añade semanas que faltan,
-        # validamos que el contenido sea real (no estrategia/evidencia pura)
-        llm_unidades = llm.get("unidades", [])
-        pattern_unidades = merged.get("unidades", [])
-        if llm_unidades and pattern_unidades:
-            for i in range(min(len(llm_unidades), len(pattern_unidades))):
-                llm_sesiones = llm_unidades[i].get("sesiones", [])
-                pat_sesiones = pattern_unidades[i].get("sesiones", [])
-                if llm_sesiones and pat_sesiones:
-                    # Fusionar: LLM añade las que falten, pero solo contenidos válidos
-                    semanas_pat = {s.get("semana", "") for s in pat_sesiones}
-                    for s in llm_sesiones:
-                        sem = s.get("semana", "")
-                        if sem and sem not in semanas_pat:
-                            contenido = s.get("contenido", "")
-                            # Rechazar si es estrategia pura, evidencia o fragmento corto
-                            if len(contenido) < 20:
-                                continue
-                            lower = contenido.lower()
-                            estrategias = {"desarrollo de", "uso de", "realización de", "realizacion de",
-                                           "aplicación del", "aplicacion del", "exposición", "exposicion",
-                                           "motivación", "motivacion", "rúbrica de", "rubrica de",
-                                           "examen mixto", "examen parcial", "examen final"}
-                            if any(e in lower for e in estrategias):
-                                continue
-                            # Rechazar si termina en preposición
-                            terminaciones = {" de", " del", " la", " el", " los", " las"}
-                            if any(lower.endswith(t) for t in terminaciones):
-                                continue
-                            pat_sesiones.append(s)
-
-        # ─── Sesiones globales (lista flat) del LLM ───
+        # ─── Sesiones: LLM siempre gana si tiene sesiones ───
         llm_sesiones = llm.get("sesiones", [])
-        if llm_sesiones and not any(u.get("sesiones") for u in merged.get("unidades", [])):
-            # Si el patrón no tiene sesiones en ninguna unidad, usar las del LLM
-            validas = []
-            for s in llm_sesiones:
-                contenido = s.get("contenido", "")
-                if len(contenido) < 20:
-                    continue
-                lower = contenido.lower()
-                estrategias = {"desarrollo de", "uso de", "realización de", "realizacion de",
-                               "aplicación del", "aplicacion del", "exposición", "exposicion",
-                               "motivación", "motivacion", "rúbrica de", "rubrica de",
-                               "examen mixto", "examen parcial", "examen final"}
-                if any(e in lower for e in estrategias):
-                    continue
-                if any(lower.endswith(t) for t in {" de", " del", " la", " el", " los", " las"}):
-                    continue
-                validas.append(s)
-            # Asignar a unidades por rango de semana
-            for s in validas:
-                sem = s.get("semana_num", 0)
-                unidad = 1 if sem <= 6 else 2 if sem <= 11 else 3
-                s["unidad"] = unidad
-                if unidad <= len(merged.get("unidades", [])):
-                    merged["unidades"][unidad - 1].setdefault("sesiones", []).append(s)
+        llm_unidades = llm.get("unidades", [])
+        has_llm_sesiones = bool(llm_sesiones) or any(u.get("sesiones") for u in llm_unidades)
+
+        if has_llm_sesiones:
+            def get_sem_num(sem_val) -> Optional[int]:
+                if isinstance(sem_val, int):
+                    return sem_val
+                if isinstance(sem_val, float):
+                    return int(sem_val)
+                if isinstance(sem_val, str):
+                    m = re.search(r'\d+', sem_val)
+                    if m:
+                        return int(m.group(0))
+                return None
+
+            # Limpiar sesiones del patrón y usar las del LLM
+            for u in merged.get("unidades", []):
+                u["sesiones"] = []
+
+            # Si el LLM tiene sesiones a nivel de unidad
+            for i in range(min(len(llm_unidades), len(merged.get("unidades", [])))):
+                u_llm = llm_unidades[i]
+                if u_llm.get("sesiones"):
+                    merged["unidades"][i]["sesiones"] = u_llm["sesiones"]
+
+            # Si el LLM tiene sesiones en una lista plana global (root "sesiones")
+            if llm_sesiones:
+                for s in llm_sesiones:
+                    sem = s.get("semana_num")
+                    if sem is None:
+                        sem = get_sem_num(s.get("semana", ""))
+
+                    # Determinar a qué unidad pertenece
+                    u_idx = s.get("unidad")
+                    if u_idx is None:
+                        # Fallback a los rangos estándar de UNT (1-5, 6-10, 11-16)
+                        if sem is not None:
+                            u_idx = 1 if sem <= 5 else 2 if sem <= 10 else 3
+                    
+                    if isinstance(u_idx, str):
+                        u_idx = u_idx.replace("U", "").strip()
+                    try:
+                        u_idx = int(u_idx)
+                    except (ValueError, TypeError):
+                        u_idx = None
+
+                    if u_idx is not None and 1 <= u_idx <= len(merged.get("unidades", [])):
+                        if sem is not None:
+                            s["semana_num"] = sem
+                        # Validar el contenido
+                        contenido = s.get("contenido", "")
+                        if len(contenido) >= 5:
+                            merged["unidades"][u_idx - 1].setdefault("sesiones", []).append(s)
+
+            # Recalcular el rango de semanas para cada unidad basado en las sesiones reales
+            for u in merged.get("unidades", []):
+                u_sesiones = u.get("sesiones", [])
+                if u_sesiones:
+                    sems = [get_sem_num(s.get("semana_num")) for s in u_sesiones]
+                    sems = [s for s in sems if s is not None]
+                    if sems:
+                        u["semanas"] = f"Semana {min(sems)}-{max(sems)}"
 
         # ─── Capacidades: fusionar ───
         llm_caps = llm.get("capacidades", [])
@@ -712,6 +810,17 @@ class GeminiParserService:
         return merged
 
     @classmethod
+    def normalizar_periodo(cls, p: str) -> str:
+        if not p:
+            return ""
+        p = p.upper().replace(" ", "").replace("–", "-").replace("/", "-")
+        # Reemplazar números romanos del semestre
+        p = re.sub(r'-III$', '-3', p)
+        p = re.sub(r'-II$', '-2', p)
+        p = re.sub(r'-I$', '-1', p)
+        return p
+
+    @classmethod
     def calcular_puntaje_confianza(cls, data: Dict, texto_completo: str, curso_ref: str, periodo_ref: str) -> tuple:
         """
         Calcula score 0-100 basado en reglas ITIL 4
@@ -725,75 +834,79 @@ class GeminiParserService:
             "legibilidad": True
         }
 
+        # 0. Normalizar curso_ref y extraer código esperado si existe
+        nombre_esperado = curso_ref
+        codigo_esperado = None
+        if curso_ref and " - " in curso_ref:
+            parts = curso_ref.split(" - ", 1)
+            codigo_esperado = parts[0].strip()
+            nombre_esperado = parts[1].strip()
+
         # 1. Coincidencia de nombre de curso (25 pts)
         nombre_extraido = data.get("nombre_curso", "").upper()
-        if curso_ref and curso_ref.upper() in nombre_extraido:
-            score += 25
-            coincidencias["curso"] = True
-        elif curso_ref and any(word in nombre_extraido for word in curso_ref.upper().split() if len(word) > 3):
-            score += 15
-            coincidencias["curso"] = True
+        if nombre_esperado:
+            nombre_esp_upper = nombre_esperado.upper()
+            if nombre_esp_upper in nombre_extraido:
+                score += 25
+                coincidencias["curso"] = True
+            elif any(word in nombre_extraido for word in nombre_esp_upper.split() if len(word) > 3):
+                score += 15
+                coincidencias["curso"] = True
 
-        # 2. Coincidencia de código (20 pts) - validar contra curso esperado
+        # 2. Coincidencia de código (20 pts)
         codigo_extraido = data.get("codigo_curso", "").strip()
         codigo_fallbacks = {"0000", "9999", "N/A", "", "S/C"}
         curso_encontrado = False
 
-        if codigo_extraido and codigo_extraido not in codigo_fallbacks and len(codigo_extraido) > 2:
-            if curso_ref:
-                # Extraer código del curso_ref si tiene formato "COD - Nombre"
-                match = re.search(r'^(\d{3,4})\s*[-–]', curso_ref)
-                if match:
-                    codigo_esperado = match.group(1)
-                    if codigo_esperado == codigo_extraido:
-                        score += 20
-                        coincidencias["codigo"] = True
-                        curso_encontrado = True
-                    elif codigo_esperado in codigo_extraido or codigo_extraido in codigo_esperado:
-                        # Código parcialmente relacionado
-                        score += 10
-                        coincidencias["codigo"] = True
-                        curso_encontrado = True
-                    else:
-                        # Código completamente diferente: penalización fuerte
-                        score = max(0, score - 30)
-                        coincidencias["codigo"] = False
-                else:
-                    # No se pudo extraer código del curso esperado, verificar que no sea fallback
+        if codigo_extraido and codigo_extraido not in codigo_fallbacks and len(codigo_extraido) > 1:
+            if codigo_esperado:
+                if codigo_esperado.upper() == codigo_extraido.upper():
+                    score += 20
+                    coincidencias["codigo"] = True
+                    curso_encontrado = True
+                elif codigo_esperado.upper() in codigo_extraido.upper() or codigo_extraido.upper() in codigo_esperado.upper():
                     score += 10
                     coincidencias["codigo"] = True
+                    curso_encontrado = True
+                else:
+                    # Código completamente diferente: penalización fuerte
+                    score = max(0, score - 30)
+                    coincidencias["codigo"] = False
             else:
                 score += 10
                 coincidencias["codigo"] = True
         else:
-            # Código vacío o fallback: no puntos, penalización leve
             coincidencias["codigo"] = False
 
-        # Si el curso es completamente diferente o el código es fallback, penalizar fuertemente
-        if not curso_encontrado and curso_ref:
+        # Si el curso es completamente diferente o el código es fallback y el nombre no coincide, penalizar fuertemente
+        if not curso_encontrado and nombre_esperado:
             nombre_extraido = data.get("nombre_curso", "").upper()
-            curso_ref_upper = curso_ref.upper()
+            nombre_esp_upper = nombre_esperado.upper()
             # Si no hay ninguna palabra compartida significativa (más de 3 letras)
-            palabras_ref = {w for w in re.findall(r'[A-ZÁÉÍÓÚÑ]{4,}', curso_ref_upper)}
+            palabras_ref = {w for w in re.findall(r'[A-ZÁÉÍÓÚÑ]{4,}', nombre_esp_upper)}
             palabras_ext = {w for w in re.findall(r'[A-ZÁÉÍÓÚÑ]{4,}', nombre_extraido)}
             if palabras_ref and palabras_ext and not palabras_ref.intersection(palabras_ext):
                 score = max(0, score - 40)
                 coincidencias["curso"] = False
             elif codigo_extraido in codigo_fallbacks:
                 # Código no extraído correctamente pero nombre tampoco coincide
-                score = max(0, score - 20)
+                if not coincidencias["curso"]:
+                    score = max(0, score - 20)
 
         # 3. Coincidencia de periodo (20 pts)
         periodo_extraido = data.get("periodo", "")
-        if periodo_ref and periodo_ref in periodo_extraido:
+        norm_ref = cls.normalizar_periodo(periodo_ref)
+        norm_ext = cls.normalizar_periodo(periodo_extraido)
+        
+        if norm_ref and norm_ext and (norm_ref == norm_ext or norm_ref in norm_ext or norm_ext in norm_ref):
             score += 20
             coincidencias["periodo"] = "ACTUAL"
         elif periodo_extraido and periodo_ref:
             # Lógica para detectar si es un periodo anterior
             try:
-                # Extraer año y término (ej: 2025-I, 2025-II, 2025-1, 2025-2)
-                match_ref = re.search(r'(\d{4})[- ]?([IV120]+)', periodo_ref)
-                match_ext = re.search(r'(\d{4})[- ]?([IV120]+)', periodo_extraido)
+                # Extraer año y término
+                match_ref = re.search(r'(\d{4})', norm_ref)
+                match_ext = re.search(r'(\d{4})', norm_ext)
                 
                 if match_ref and match_ext:
                     anio_ref = int(match_ref.group(1))
@@ -801,7 +914,7 @@ class GeminiParserService:
                     
                     if anio_ext < anio_ref:
                         coincidencias["periodo"] = "ANTERIOR"
-                        score += 5 # Bono parcial por ser el mismo curso aunque sea otro año
+                        score += 10 # Bono parcial por ser el mismo curso aunque sea otro año
                     else:
                         coincidencias["periodo"] = "NO_COINCIDE"
                 else:
@@ -887,7 +1000,7 @@ class GeminiParserService:
     
     @classmethod
     def _get_semanas_default(cls, unidad_num: int) -> str:
-        rangos = {1: "Semana 1-6", 2: "Semana 7-11", 3: "Semana 12-16"}
+        rangos = {1: "Semana 1-5", 2: "Semana 6-10", 3: "Semana 11-16"}
         return rangos.get(unidad_num, f"Semana {(unidad_num-1)*5+1}-{unidad_num*5}")
 
 

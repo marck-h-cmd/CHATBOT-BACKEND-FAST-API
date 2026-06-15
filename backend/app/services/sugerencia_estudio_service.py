@@ -185,13 +185,19 @@ class SugerenciaEstudioService:
             if chunks:
                 chunks_text = "Contenidos del curso:\n" + "\n".join([f"{c.titulo or 'Semana'}: {c.contenido}" for c in chunks])
         
-        from app.services.ai_parser import _init_gemini
+        from app.services.ai_parser import _init_primary_ai, _init_fallback_ai
         import app.services.ai_parser as ai_p
+        from app.config import Config
         
-        _init_gemini()
+        _init_primary_ai()
+        _init_fallback_ai()
         
-        if ai_p.GEMINI_DISPONIBLE and ai_p.MODEL:
-            import google.generativeai as genai
+        use_primary = ai_p.PRIMARY_AI_DISPONIBLE and ai_p.PRIMARY_AI_CLIENT is not None
+        use_fallback = ai_p.FALLBACK_AI_DISPONIBLE and ai_p.FALLBACK_AI_CLIENT is not None
+        
+        if use_primary or use_fallback:
+            client = ai_p.PRIMARY_AI_CLIENT if use_primary else ai_p.FALLBACK_AI_CLIENT
+            model_name = Config.PRIMARY_AI_MODEL if use_primary else Config.FALLBACK_AI_MODEL
             
             prompt = f"""Eres Sylia, experta académica.
 Consulta del alumno: "{pregunta}"
@@ -221,23 +227,18 @@ Instrucciones (Optimiza tokens):
 """
             
             try:
-                response = ai_p.MODEL.generate_content(
-                    prompt,
-                    generation_config=genai.GenerationConfig(
-                        response_mime_type="application/json",
-                        temperature=0.7
-                    )
+                response = client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {"role": "system", "content": "Eres una asistente académica experta en formato JSON."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.7,
+                    response_format={"type": "json_object"}
                 )
                 
-                text_resp = response.text.strip()
-                if text_resp.startswith("```json"):
-                    text_resp = text_resp[7:]
-                elif text_resp.startswith("```"):
-                    text_resp = text_resp[3:]
-                if text_resp.endswith("```"):
-                    text_resp = text_resp[:-3]
-                    
-                res_json = json.loads(text_resp.strip())
+                text_resp = response.choices[0].message.content.strip()
+                res_json = json.loads(text_resp)
                 
                 dist_sugerida = res_json.get("distribucion_semanas", [])
                 if not dist_sugerida and "distribucion" in res_json:

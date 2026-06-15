@@ -86,12 +86,26 @@ export const SyllabusProvider = ({ children }) => {
       
       setUserSyllabi(prev => [...prev, nuevoSilabo]);
       
+      console.log('DEBUG UPLOAD SYLLABUS API RESULT:', result);
+      
       // Retornar información del backend
       setUploadStatus({
         success: true,
         message: result.mensaje || `Sílabo "${file.name}" subido correctamente.`,
         id_silabo: result.id_silabo,
         score: result.score,
+        fiabilidad: result.score >= 80 ? 'ALTA' : result.score >= 50 ? 'MEDIA' : 'BAJA',
+        evidencias: result.datos_extraidos?.evidencias || {},
+        unidades: result.datos_extraidos?.unidades || [],
+        advertencias: result.datos_extraidos?.advertencias || [],
+        usando_gemini: result.usando_gemini ?? true,
+        nombre_curso: result.nombre_curso,
+        codigo_curso: result.codigo_curso,
+        ciclo: result.ciclo,
+        periodo: result.periodo,
+        docente: result.docente,
+        email_docente: result.email_docente,
+        ...result
       });
       
       return { success: true, id: result.id_silabo, data: result };
@@ -172,10 +186,32 @@ export const SyllabusProvider = ({ children }) => {
     try {
       const result = await syllabusAPI.deleteOfficialSyllabus(id_silabo);
       setOfficialSyllabi(prev => prev.filter(s => s.id_silabo !== id_silabo));
+      // Also update userSyllabi just in case
+      setUserSyllabi(prev => prev.filter(s => s.id !== id_silabo));
       return { success: true, data: result };
     } catch (error) {
       const errorInfo = handleApiError(error);
       console.error('Delete official syllabus error:', errorInfo);
+      return { success: false, error: errorInfo };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteSyllabus = async (id_silabo) => {
+    setLoading(true);
+    try {
+      const result = await syllabusAPI.deleteSyllabus(id_silabo);
+      setUserSyllabi(prev => prev.filter(s => s.id !== id_silabo));
+      setOfficialSyllabi(prev => prev.filter(s => s.id_silabo !== id_silabo));
+      if (selectedSyllabusId === id_silabo) {
+        setSelectedSyllabusId(null);
+        setSyllabusDetail(null);
+      }
+      return { success: true, data: result };
+    } catch (error) {
+      const errorInfo = handleApiError(error);
+      console.error('Delete syllabus error:', errorInfo);
       return { success: false, error: errorInfo };
     } finally {
       setLoading(false);
@@ -216,6 +252,7 @@ export const SyllabusProvider = ({ children }) => {
     uploadOfficialSyllabus,
     loadOfficialSyllabi,
     deleteOfficialSyllabus,
+    deleteSyllabus,
     getSyllabusDetail,
     selectSyllabus,
     clearUploadStatus,

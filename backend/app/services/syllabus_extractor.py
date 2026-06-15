@@ -14,7 +14,7 @@ Secciones UNT estándar:
 """
 
 import re
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from collections import Counter
 
 
@@ -84,8 +84,28 @@ class UntSyllabusExtractor:
             "niveles_logro": tabla_prog.get("niveles_logro", []),
         }
 
-        # Derivar evidencias de las fórmulas extraídas
-        resultado["evidencias"] = cls._derivar_evidencias(resultado["formulas"])
+        # Try to use EvaluationFormulaExtractor for normalized formulas and weights
+        try:
+            from app.services.formula_normalizer import EvaluationFormulaExtractor
+            eval_seccion = secciones.get("evaluacion", "")
+            normalizador_res = EvaluationFormulaExtractor.extract_and_normalize(eval_seccion)
+            if normalizador_res.get("normalized_formulas"):
+                resultado["formulas"] = normalizador_res["normalized_formulas"]
+                
+                # Derive evidences from normalized formulas & weights
+                evidencias_new = {}
+                for code, weight in normalizador_res.get("inferred_weights", {}).items():
+                    evidencias_new[code] = {
+                        "nombre": code.title(),
+                        "peso": weight
+                    }
+                resultado["evidencias"] = evidencias_new
+                resultado["formulas_evaluacion_detallada"] = normalizador_res
+            else:
+                resultado["evidencias"] = cls._derivar_evidencias(resultado["formulas"])
+        except Exception as e:
+            print(f"Error calling EvaluationFormulaExtractor in UntSyllabusExtractor: {e}")
+            resultado["evidencias"] = cls._derivar_evidencias(resultado["formulas"])
 
         # Extraer sesiones/semanas de la programación académica (limpio)
         prog_limpio = cls._limpiar_artefactos_pdf(secciones.get("programacion", texto))
@@ -723,7 +743,7 @@ class UntSyllabusExtractor:
 
     @classmethod
     def _get_semanas_default(cls, i: int) -> str:
-        return {1: "Semana 1-6", 2: "Semana 7-11", 3: "Semana 12-16"}.get(i, f"Semana {i}")
+        return {1: "Semana 1-5", 2: "Semana 6-10", 3: "Semana 11-16"}.get(i, f"Semana {i}")
 
     @classmethod
     def _extraer_tutoria(cls, seccion_tut: str) -> Dict:
@@ -945,8 +965,8 @@ class UntSyllabusExtractor:
     @classmethod
     def _dividir_texto_por_unidades(cls, texto: str) -> List:
         """Divide texto en bloques usando I/II/III UNIDAD o UNIDAD I/II/III como delimitadores."""
-        # Buscar todos los headers de unidad
-        patron = r'(?:^|\n)\s*(?:UNIDAD\s+(I|II|III)|(I|II|III)\s+UNIDAD)\s*(?:\n|$)'
+        # Buscar todos los headers de unidad (permitiendo dos puntos, espacio o letras después del número de unidad)
+        patron = r'(?:^|\n)\s*(?:UNIDAD\s+(I|II|III)|(I|II|III)\s+UNIDAD)\b'
         matches = list(re.finditer(patron, texto, re.IGNORECASE))
         bloques = []
         for idx, m in enumerate(matches):
@@ -1151,6 +1171,8 @@ class UntSyllabusExtractor:
             patrones_semana = [
                 r'^0?(\d{1,2})$',                              # "01" o "1"
                 r'^[Ss]emana\.?\s*(\d{1,2})',                   # "Semana 1"
+                r'^[Ss]esi[oó]n\s*(\d{1,2})',                   # "Sesión 1"
+                r'^(\d{1,2})[°º]?\s*[Ss]emana',                 # "1° semana"
                 r'^(\d{1,2})[.\)]\s+',                          # "1. " o "1) "
                 r'^(\d{1,2})\s*\|\s*',                          # "1 |" (tabla)
                 r'^\|?\s*(\d{1,2})\s*\|',                        # "| 1 |" (tabla)
@@ -1163,9 +1185,14 @@ class UntSyllabusExtractor:
 
             if m:
                 num = int(m.group(1))
-                if 1 <= num <= 16:
+                allowed_weeks = {
+                    1: set(range(1, 6)),
+                    2: set(range(6, 11)),
+                    3: set(range(11, 18))
+                }.get(num_unidad, set(range(1, 18)))
+                if num in allowed_weeks:
                     if semana_actual is not None and buffer:
-                        contenido = cls._limpiar_contenido_sesion(' '.join(buffer), num_unidad)
+                        contenido = cls._limpiar_contenido_sesion(' '.join(buffer), num_unidad, semana_num=semana_actual)
                         if contenido:
                             semanas.append({
                                 "semana": str(semana_actual),
@@ -1218,7 +1245,10 @@ class UntSyllabusExtractor:
                     "MONOGRAFÍA", "MONOGRAFIA", "TAREA"
                 ])
                 if skip:
-                    continue
+                    es_semana_eval = semana_actual in (5, 10, 16)
+                    contiene_eval_term = any(term in upper for term in ["EXAMEN", "EVALUACIÓN", "EVALUACION", "EXPOSICIÓN", "EXPOSICION", "SUSTITUTORIO", "APLAZADO", "PARCIAL", "FINAL"])
+                    if not (es_semana_eval and contiene_eval_term):
+                        continue
                 if 2 < len(linea_strip) < 180:
                     limpio = re.sub(r'^[•\-\*\d]+[.\)]?\s*', '', linea_strip)
                     if len(limpio) > 2:
@@ -1226,7 +1256,7 @@ class UntSyllabusExtractor:
 
         # Guardar última
         if semana_actual is not None and buffer:
-            contenido = cls._limpiar_contenido_sesion(' '.join(buffer), num_unidad)
+            contenido = cls._limpiar_contenido_sesion(' '.join(buffer), num_unidad, semana_num=semana_actual)
             if contenido:
                 semanas.append({
                     "semana": str(semana_actual),
@@ -1252,10 +1282,21 @@ class UntSyllabusExtractor:
     @classmethod
     def _es_contenido_valido(cls, contenido: str) -> bool:
         """Rechaza fragmentos cortos, preposiciones sueltas o estrategias puras."""
-        if not contenido or len(contenido) < 20:
+        if not contenido:
             return False
         lower = contenido.lower().strip()
-        # Rechazar si termina en preposición o artículo (fragmento incompleto)
+        # Permitir evaluaciones más cortas (ej: "Examen Parcial")
+        if any(term in lower for term in ["examen", "evaluación", "evaluacion", "exposición", "exposicion", "sustitutorio", "aplazado", "parcial", "final"]):
+            if len(contenido) >= 8:
+                terminaciones_malas = {
+                    " de", " del", " la", " el", " los", " las", " en", " con", " por",
+                    " para", " a", " e", " y", " o", " u", " un", " una",
+                }
+                if any(lower.endswith(t) for t in terminaciones_malas):
+                    return False
+                return True
+        if len(contenido) < 20:
+            return False
         terminaciones_malas = {
             " de", " del", " la", " el", " los", " las", " en", " con", " por",
             " para", " a", " e", " y", " o", " u", " un", " una",
@@ -1304,7 +1345,7 @@ class UntSyllabusExtractor:
                 continue
             # Limpiar
             contenido = re.sub(r'^[•\-\*]+\s*', '', contenido)
-            contenido = cls._limpiar_contenido_sesion(contenido, num_unidad)
+            contenido = cls._limpiar_contenido_sesion(contenido, num_unidad, semana_num=num)
             if contenido:
                 semanas.append({
                     "semana": str(num),
@@ -1314,17 +1355,28 @@ class UntSyllabusExtractor:
         return semanas
 
     @classmethod
-    def _limpiar_contenido_sesion(cls, contenido: str, num_unidad: int = 0) -> str:
+    def _limpiar_contenido_sesion(cls, contenido: str, num_unidad: int = 0, semana_num: Optional[int] = None) -> str:
         """Limpia contenido de sesión: corta contaminación de otras unidades, evaluación, estrategias, etc."""
         if not contenido:
             return ""
 
+        is_exam_week = semana_num in (5, 10, 16)
+
         # 0. Quitar prefijos de evidencia del inicio (ej: "mixto Analiza...")
-        contenido = re.sub(r'^\s*(mixto|práctica|practica|informe|caso|examen|parcial|final|rúbrica|rubrica)\s+', '', contenido, flags=re.IGNORECASE)
+        # Pero si es semana de examen (5, 10, 16), NO quitemos palabras de evaluación como "examen", "parcial", "final", "sustitutorio", "aplazado".
+        if not is_exam_week:
+            contenido = re.sub(r'^\s*(mixto|práctica|practica|informe|caso|examen|parcial|final|rúbrica|rubrica)\s+', '', contenido, flags=re.IGNORECASE)
 
         # 0.5. Si es estrategia didáctica, evidencia pura o competencia, descartar
-        if cls._es_estrategia_didactica(contenido) or cls._es_evidencia(contenido) or cls._es_competencia(contenido):
-            return ""
+        if is_exam_week:
+            lower = contenido.lower()
+            if any(term in lower for term in ["examen", "evaluación", "evaluacion", "exposición", "exposicion", "sustitutorio", "aplazado", "parcial", "final"]):
+                pass
+            elif cls._es_estrategia_didactica(contenido) or cls._es_evidencia(contenido) or cls._es_competencia(contenido):
+                return ""
+        else:
+            if cls._es_estrategia_didactica(contenido) or cls._es_evidencia(contenido) or cls._es_competencia(contenido):
+                return ""
 
         # 1. Intentar separar columnas de tabla concatenadas (2+ espacios = delimitador de columna)
         columnas = re.split(r'\s{2,}', contenido)
@@ -1393,7 +1445,9 @@ class UntSyllabusExtractor:
             return ""
 
         # 8. Revisar de nuevo si quedó como estrategia o evidencia tras cortes
-        if cls._es_estrategia_didactica(contenido) or cls._es_evidencia(contenido):
+        if is_exam_week and any(term in lower for term in ["examen", "evaluación", "evaluacion", "exposición", "exposicion", "sustitutorio", "aplazado", "parcial", "final"]):
+            pass
+        elif cls._es_estrategia_didactica(contenido) or cls._es_evidencia(contenido):
             return ""
 
         return contenido.strip()
@@ -1405,7 +1459,7 @@ class UntSyllabusExtractor:
         # Buscar "Semana X: contenido"
         for m in re.finditer(r'[Ss]emana\s+(\d+)[.:\-]?\s*([^\.\n]{3,100})', seccion_prog):
             semana_num = int(m.group(1))
-            contenido = cls._limpiar_contenido_sesion(m.group(2).strip(), num_unidad=0)
+            contenido = cls._limpiar_contenido_sesion(m.group(2).strip(), num_unidad=0, semana_num=semana_num)
             if contenido and cls._es_contenido_valido(contenido):
                 sesiones.append({
                     "semana": str(semana_num),
@@ -1417,7 +1471,7 @@ class UntSyllabusExtractor:
         # Buscar "X. Tema de la semana"
         for m in re.finditer(r'(?:^|\n)\s*(\d{1,2})\s*[.\)]\s+([A-ZÁÉÍÓÚÑ][^\.\n]{3,200})', seccion_prog):
             semana_num = int(m.group(1))
-            contenido = cls._limpiar_contenido_sesion(m.group(2).strip(), num_unidad=0)
+            contenido = cls._limpiar_contenido_sesion(m.group(2).strip(), num_unidad=0, semana_num=semana_num)
             if contenido and cls._es_contenido_valido(contenido):
                 sesiones.append({
                     "semana": str(semana_num),
@@ -1474,6 +1528,17 @@ class UntSyllabusExtractor:
         return data
 
     @classmethod
+    def normalizar_periodo(cls, p: str) -> str:
+        if not p:
+            return ""
+        p = p.upper().replace(" ", "").replace("–", "-").replace("/", "-")
+        # Reemplazar números romanos del semestre
+        p = re.sub(r'-III$', '-3', p)
+        p = re.sub(r'-II$', '-2', p)
+        p = re.sub(r'-I$', '-1', p)
+        return p
+
+    @classmethod
     def _calcular_score(cls, data: Dict, texto: str, curso_ref: str, periodo_ref: str) -> Tuple[int, Dict]:
         score = 0
         coincidencias = {
@@ -1484,22 +1549,38 @@ class UntSyllabusExtractor:
             "legibilidad": True
         }
 
+        # 0. Normalizar curso_ref y extraer código esperado si existe
+        nombre_esperado = curso_ref
+        codigo_esperado = None
+        if curso_ref and " - " in curso_ref:
+            parts = curso_ref.split(" - ", 1)
+            codigo_esperado = parts[0].strip()
+            nombre_esperado = parts[1].strip()
+
         # 1. Código (25 pts)
         codigo = data.get("codigo_curso", "").strip()
-        if codigo and re.match(r"^\d{3,5}$", codigo) and codigo not in {"0000", "9999", "", "N/A"}:
-            score += 25
-            coincidencias["codigo"] = True
+        if codigo and re.match(r"^[A-Z0-9\-_]{2,10}$", codigo, re.IGNORECASE) and codigo not in {"0000", "9999", "", "N/A"}:
+            if codigo_esperado:
+                if codigo_esperado.upper() == codigo.upper():
+                    score += 25
+                    coincidencias["codigo"] = True
+                elif codigo_esperado.upper() in codigo.upper() or codigo.upper() in codigo_esperado.upper():
+                    score += 20
+                    coincidencias["codigo"] = True
+            else:
+                score += 25
+                coincidencias["codigo"] = True
 
         # 2. Nombre (25 pts)
         nombre = data.get("nombre_curso", "").strip().upper()
         if nombre and nombre not in {"LA EXPERIENCIA CURRICULAR", "EXPERIENCIA CURRICULAR", "CURSO", "ASIGNATURA", ""} and len(nombre) > 3:
-            if curso_ref:
-                curso_ref_upper = curso_ref.upper()
-                if curso_ref_upper in nombre or nombre in curso_ref_upper:
+            if nombre_esperado:
+                nombre_esp_upper = nombre_esperado.upper()
+                if nombre_esp_upper in nombre or nombre in nombre_esp_upper:
                     score += 25
                     coincidencias["curso"] = True
                 else:
-                    palabras_ref = {w for w in re.findall(r'[A-ZÁÉÍÓÚÑ]{4,}', curso_ref_upper)}
+                    palabras_ref = {w for w in re.findall(r'[A-ZÁÉÍÓÚÑ]{4,}', nombre_esp_upper)}
                     palabras_ext = {w for w in re.findall(r'[A-ZÁÉÍÓÚÑ]{4,}', nombre)}
                     if palabras_ref and palabras_ext:
                         interseccion = palabras_ref.intersection(palabras_ext)
@@ -1518,15 +1599,33 @@ class UntSyllabusExtractor:
 
         # 3. Periodo (15 pts)
         periodo = data.get("periodo", "").strip()
-        if periodo and re.match(r"^\d{4}-[IV12]+$", periodo):
-            if periodo_ref and periodo_ref in periodo:
-                score += 15
-                coincidencias["periodo"] = "ACTUAL"
-            else:
-                score += 8
+        norm_ref = cls.normalizar_periodo(periodo_ref)
+        norm_ext = cls.normalizar_periodo(periodo)
+        
+        if norm_ref and norm_ext and (norm_ref == norm_ext or norm_ref in norm_ext or norm_ext in norm_ref):
+            score += 15
+            coincidencias["periodo"] = "ACTUAL"
+        elif periodo and periodo_ref:
+            # Detectar si es anterior o no coincide
+            try:
+                match_ref = re.search(r'(\d{4})', norm_ref)
+                match_ext = re.search(r'(\d{4})', norm_ext)
+                if match_ref and match_ext:
+                    anio_ref = int(match_ref.group(1))
+                    anio_ext = int(match_ext.group(1))
+                    if anio_ext < anio_ref:
+                        score += 8
+                        coincidencias["periodo"] = "ANTERIOR"
+                    else:
+                        coincidencias["periodo"] = "NO_COINCIDE"
+                else:
+                    coincidencias["periodo"] = "NO_COINCIDE"
+            except:
                 coincidencias["periodo"] = "NO_COINCIDE"
+        else:
+            coincidencias["periodo"] = "DESCONOCIDO"
 
-        # 4. Fórmulas (20 pts) — más granular para reflejar calidad de extracción
+        # 4. Fórmulas (20 pts)
         formulas = data.get("formulas", {})
         formula_count = sum(1 for k in ["PU1", "PU2", "PU3", "PP"] if formulas.get(k))
         if formula_count >= 4:
@@ -1582,6 +1681,13 @@ class UntSyllabusExtractor:
 
         for num_unidad, bloque in bloques_unidad:
             tiene_examen_parcial = bool(re.search(r'\b(?:examen\s+parcial|EP|examen\s+mixto)\b', bloque, re.IGNORECASE))
+            
+            allowed_weeks = {
+                1: set(range(1, 6)),
+                2: set(range(6, 11)),
+                3: set(range(11, 18))
+            }.get(num_unidad, set(range(1, 18)))
+
             # Buscar contenidos numerados en el bloque
             # Patrón: número. Tema de contenido (que NO sea estrategia)
             items_contenido = []
@@ -1604,6 +1710,10 @@ class UntSyllabusExtractor:
                 if not linea:
                     continue
                 
+                # Evitar detectar fechas como números de semana (ej. 01/06/26 o 05-06-26)
+                if re.search(r'\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}', linea):
+                    continue
+                
                 # Detectar si la línea contiene "EXAMEN PARCIAL" como celda independiente
                 if re.search(r'^(?:examen\s+parcial|EP|examen\s+mixto)$', linea, re.IGNORECASE):
                     # Esta es una celda de semana que contiene examen parcial (reemplaza el número)
@@ -1620,7 +1730,7 @@ class UntSyllabusExtractor:
                 m_inicio = re.match(r'^(0[1-9]|1[0-6])\b', linea)
                 if m_inicio:
                     sem = int(m_inicio.group(1))
-                    if 1 <= sem <= 16:
+                    if sem in allowed_weeks:
                         semanas_bloque.append(sem)
                         continue
                 

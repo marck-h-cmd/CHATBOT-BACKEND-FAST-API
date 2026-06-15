@@ -42,7 +42,7 @@ export const updateSyllabus = async (idSilabo, data) => {
 
 // Nueva: Eliminar un sílabo
 export const deleteSyllabus = async (idSilabo) => {
-  const response = await apiClient.delete(`/syllabus/${idSilabo}`);
+  const response = await apiClient.delete(`/silabo/${idSilabo}`);
   return response.data;
 };
 
@@ -152,3 +152,27 @@ export const getMySyllabi = async () => {
   const response = await apiClient.get('/silabo/mis-silabos');
   return response.data;
 };
+
+// Admin: Obtener chunks RAG de un sílabo
+export const getSilaboChunks = async (id_silabo) => {
+  const response = await apiClient.get(`/silabo/${id_silabo}/chunks`);
+  return response.data;
+};
+
+// Admin: Actualizar un chunk RAG (regenera embedding)
+export const updateSilaboChunk = async (id_silabo, id_chunk, data) => {
+  const response = await apiClient.put(`/silabo/${id_silabo}/chunks/${id_chunk}`, data);
+  return response.data;
+};
+
+// Admin: Actualizar reglas_json de un sílabo
+export const updateSilaboReglasJson = async (id_silabo, reglas_json) => {
+  const response = await apiClient.put(`/silabo/${id_silabo}/reglas-json`, { reglas_json });
+  return response.data;
+};
+
+// Admin: Regenerar todos los chunks RAG de un sílabo
+export const regenerarChunksSilabo = async (id_silabo) => {
+  const response = await apiClient.post(`/silabo/${id_silabo}/regenerar-chunks`);
+  return response.data;
+};
