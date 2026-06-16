@@ -180,7 +180,12 @@ const ChatMessage = ({ message }) => {
                   em: ({node, ...props}) => <em className="not-italic px-1.5 py-0.5 mx-0.5 rounded bg-amber-50 dark:bg-amber-950/35 text-amber-700 dark:text-amber-300 font-extrabold border border-amber-200/40 dark:border-amber-900/30" {...props} />,
                   code: ({node, inline, ...props}) => {
                     if (inline) {
-                      return <code className="px-1.5 py-0.5 mx-0.5 rounded-md bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-450 font-mono text-[13px] font-bold border border-rose-100/60 dark:border-rose-900/30" {...props} />;
+                      const content = props.children ? String(props.children) : '';
+                      const isFormula = /PU[1-3]|PP|[+*/=]/.test(content);
+                      if (isFormula) {
+                        return <code className="px-2 py-0.5 mx-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-mono text-[13px] font-extrabold border border-indigo-150 dark:border-indigo-900/40" {...props} />;
+                      }
+                      return <code className="px-1.5 py-0.5 mx-0.5 rounded-md bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 font-mono text-[13px] font-bold border border-rose-100/60 dark:border-rose-900/30" {...props} />;
                     }
                     return <code className="font-mono" {...props} />;
                   },
@@ -209,14 +214,13 @@ const ChatMessage = ({ message }) => {
             </div>
           )}
 
-          {/* Tarjeta interactiva de sugerencia automática */}
-          {!isUser && sugerencia && (
+          {/* Tarjeta interactiva de sugerencia a          {!isUser && sugerencia && (
             <div className={`mt-4 p-4 border rounded-2xl text-xs flex flex-col gap-3 transition-all duration-200 ${
               sugEstado === 'ACEPTADA'
-                ? 'border-emerald-250 dark:border-emerald-900/50 bg-emerald-50/20 dark:bg-emerald-950/5 text-emerald-800 dark:text-emerald-300'
+                ? 'border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/20 dark:bg-emerald-950/5 text-emerald-800 dark:text-emerald-300'
                 : sugEstado === 'IGNORADA'
                   ? 'border-slate-200 dark:border-slate-800 opacity-60'
-                  : 'border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/10 dark:bg-indigo-950/5 text-slate-800 dark:text-slate-250'
+                  : 'border-indigo-150 dark:border-indigo-900/50 bg-indigo-50/10 dark:bg-indigo-950/5 text-slate-800 dark:text-slate-300'
             }`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-slate-200">
@@ -240,8 +244,8 @@ const ChatMessage = ({ message }) => {
                   "{sugerencia.justificacion}"
                 </p>
                 
-                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-450 mb-1.5 font-medium">
-                  <Clock className="w-3.5 h-3.5 shrink-0 text-slate-400 dark:text-slate-555" />
+                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 mb-1.5 font-medium">
+                  <Clock className="w-3.5 h-3.5 shrink-0 text-slate-400 dark:text-slate-400" />
                   <span>{sugerencia.horas_sugeridas} horas sugeridas</span>
                 </div>
 
@@ -254,28 +258,28 @@ const ChatMessage = ({ message }) => {
                     <button
                       onClick={() => handleUpdateSugerencia('IGNORADA')}
                       disabled={loadingSug}
-                      className="px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-450 font-bold rounded-xl transition-colors disabled:opacity-50"
+                      className="px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold rounded-xl transition-colors disabled:opacity-50"
                     >
                       Ignorar
                     </button>
                     <button
                       onClick={() => setModalOpen(true)}
                       disabled={loadingSug}
-                      className="px-3.5 py-1.5 bg-indigo-650 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white font-extrabold rounded-xl shadow-sm transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                      className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-650 dark:hover:bg-indigo-700 text-white font-extrabold rounded-xl shadow-sm transition-colors flex items-center gap-1.5 disabled:opacity-50"
                     >
                       Aceptar Plan
                     </button>
                   </>
                 ) : sugEstado === 'ACEPTADA' ? (
                   <>
-                    <span className="flex items-center gap-1 font-bold text-emerald-650 dark:text-emerald-400 mr-auto pl-1">
+                    <span className="flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400 mr-auto pl-1">
                       <CheckCircle className="w-3.5 h-3.5" />
                       Programado
                     </span>
                     <button
                       onClick={() => setModalOpen(true)}
                       disabled={loadingSug}
-                      className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-bold text-[11px] rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
+                      className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-350 font-bold text-[11px] rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
                     >
                       <Clock className="w-3 h-3" /> Reprogramar
                     </button>
@@ -321,12 +325,7 @@ const ChatMessage = ({ message }) => {
           )}
         </div>
 
-        {/* Info de debug de tokens */}
-        {!isUser && message.tokensUsados !== undefined && message.tokensUsados !== null && (
-          <div className="mt-1 px-2 text-[10px] font-mono text-slate-400/70 dark:text-slate-500/70 select-none">
-            [Debug: {message.tokensUsados} tokens{message.tiempoMs ? ` en ${message.tiempoMs}ms` : ''}]
-          </div>
-        )}
+
       </div>
 
       {/* Modal para Días Antes */}

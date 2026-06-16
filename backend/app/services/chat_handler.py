@@ -285,15 +285,17 @@ class ChatHandler:
                         La fórmula para calcular el nuevo promedio tras el sustitutorio es: (Suma de las dos unidades más altas + Nota de sustitutorio) / 3.
                         """
 
-                prompt = f"""Escribe como Sylia, tutora académica empática y directa. Tu meta es guiar al alumno sobre su curso y dudas de forma humana, clara y concisa. Evita rodeos innecesarios.
+                prompt = f"""Escribe como Sylia, tutora académica empática y directa. Tu meta es guiar al alumno sobre su curso y dudas de forma humana, clara y concisa. Evita rodeos innecesarios. Responde exactamente lo que se te pide sin rodeos.
 
                         [REGLAS DE FORMATO (OBLIGATORIAS PARA COLORES)]
                         Para resaltar con colores hermosos y facilitar la visualización del estudiante, usa siempre:
                         - Texto entre **doble asterisco** (ej. **Concepto Clave**) para resaltar términos críticos, títulos de secciones, nombres de fórmulas o conceptos fundamentales. Se mostrará en color Indigo.
                         - Texto entre *un asterisco* (ej. *Semana 5*) para fechas importantes, números de semanas, notas de aprobación o estados del curso. Se mostrará en color Ámbar/Amarillo.
-                        - Texto entre `backticks` (ej. `PU1`) para siglas de evaluación, fórmulas matemáticas o notas numéricas específicas. Se mostrará en color Rosa.
+                        - Texto entre `backticks` (ej. `PU1 = ((TC*0.4)+(IRS*0.15))`) para siglas de evaluación, fórmulas matemáticas de evaluación completas o notas numéricas específicas. Se mostrará en color Indigo/Rosa diferenciado. Las fórmulas completas de evaluación deben estar SIEMPRE en backticks.
 
                         [REGLAS GENERALES]
+                        - Responde claramente y de forma directa a lo que se te pregunta.
+                        - NO repitas ni sugieras planes de estudio o distribuciones de horas de forma proactiva ni insistente a menos que el estudiante lo solicite expresamente o se encuentre en una situación crítica de riesgo académico.
                         - Calificaciones vigesimales de 0 a 20 (aprobación: 14). Nunca calcules o sugieras notas mayores a 20. Si requiere >20, indícalo de forma realista y sugiere Examen Sustitutorio o Aplazados.
                         - Consultas semanales: Si el estudiante consulta por una semana o tema específico (ej. "Semana 5", "Unidad 2"), detalla con precisión sus contenidos usando el resumen estructurado o RAG. No los omitas ni seas genérico.
                         - Explicación de Temas: Si el estudiante te pide explicar un tema o contenido, brinda un resumen teórico corto, claro y conciso (máximo 1-2 párrafos cortos), y de forma proactiva sugiérele repasar o técnicas de estudio aplicadas a ese tema.
@@ -340,10 +342,12 @@ class ChatHandler:
                         Asistente (JSON): """
 
                 respuesta_json_text = ""
+                success_ai = False
                 
-                try:
-                    # Intento con Primary AI
-                    if ai_p.PRIMARY_AI_DISPONIBLE and ai_p.PRIMARY_AI_CLIENT:
+                # 1. Intento con Primary AI
+                if ai_p.PRIMARY_AI_DISPONIBLE and ai_p.PRIMARY_AI_CLIENT:
+                    try:
+                        print("Intentando llamada con Primary AI...")
                         response = ai_p.PRIMARY_AI_CLIENT.chat.completions.create(
                             model=Config.PRIMARY_AI_MODEL,
                             messages=[
@@ -356,9 +360,14 @@ class ChatHandler:
                         respuesta_json_text = response.choices[0].message.content
                         if hasattr(response, "usage") and response.usage:
                             tokens_usados = getattr(response.usage, "total_tokens", None)
-                    
-                    # Fallback
-                    elif ai_p.FALLBACK_AI_DISPONIBLE and ai_p.FALLBACK_AI_CLIENT:
+                        success_ai = True
+                    except Exception as primary_err:
+                        print(f"Error procesando Primary AI: {primary_err}. Se intentará con Fallback AI...")
+                
+                # 2. Fallback AI si Primary AI no está disponible o falló
+                if not success_ai and ai_p.FALLBACK_AI_DISPONIBLE and ai_p.FALLBACK_AI_CLIENT:
+                    try:
+                        print("Intentando llamada con Fallback AI...")
                         response = ai_p.FALLBACK_AI_CLIENT.chat.completions.create(
                             model=Config.FALLBACK_AI_MODEL,
                             messages=[
@@ -371,8 +380,12 @@ class ChatHandler:
                         respuesta_json_text = response.choices[0].message.content
                         if hasattr(response, "usage") and response.usage:
                             tokens_usados = getattr(response.usage, "total_tokens", None)
-                        
-                    # Parsear la respuesta JSON
+                        success_ai = True
+                    except Exception as fallback_err:
+                        print(f"Error procesando Fallback AI: {fallback_err}")
+                
+                # 3. Parsear la respuesta JSON si hubo éxito
+                if success_ai and respuesta_json_text:
                     try:
                         res_json = json.loads(respuesta_json_text)
                         respuesta = res_json.get("respuesta", respuesta_json_text)
@@ -381,9 +394,7 @@ class ChatHandler:
                         print(f"Error parseando JSON del modelo: {json_err}. Texto: {respuesta_json_text}")
                         respuesta = respuesta_json_text
                         notas_detectadas = {}
-                        
-                except Exception as e:
-                    print(f"Error procesando IA: {e}")
+                else:
                     respuesta = "Lo siento, tuve un problema al procesar tu consulta. Intenta de nuevo."
                     notas_detectadas = {}
                     

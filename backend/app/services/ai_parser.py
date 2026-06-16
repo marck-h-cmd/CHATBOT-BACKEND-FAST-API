@@ -40,9 +40,9 @@ def _init_primary_ai() -> None:
             base_url=Config.PRIMARY_AI_BASE_URL
         )
         PRIMARY_AI_DISPONIBLE = True
-        print(f"✅ Primary AI configurada (modelo: {Config.PRIMARY_AI_MODEL})")
+        print(f"[INFO] Primary AI configured (model: {Config.PRIMARY_AI_MODEL})")
     except Exception as e:
-        print(f"⚠️ Error configurando Primary AI: {e}")
+        print(f"[WARNING] Error configuring Primary AI: {e}")
         PRIMARY_AI_DISPONIBLE = False
         PRIMARY_AI_CLIENT = None
 
@@ -65,9 +65,9 @@ def _init_fallback_ai() -> None:
             base_url=Config.FALLBACK_AI_BASE_URL
         )
         FALLBACK_AI_DISPONIBLE = True
-        print(f"✅ Fallback AI configurada (modelo: {Config.FALLBACK_AI_MODEL})")
+        print(f"[INFO] Fallback AI configured (model: {Config.FALLBACK_AI_MODEL})")
     except Exception as e:
-        print(f"⚠️ Error configurando Fallback AI: {e}")
+        print(f"[WARNING] Error configuring Fallback AI: {e}")
         FALLBACK_AI_DISPONIBLE = False
         FALLBACK_AI_CLIENT = None
 
@@ -192,7 +192,41 @@ class GeminiParserService:
         # ─── Paso 1: Extracción por patrones ───
         resultado_pattern = UntSyllabusExtractor.extraer(texto, curso_esperado, periodo_esperado)
         score_pattern = resultado_pattern.get("puntaje_confianza", 0)
-        print(f"📊 Patrones: score {score_pattern}%")
+        print(f"[INFO] Patrones: score {score_pattern}%")
+
+        # Si el resultado por patrones es excelente (>= 95%), no es necesario llamar al LLM
+        if score_pattern >= 95:
+            print("[INFO] Patrones de alta confianza (>=95%). Omitiendo llamada a LLM para ahorrar tokens.")
+            # Asegurar que tenga todas las validaciones estructurales y fórmulas normalizadas
+            resultado_pattern = cls._validar_estructura(resultado_pattern)
+            try:
+                from app.services.formula_normalizer import EvaluationFormulaExtractor
+                secciones_text = UntSyllabusExtractor._segmentar(texto)
+                eval_seccion = secciones_text.get("evaluacion", "")
+                
+                detalles_formulas = EvaluationFormulaExtractor.extract_and_normalize(eval_seccion)
+                resultado_pattern["formulas_evaluacion_detallada"] = detalles_formulas
+                
+                if detalles_formulas.get("normalized_formulas"):
+                    resultado_pattern["formulas"] = detalles_formulas["normalized_formulas"]
+                    
+                if detalles_formulas.get("inferred_weights"):
+                    evidencias_new = {}
+                    for code, weight in detalles_formulas["inferred_weights"].items():
+                        evidencias_new[code] = {
+                            "nombre": code.title(),
+                            "peso": weight
+                        }
+                    resultado_pattern["evidencias"] = evidencias_new
+            except Exception as e:
+                print(f"Error normalizing final formulas in high confidence patterns bypass: {e}")
+                
+            puntaje, coincidencias = cls.calcular_puntaje_confianza(
+                resultado_pattern, texto, curso_esperado, periodo_esperado
+            )
+            resultado_pattern["puntaje_confianza"] = puntaje
+            resultado_pattern["coincidencias"] = coincidencias
+            return resultado_pattern
 
         # ─── Paso 2: Primary AI / Fallback AI como complemento ───
         _init_primary_ai()
@@ -222,29 +256,29 @@ class GeminiParserService:
                 
                 respuesta_texto = response.choices[0].message.content
                 preview = repr(respuesta_texto[:200]) if respuesta_texto else "None"
-                print(f"🤖 Primary AI raw ({len(respuesta_texto or '')} chars): {preview}")
+                print(f"[INFO] Primary AI raw ({len(respuesta_texto or '')} chars): {preview}")
                 
                 if respuesta_texto and respuesta_texto.strip():
                     stripped = respuesta_texto.strip()
                     if stripped.count('"') <= 2 and '\n' not in stripped:
-                        print(f"⚠️ Primary AI devolvió fragmento incompleto, ignorando")
+                        print(f"[WARNING] Primary AI devolvió fragmento incompleto, ignorando")
                         resultado_llm = None
                     else:
                         resultado_llm = cls._limpiar_y_parsear_json(respuesta_texto)
                         if resultado_llm:
                             resultado_llm = cls._validar_estructura(resultado_llm)
-                            print(f"🤖 Primary AI OK: extrajo {len(resultado_llm)} campos")
+                            print(f"[INFO] Primary AI OK: extrajo {len(resultado_llm)} campos")
                 else:
-                    print(f"⚠️ Primary AI respuesta vacía")
+                    print(f"[WARNING] Primary AI respuesta vacía")
             except Exception as e:
                 import traceback
-                print(f"⚠️ Primary AI falló: {e}")
+                print(f"[WARNING] Primary AI falló: {e}")
                 print(traceback.format_exc())
                 
         # Fallback si Primary AI falla o no está disponible
         if not resultado_llm and FALLBACK_AI_DISPONIBLE and FALLBACK_AI_CLIENT:
             try:
-                print("🔄 Intentando fallback con Fallback AI...")
+                print("[INFO] Intentando fallback con Fallback AI...")
                 texto_limitado = texto[:35000] if len(texto) > 35000 else texto
 
                 hints = cls._construir_hints(resultado_pattern, curso_esperado, periodo_esperado)
@@ -266,32 +300,32 @@ class GeminiParserService:
                 )
                 respuesta_texto = response.choices[0].message.content
                 preview = repr(respuesta_texto[:200]) if respuesta_texto else "None"
-                print(f"🤖 Fallback AI raw ({len(respuesta_texto or '')} chars): {preview}")
+                print(f"[INFO] Fallback AI raw ({len(respuesta_texto or '')} chars): {preview}")
 
                 if respuesta_texto and respuesta_texto.strip():
                     stripped = respuesta_texto.strip()
                     if stripped.count('"') <= 2 and '\n' not in stripped:
-                        print(f"⚠️ Fallback AI devolvió fragmento incompleto, ignorando")
+                        print(f"[WARNING] Fallback AI devolvió fragmento incompleto, ignorando")
                         resultado_llm = None
                     else:
                         resultado_llm = cls._limpiar_y_parsear_json(respuesta_texto)
                         if resultado_llm:
                             resultado_llm = cls._validar_estructura(resultado_llm)
-                            print(f"🤖 Fallback AI OK: extrajo {len(resultado_llm)} campos")
+                            print(f"[INFO] Fallback AI OK: extrajo {len(resultado_llm)} campos")
                 else:
-                    print(f"⚠️ Fallback AI respuesta vacía")
+                    print(f"[WARNING] Fallback AI respuesta vacía")
             except Exception as e:
                 import traceback
-                print(f"⚠️ Fallback AI falló: {e}")
+                print(f"[WARNING] Fallback AI falló: {e}")
                 print(traceback.format_exc())
 
         # ─── Paso 3: Merge inteligente ───
         if resultado_llm:
             resultado = cls._merge_extracciones(resultado_pattern, resultado_llm)
-            print(f"🔀 Merge aplicado")
+            print(f"[INFO] Merge aplicado")
         else:
             resultado = resultado_pattern
-            print(f"⚠️ Sin Gemini, usando solo patrones")
+            print(f"[WARNING] Sin Gemini, usando solo patrones")
 
         # Canonicalize and validate formulas using EvaluationFormulaExtractor
         try:
