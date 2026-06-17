@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getUsers } from '../../api/users';
-import { Search, Filter, Users, ShieldAlert, ShieldCheck, Mail, Clock, Calendar, CheckCircle2, XCircle, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { getUsers, updateUserStatus } from '../../api/users';
+import { Search, Filter, Users, ShieldAlert, ShieldCheck, Mail, Clock, Calendar, CheckCircle2, XCircle, ArrowRight, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
 export default function UserManagementPage() {
   const [users, setUsers] = useState([]);
@@ -11,7 +11,9 @@ export default function UserManagementPage() {
   const [filterEstado, setFilterEstado] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [updatingUserId, setUpdatingUserId] = useState(null);
   const itemsPerPage = 10;
+
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -49,6 +51,32 @@ export default function UserManagementPage() {
       setLoading(false);
     }
   };
+
+  const handleToggleStatus = async (userId, currentStatus) => {
+    setUpdatingUserId(userId);
+    try {
+      const data = await updateUserStatus(userId, !currentStatus);
+      if (data.success) {
+        if (filterEstado) {
+          // Si hay un filtro de estado activo, recargamos la lista ya que el usuario ya no debería aparecer
+          loadUsers();
+        } else {
+          // Si no, actualizamos el estado localmente de manera instantánea
+          setUsers(prevUsers =>
+            prevUsers.map(u => (u.id === userId ? { ...u, es_activo: !currentStatus } : u))
+          );
+        }
+      } else {
+        alert(data.message || 'Error al actualizar el estado del usuario');
+      }
+    } catch (error) {
+      console.error("Error updating user status:", error);
+      alert(error.response?.data?.detail || 'Error al actualizar el estado del usuario');
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -226,16 +254,44 @@ export default function UserManagementPage() {
                       </td>
                       <td className="py-4 px-6">
                         <div className="flex justify-center">
-                          {u.es_activo ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/60">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              Activo
-                            </span>
+                          {u.rol?.toUpperCase() === 'ESTUDIANTE' ? (
+                            <div className="flex items-center gap-2.5">
+                              <button
+                                onClick={() => handleToggleStatus(u.id, u.es_activo)}
+                                disabled={updatingUserId === u.id}
+                                title={u.es_activo ? "Desactivar estudiante" : "Activar estudiante"}
+                                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
+                                  u.es_activo 
+                                    ? 'bg-emerald-500 dark:bg-emerald-600' 
+                                    : 'bg-slate-300 dark:bg-slate-700'
+                                } ${updatingUserId === u.id ? 'opacity-60 cursor-not-allowed' : ''}`}
+                              >
+                                <span
+                                  className={`pointer-events-none flex items-center justify-center h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                    u.es_activo ? 'translate-x-4' : 'translate-x-0'
+                                  }`}
+                                >
+                                  {updatingUserId === u.id && (
+                                    <Loader2 className="w-2.5 h-2.5 text-blue-600 animate-spin" />
+                                  )}
+                                </span>
+                              </button>
+                              <span className={`text-xs font-semibold min-w-[50px] text-left select-none ${u.es_activo ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                                {u.es_activo ? 'Activo' : 'Inactivo'}
+                              </span>
+                            </div>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900/50 dark:text-slate-400 dark:border-slate-700">
-                              <XCircle className="w-3.5 h-3.5" />
-                              Inactivo
-                            </span>
+                            u.es_activo ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/60">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                Activo
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900/50 dark:text-slate-400 dark:border-slate-700">
+                                <XCircle className="w-3.5 h-3.5" />
+                                Inactivo
+                              </span>
+                            )
                           )}
                         </div>
                       </td>

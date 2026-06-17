@@ -1,14 +1,19 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
+from pydantic import BaseModel
 from typing import List, Optional
 import math
 
 from app.database.connection import get_db
 from app.api.dependencies import get_current_admin
-from app.database.models import Usuario
+from app.database.models import Usuario, RolUsuario
 
 router = APIRouter(prefix="/users", tags=["Usuarios"])
+
+class UserStatusUpdate(BaseModel):
+    es_activo: bool
+
 
 @router.get("/")
 async def get_users(
@@ -59,3 +64,38 @@ async def get_users(
             "users": [user.to_dict() for user in users]
         }
     }
+
+@router.patch("/{user_id}/status")
+async def update_user_status(
+    user_id: int,
+    status_data: UserStatusUpdate,
+    db: Session = Depends(get_db),
+    current_admin: Usuario = Depends(get_current_admin)
+):
+    """Cambia el estado activo/inactivo de un usuario estudiante. Solo para administradores."""
+    # Buscar el usuario
+    user = db.query(Usuario).filter(Usuario.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado"
+        )
+    
+    # Validar que sea un estudiante
+    if user.rol != RolUsuario.ESTUDIANTE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Solo se puede cambiar el estado de usuarios con rol ESTUDIANTE"
+        )
+        
+    # Actualizar estado
+    user.es_activo = status_data.es_activo
+    db.commit()
+    db.refresh(user)
+    
+    return {
+        "success": True,
+        "message": f"Estado del estudiante actualizado a {'activo' if user.es_activo else 'inactivo'}",
+        "data": user.to_dict()
+    }
+
