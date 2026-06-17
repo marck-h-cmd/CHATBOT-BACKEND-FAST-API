@@ -105,6 +105,22 @@ async def get_current_docente(
         )
     return current_user
 
+async def get_current_admin(
+    current_user: Usuario = Depends(get_current_active_user)
+) -> Usuario:
+    """Dependencia para verificar que sea administrador"""
+    try:
+        rol_value = current_user.rol.value if hasattr(current_user.rol, "value") else str(current_user.rol)
+    except Exception:
+        rol_value = str(current_user.rol)
+    rol_clean = str(rol_value).split(".")[-1].upper()
+    if rol_clean != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acceso denegado. Se requiere rol de administrador"
+        )
+    return current_user
+
 async def check_chat_rate_limit(
     current_user: Usuario = Depends(get_current_active_user),
     db: Session = Depends(get_db)
