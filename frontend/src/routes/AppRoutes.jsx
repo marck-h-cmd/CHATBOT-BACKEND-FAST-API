@@ -42,6 +42,7 @@ import SyllabusDetailPage from '../pages/admin/SyllabusDetailPage';
 import IncidentsManagementPage from '../pages/admin/IncidentsManagementPage';
 import ServiceIncidentsPage from '../pages/admin/ServiceIncidentsPage';
 import MetricsAdminPage from '../pages/admin/MetricsAdminPage';
+import UserManagementPage from '../pages/admin/UserManagementPage';
 import NotFoundPage from '../pages/NotFoundPage';
 
 // Layout wrapper para páginas con navegación (todas excepto auth)
@@ -185,6 +186,7 @@ const AppRoutes = () => {
                     <Route path="incidentes" element={<IncidentsManagementPage />} />
                     <Route path="incidentes-servicio" element={<ServiceIncidentsPage />} />
                     <Route path="metricas" element={<MetricsAdminPage />} />
+                    <Route path="usuarios" element={<UserManagementPage />} />
                     <Route path="profile" element={<ProfilePage />} />
                   </Route>
                   <Route path="/profile" element={

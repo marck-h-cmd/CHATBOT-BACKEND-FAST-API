@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { LayoutDashboard, BookMarked, CalendarDays, FileText, Search, Ticket, AlertTriangle, BarChart3, Menu, LogOut, ShieldAlert, ShieldCheck, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, BookMarked, CalendarDays, FileText, Search, Ticket, AlertTriangle, BarChart3, Menu, LogOut, ShieldAlert, ShieldCheck, Sun, Moon, Users } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const AdminDashboardPage = () => {
@@ -21,6 +21,7 @@ const AdminDashboardPage = () => {
     { path: '/admin/incidentes', icon: AlertTriangle, label: 'Incidentes Académicos' },
     { path: '/admin/incidentes-servicio', icon: ShieldAlert, label: 'Incidentes de Servicio' },
     { path: '/admin/metricas', icon: BarChart3, label: 'Métricas RAG' },
+    { path: '/admin/usuarios', icon: Users, label: 'Gestión de Usuarios' },
   ];
 
   const handleLogout = async () => {
