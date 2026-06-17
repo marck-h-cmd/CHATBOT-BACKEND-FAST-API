@@ -6,7 +6,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from datetime import datetime
 
 from fastapi.staticfiles import StaticFiles
-from app.api.routes import syllabus, chat, metrics, courses, chunks, services, logs, periods, context, onboarding
+from app.api.routes import syllabus, chat, metrics, courses, chunks, services, logs, periods, context, onboarding, users
 from app.api.routes.auth import router as auth_router
 from app.database.connection import engine, Base
 from app.config import Config
@@ -155,6 +155,7 @@ app.include_router(logs.router)
 from app.api.routes import sugerencias
 app.include_router(sugerencias.router)
 app.include_router(onboarding.router)
+app.include_router(users.router)
 
 
 @app.get("/")
