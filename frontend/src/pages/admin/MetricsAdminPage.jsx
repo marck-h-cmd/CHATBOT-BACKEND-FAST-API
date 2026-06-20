@@ -47,7 +47,7 @@ const MetricsPage = () => {
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
           <BarChart3 className="w-6 h-6 text-indigo-650 dark:text-indigo-400" /> Analítica y Rendimiento RAG
         </h1>
-        <p className="text-slate-505 dark:text-slate-400 mt-1">KPIs e indicadores de rendimiento de Sylia y el Service Desk.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Indicadores clave de rendimiento y calidad de servicio.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">

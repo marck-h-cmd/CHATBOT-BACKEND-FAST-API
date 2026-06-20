@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Modal from '../components/ui/Modal';
-import { Search, Filter, Calendar, AlertCircle, BookOpen, ChevronRight, Layers } from 'lucide-react';
+import { Search, Filter, Calendar, AlertCircle, BookOpen, ChevronRight, ChevronDown, Layers } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const CourseListPage = () => {
   const { courses, enrollments, loading, getCurrentPeriod, enrollInCourse, refreshData } = useCourse();
@@ -16,8 +17,12 @@ const CourseListPage = () => {
   const [confirmModalOpen, setConfirmModalOpen] = React.useState(false);
   const [cycleToEnroll, setCycleToEnroll] = React.useState(null);
   const [coursesToEnrollList, setCoursesToEnrollList] = React.useState([]);
+  
+  const [expandedCycles, setExpandedCycles] = React.useState({});
+  const [isSearchedOrFiltered, setIsSearchedOrFiltered] = React.useState(false);
 
   const currentPeriod = getCurrentPeriod();
+
 
   const isEnrolled = (courseId) => {
     return enrollments.some(e => e.id_curso === courseId && e.id_periodo === currentPeriod?.id_periodo);
@@ -72,6 +77,65 @@ const CourseListPage = () => {
   }, {});
 
   const cycleOrder = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'Sin ciclo'];
+
+  const toggleCycle = (cycle) => {
+    setExpandedCycles(prev => ({
+      ...prev,
+      [cycle]: !prev[cycle]
+    }));
+  };
+
+  const expandAll = () => {
+    const newExpanded = {};
+    cycleOrder.forEach(cycle => {
+      if (coursesByCycle[cycle] && coursesByCycle[cycle].length > 0) {
+        newExpanded[cycle] = true;
+      }
+    });
+    setExpandedCycles(newExpanded);
+  };
+
+  const collapseAll = () => {
+    setExpandedCycles({});
+  };
+
+  const hasActiveFilters = searchTerm !== '' || cycleFilter !== 'all' || filter !== 'all';
+
+  // Inicializar abriendo el primer ciclo que tenga cursos
+  React.useEffect(() => {
+    if (courses && courses.length > 0 && Object.keys(expandedCycles).length === 0) {
+      const firstActiveCycle = cycleOrder.find(c => {
+        const cycleCourses = courses.filter(course => (course.ciclo_referencial || 'Sin ciclo') === c);
+        return cycleCourses && cycleCourses.length > 0;
+      });
+      if (firstActiveCycle) {
+        setExpandedCycles({ [firstActiveCycle]: true });
+      }
+    }
+  }, [courses]);
+
+  // Auto-expandir cuando hay búsqueda o filtros activos
+  React.useEffect(() => {
+    if (hasActiveFilters) {
+      const newExpanded = {};
+      cycleOrder.forEach(cycle => {
+        const cycleCourses = coursesByCycle[cycle];
+        if (cycleCourses && cycleCourses.length > 0) {
+          newExpanded[cycle] = true;
+        }
+      });
+      setExpandedCycles(newExpanded);
+      setIsSearchedOrFiltered(true);
+    } else if (isSearchedOrFiltered) {
+      const firstActiveCycle = cycleOrder.find(c => coursesByCycle[c] && coursesByCycle[c].length > 0);
+      if (firstActiveCycle) {
+        setExpandedCycles({ [firstActiveCycle]: true });
+      } else {
+        setExpandedCycles({});
+      }
+      setIsSearchedOrFiltered(false);
+    }
+  }, [searchTerm, cycleFilter, filter, courses]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10" data-tour="student-course-catalog">
@@ -154,95 +218,140 @@ const CourseListPage = () => {
       {loading ? (
         <LoadingSpinner fullScreen />
       ) : (
-        <div className="space-y-8">
-          {cycleOrder.map(cycle => {
-            const cycleCourses = coursesByCycle[cycle];
-            if (!cycleCourses || cycleCourses.length === 0) return null;
+         <div className="space-y-6">
+          {/* Botones globales Expandir/Contraer */}
+          <div className="flex justify-end gap-2.5">
+            <button
+              onClick={expandAll}
+              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/20 px-3.5 py-2 rounded-xl border border-indigo-100 dark:border-indigo-900/30 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            >
+              Expandir todos
+            </button>
+            <button
+              onClick={collapseAll}
+              className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-700 dark:hover:text-indigo-300 bg-slate-50 dark:bg-slate-900 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            >
+              Contraer todos
+            </button>
+          </div>
 
-            return (
-              <div key={cycle} className="scroll-mt-8 bg-white dark:bg-[#131A2C] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden transition-colors duration-200">
-                {/* Cabecera del Ciclo */}
-                <div className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex justify-between items-center flex-wrap gap-3">
-                  <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                    <Layers className="w-5 h-5 text-indigo-600 dark:text-indigo-400" /> 
-                    Ciclo {cycle}
-                  </h2>
-                  <div className="flex items-center gap-3">
-                    {cycle !== 'Sin ciclo' && cycleCourses.some(c => !isEnrolled(c.id_curso)) && (
-                      <Button
-                        size="sm"
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-sm text-xs px-3.5 py-1.5 rounded-lg"
-                        onClick={() => handleEnrollCycleClick(cycle, cycleCourses.filter(c => !isEnrolled(c.id_curso)))}
-                        disabled={enrollingCycle === cycle}
-                      >
-                        {enrollingCycle === cycle ? 'Matriculando...' : 'Matricular todo el ciclo'}
-                      </Button>
-                    )}
-                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800">
-                      {cycleCourses.length} cursos
-                    </span>
+          <div className="space-y-6">
+            {cycleOrder.map(cycle => {
+              const cycleCourses = coursesByCycle[cycle];
+              if (!cycleCourses || cycleCourses.length === 0) return null;
+
+              const totalCredits = cycleCourses.reduce((sum, c) => sum + (c.creditos || 0), 0);
+              const isExpanded = !!expandedCycles[cycle];
+
+              return (
+                <div key={cycle} className="scroll-mt-8 bg-white dark:bg-[#131A2C] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden transition-all duration-200">
+                  {/* Cabecera del Ciclo (Interactiva) */}
+                  <div 
+                    onClick={() => toggleCycle(cycle)}
+                    className="bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100/40 dark:hover:bg-slate-800/10 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex justify-between items-center flex-wrap gap-3 cursor-pointer select-none transition-colors duration-150 group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-250 ease-out ${isExpanded ? 'rotate-180 text-indigo-600 dark:text-indigo-400' : 'rotate-0'}`} />
+                      <h2 className="text-lg font-bold text-slate-850 dark:text-white flex items-center gap-2 group-hover:text-indigo-650 dark:group-hover:text-indigo-400 transition-colors">
+                        <Layers className="w-5 h-5 text-indigo-600 dark:text-indigo-400" /> 
+                        Ciclo {cycle}
+                      </h2>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {cycle !== 'Sin ciclo' && cycleCourses.some(c => !isEnrolled(c.id_curso)) && (
+                        <Button
+                          size="sm"
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-sm text-xs px-3.5 py-1.5 rounded-lg"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEnrollCycleClick(cycle, cycleCourses.filter(c => !isEnrolled(c.id_curso)));
+                          }}
+                          disabled={enrollingCycle === cycle}
+                        >
+                          {enrollingCycle === cycle ? 'Matriculando...' : 'Matricular todo el ciclo'}
+                        </Button>
+                      )}
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
+                        {cycleCourses.length} cursos
+                      </span>
+                      <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider bg-indigo-50/50 dark:bg-indigo-950/20 px-3 py-1.5 rounded-full border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm">
+                        {totalCredits} créditos
+                      </span>
+                    </div>
                   </div>
+                  
+                  {/* Contenido Desplegable Animado */}
+                  <AnimatePresence initial={false}>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25, ease: 'easeInOut' }}
+                        className="overflow-hidden"
+                      >
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131A2C]">
+                                <th className="py-3 px-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-32">Código</th>
+                                <th className="py-3 px-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Asignatura</th>
+                                <th className="py-3 px-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider hidden sm:table-cell">Área / Escuela</th>
+                                <th className="py-3 px-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center w-24">Créditos</th>
+                                <th className="py-3 px-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-right w-36">Acción</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
+                              {cycleCourses.map(course => (
+                                <tr key={course.id_curso} className="hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-colors group">
+                                  <td className="py-4 px-6 align-middle">
+                                    <span className="font-mono text-xs font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 px-2 py-1 rounded-md">
+                                      {course.codigo_curso}
+                                    </span>
+                                  </td>
+                                  <td className="py-4 px-6 align-middle">
+                                    <p className="font-bold text-slate-800 dark:text-slate-200 leading-tight group-hover:text-indigo-755 dark:group-hover:text-indigo-400 transition-colors">
+                                      {course.nombre_curso}
+                                    </p>
+                                  </td>
+                                  <td className="py-4 px-6 align-middle hidden sm:table-cell">
+                                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                                      {course.escuela || 'Ingeniería de Sistemas'}
+                                    </span>
+                                  </td>
+                                  <td className="py-4 px-6 align-middle text-center">
+                                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-955/30 text-indigo-700 dark:text-indigo-400 text-sm font-bold border border-indigo-100 dark:border-indigo-900/30">
+                                      {course.creditos}
+                                    </span>
+                                  </td>
+                                  <td className="py-4 px-6 align-middle text-right">
+                                    {isEnrolled(course.id_curso) ? (
+                                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-450 bg-emerald-50 dark:bg-emerald-955/20 px-2.5 py-1.5 rounded-md border border-emerald-100 dark:border-emerald-900/30">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                        Inscrito
+                                      </span>
+                                    ) : (
+                                      <Button 
+                                        size="sm"
+                                        className="w-full sm:w-auto shadow-sm"
+                                        onClick={() => navigate('/inscripcion', { state: { courseId: course.id_curso } })}
+                                      >
+                                        Inscribirse
+                                      </Button>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-                
-                {/* Data Table */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131A2C]">
-                        <th className="py-3 px-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-32">Código</th>
-                        <th className="py-3 px-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Asignatura</th>
-                        <th className="py-3 px-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider hidden sm:table-cell">Área / Escuela</th>
-                        <th className="py-3 px-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center w-24">Créditos</th>
-                        <th className="py-3 px-6 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-right w-36">Acción</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
-                      {cycleCourses.map(course => (
-                        <tr key={course.id_curso} className="hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-colors group">
-                          <td className="py-4 px-6 align-middle">
-                            <span className="font-mono text-xs font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 px-2 py-1 rounded-md">
-                              {course.codigo_curso}
-                            </span>
-                          </td>
-                          <td className="py-4 px-6 align-middle">
-                            <p className="font-bold text-slate-800 dark:text-slate-200 leading-tight group-hover:text-indigo-700 dark:group-hover:text-indigo-400 transition-colors">
-                              {course.nombre_curso}
-                            </p>
-                          </td>
-                          <td className="py-4 px-6 align-middle hidden sm:table-cell">
-                            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                              {course.escuela || 'Ingeniería de Sistemas'}
-                            </span>
-                          </td>
-                          <td className="py-4 px-6 align-middle text-center">
-                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 text-sm font-bold border border-indigo-100 dark:border-indigo-900/30">
-                              {course.creditos}
-                            </span>
-                          </td>
-                          <td className="py-4 px-6 align-middle text-right">
-                            {isEnrolled(course.id_curso) ? (
-                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-450 bg-emerald-50 dark:bg-emerald-955/20 px-2.5 py-1.5 rounded-md border border-emerald-100 dark:border-emerald-900/30">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                Inscrito
-                              </span>
-                            ) : (
-                              <Button 
-                                size="sm"
-                                className="w-full sm:w-auto shadow-sm"
-                                onClick={() => navigate('/inscripcion', { state: { courseId: course.id_curso } })}
-                              >
-                                Inscribirse
-                              </Button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
 
           {filteredCourses.length === 0 && (
             <div className="text-center py-16 bg-white dark:bg-[#131A2C] border border-slate-200 dark:border-slate-800 border-dashed rounded-2xl">

@@ -93,7 +93,7 @@ const ServiceDeskPage = () => {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
             <Ticket className="w-6 h-6 text-indigo-600 dark:text-indigo-400" /> Mesa de Servicio ITIL
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Gestión centralizada de solicitudes de estudiantes e incidentes académicos.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Gestión de tickets de solicitudes e incidentes.</p>
         </div>
         <Button onClick={refreshData} variant="outline" className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-805 text-slate-705 dark:text-slate-300">
           <RefreshCw className="w-4 h-4" /> Recargar

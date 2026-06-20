@@ -192,7 +192,7 @@ const AdminSummaryPage = () => {
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">{formatDate()}</p>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Resumen Operativo</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-xl">
-            Visión integral del sistema RAG, operaciones ITIL y salud académica en tiempo real.
+            Monitoreo del sistema en tiempo real.
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-card">

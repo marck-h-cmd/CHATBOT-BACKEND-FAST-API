@@ -134,7 +134,7 @@ export default function UserManagementPage() {
             Gestión de Usuarios
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Administra los usuarios registrados en el sistema ({total} en total)
+            Usuarios registrados ({total} en total)
           </p>
         </div>
       </div>

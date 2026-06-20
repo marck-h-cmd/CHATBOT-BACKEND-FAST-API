@@ -260,8 +260,8 @@ export default function SyllabusManagementPage() {
       </h3>
       <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 max-w-sm mx-auto">
         {hasActiveFilters
-          ? 'Prueba ajustando los filtros de búsqueda.'
-          : 'Comienza subiendo el primer sílabo oficial del sistema.'}
+          ? 'Prueba ajustando los filtros.'
+          : 'No hay sílabos registrados.'}
       </p>
       {hasActiveFilters ? (
         <button onClick={clearFilters} className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
@@ -298,8 +298,8 @@ export default function SyllabusManagementPage() {
             <FileText className="w-7 h-7 text-blue-600 dark:text-blue-400" />
             Gestión de Sílabos
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-lg">
-            Gestiona los sílabos del sistema, revisa scores de validación y controla estados de aprobación.
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Control y estados de aprobación de sílabos.
           </p>
         </div>
         <button

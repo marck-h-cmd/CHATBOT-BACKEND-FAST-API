@@ -103,8 +103,8 @@ const ServiceIncidentsPage = () => {
             </span>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Incidentes de Servicio</h1>
           </div>
-          <p className="text-slate-505 dark:text-slate-400">
-            Monitoreo y resolución de fallos documentales, fórmulas ambiguas o inconsistencias en sílabos subidos.
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Gestión de incidentes de formato o legibilidad de sílabos.
           </p>
         </div>
         <Button variant="outline" onClick={loadIncidents} className="flex items-center gap-2 self-start md:self-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300">
@@ -136,8 +136,8 @@ const ServiceIncidentsPage = () => {
           <h2 className="text-2xl font-bold text-slate-808 dark:text-white mb-2">
             ¡Todo en orden!
           </h2>
-          <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-            No hay incidentes de servicio activos. Todos los sílabos subidos cumplen con la validación de fórmulas y legibilidad.
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+            No hay incidentes de servicio activos.
           </p>
         </div>
       ) : (

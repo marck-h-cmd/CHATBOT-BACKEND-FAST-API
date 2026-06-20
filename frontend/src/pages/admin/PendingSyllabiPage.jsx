@@ -117,7 +117,7 @@ const PendingSyllabiPage = () => {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
             <Search className="w-6 h-6 text-indigo-650 dark:text-indigo-400" /> Validación de Sílabos
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Revisa y aprueba los sílabos subidos por estudiantes que requieren validación manual.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Sílabos que requieren validación manual.</p>
         </div>
         <Button onClick={loadPendingSyllabi} variant="outline" className="flex items-center gap-2 shadow-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
           <RefreshCw className="w-4 h-4" /> Recargar
@@ -130,8 +130,8 @@ const PendingSyllabiPage = () => {
             <CheckCircle2 className="w-10 h-10 text-emerald-500 dark:text-emerald-400" />
           </div>
           <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Bandeja de Entrada Limpia</h2>
-          <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-            No hay sílabos pendientes de validación en este momento.
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+            No hay sílabos pendientes en este momento.
           </p>
         </div>
       ) : (

@@ -259,8 +259,8 @@ const PeriodManagementPage = () => {
             <CalendarDays className="w-7 h-7 text-blue-600" />
             Gestión de Periodos
           </h1>
-          <p className="text-sm text-slate-505 dark:text-slate-400 mt-1.5 max-w-lg">
-            Administra los ciclos académicos, controla vigencias y establece el periodo activo del sistema.
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Gestión de periodos y ciclos académicos.
           </p>
         </div>
         <Button
@@ -314,8 +314,8 @@ const PeriodManagementPage = () => {
             <AlertCircle className="w-6 h-6 text-slate-400 dark:text-slate-500" />
           </div>
           <h3 className="text-base font-bold text-slate-808 dark:text-white mb-1">No hay periodos registrados</h3>
-          <p className="text-sm text-slate-505 dark:text-slate-400 mb-4 max-w-sm mx-auto">
-            Comienza aperturando el primer periodo académico para el sistema.
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 max-w-sm mx-auto">
+            No hay periodos registrados en el sistema.
           </p>
           <Button onClick={openCreateModal} className="bg-blue-600 hover:bg-blue-707 text-white text-sm">
             <Plus className="w-4 h-4 mr-1.5" /> Aperturar periodo

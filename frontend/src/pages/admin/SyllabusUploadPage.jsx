@@ -177,8 +177,8 @@ export default function SyllabusUploadPage() {
           <Upload className="w-7 h-7 text-blue-600 dark:text-blue-400" />
           Subir Sílabo Oficial
         </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5">
-          Carga el documento oficial del sílabo para sincronizar con estudiantes.
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Carga el documento oficial en formato PDF.
         </p>
       </div>
 

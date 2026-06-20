@@ -221,10 +221,10 @@ const CourseManagementPage = () => {
       <h3 className="text-base font-bold text-slate-800 dark:text-white mb-1">
         {hasActiveFilters ? 'Sin resultados para los filtros aplicados' : 'No hay cursos registrados'}
       </h3>
-      <p className="text-sm text-slate-505 dark:text-slate-400 mb-4 max-w-sm mx-auto">
+      <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 max-w-sm mx-auto">
         {hasActiveFilters
-          ? 'Prueba ajustando los filtros de búsqueda para encontrar lo que buscas.'
-          : 'Comienza agregando el primer curso al catálogo académico.'}
+          ? 'Prueba ajustando los filtros de búsqueda.'
+          : 'Comienza agregando el primer curso.'}
       </p>
       {hasActiveFilters ? (
         <button onClick={clearFilters} className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
@@ -255,8 +255,8 @@ const CourseManagementPage = () => {
             <BookMarked className="w-7 h-7 text-blue-600" />
             Catálogo Académico
           </h1>
-          <p className="text-sm text-slate-505 dark:text-slate-400 mt-1.5 max-w-lg">
-            Gestiona el plan de estudios, asigna créditos y organiza los cursos por ciclo y escuela.
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Gestión de asignaturas y plan de estudios.
           </p>
         </div>
         <Button
