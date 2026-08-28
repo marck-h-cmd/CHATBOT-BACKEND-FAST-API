@@ -84,7 +84,7 @@ Sylia AI es una plataforma integral de asistencia académica basada en inteligen
 
 ```bash
 # Clonar el repositorio
-git clone (https://github.com/marck-h-cmd/CHATBOT-FAST-API.git)
+git clone https://github.com/marck-h-cmd/CHATBOT-FAST-API.git
 cd CHATBOT-BACKEND-FAST-API
 
 # Ejecutar el script de setup (Linux/macOS)
