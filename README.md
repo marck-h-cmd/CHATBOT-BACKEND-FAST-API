@@ -84,8 +84,8 @@ Sylia AI es una plataforma integral de asistencia académica basada en inteligen
 
 ```bash
 # Clonar el repositorio
-git clone https://github.com/marck-h-cmd/CHATBOT-FAST-API.git
-cd CHATBOT-BACKEND-FAST-API
+git clone https://github.com/marck-h-cmd/syl-ia.git
+cd syl-ia
 
 # Ejecutar el script de setup (Linux/macOS)
 chmod +x setup.sh && ./setup.sh
@@ -105,17 +105,6 @@ Servicios disponibles tras el setup:
 | Documentación API | http://localhost:8000/docs |
 | PgAdmin | http://localhost:5050 |
 
----
-
-## Despliegue en Producción (AWS EC2)
-
-Para entornos de producción, el proyecto cuenta con un archivo dedicado `docker-compose.prod.yml` y una guía detallada paso a paso que cubre:
-- Configuración de instancias AWS EC2 y Security Groups
-- Configuración de dominio y certificados SSL automatizados con Certbot/Let's Encrypt
-- Proxy inverso con Nginx
-- CI/CD automatizado con GitHub Actions
-
-👉 **Consulta la guía completa de producción aquí: [DEPLOY_AWS.md](./DEPLOY_AWS.md)**
 
 ---
 
